@@ -171,17 +171,27 @@
 
         // ================= ЗАПУСК =================
         // Ждём загрузку DOM и делаем первую попытку
-        document.addEventListener('DOMContentLoaded', initApp);
+       // document.addEventListener('DOMContentLoaded', initApp);
         
         // Вешаем обработчик на аварийную кнопку
         document.getElementById('force-init-btn').addEventListener('click', initApp);
         
-        // ДОПОЛНИТЕЛЬНЫЙ СЛУШАТЕЛЬ ДЛЯ VK (на случай, если DOMContentLoaded сработал рано)
-        if (typeof vkBridge !== 'undefined') {
-            vkBridge.send('VKWebAppInit').then(() => {
-                console.log('VK Bridge инициализирован');
-            }).catch(console.error);
-        }
+      // ЯВНАЯ ИНИЦИАЛИЗАЦИЯ VK BRIDGE перед любыми другими запросами
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof vkBridge !== 'undefined') {
+        vkBridge.send('VKWebAppInit')
+            .then(function() {
+                console.log('VK Bridge успешно инициализирован');
+                initApp(); // запускаем главную функцию только после инициализации
+            })
+            .catch(function(err) {
+                console.error('Ошибка инициализации VK:', err);
+                document.getElementById('player-info').textContent = 'Ошибка VK: ' + err.message;
+            });
+    } else {
+        document.getElementById('player-info').textContent = '❌ VK Bridge не найден. Откройте внутри ВК.';
+    }
+});
     </script>
 </body>
 </html>
