@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Корпоративные Игры v5 debug</title>
+    <title>Корпоративные Игры v7</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <style>
@@ -81,7 +81,6 @@
             document.getElementById('debug-text').textContent = msg;
         }
 
-        debug('Создаём клиент Supabase...');
         var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         var currentUser = null;
         var currentVkUser = null;
@@ -90,15 +89,9 @@
         window.addEventListener('load', function() {
             debug('Страница загружена');
             if (typeof vkBridge !== 'undefined') {
-                debug('Вызываем VKWebAppInit...');
                 vkBridge.send('VKWebAppInit')
-                    .then(function() {
-                        debug('VKWebAppInit успешно');
-                        initApp();
-                    })
-                    .catch(function(err) {
-                        debug('Ошибка VKWebAppInit: ' + err.message);
-                    });
+                    .then(function() { initApp(); })
+                    .catch(function(err) { debug('Ошибка VK: ' + err.message); });
             } else {
                 debug('VK Bridge не найден');
             }
@@ -107,62 +100,152 @@
         // ================= ГЛАВНАЯ ЛОГИКА =================
         async function initApp() {
             try {
-                debug('Получаем данные пользователя VK...');
+                // Получаем данные VK
                 currentVkUser = await vkBridge.send('VKWebAppGetUserInfo');
-                debug('VK User: ' + currentVkUser.first_name + ' ' + currentVkUser.last_name + ' (ID: ' + currentVkUser.id + ')');
+                debug('VK User: ' + currentVkUser.first_name + ' ' + currentVkUser.last_name);
 
-                debug('Ищем в БД...');
+                // Проверяем реферальный параметр
+                var urlParams = new URLSearchParams(window.location.search);
+                var invitedBy = urlParams.get('ref');
+                
+                // Ищем игрока в БД
                 var result = await supabase
                     .from('players')
                     .select('*')
                     .eq('vk_id', currentVkUser.id)
                     .maybeSingle();
 
-                if (result.error) {
-                    debug('ОШИБКА БД: ' + result.error.message);
-                    throw result.error;
-                }
+                if (result.error) throw result.error;
 
+                // ========== ЕСЛИ ИГРОК НЕ НАЙДЕН (НОВЫЙ) ==========
                 if (!result.data) {
-                    debug('Игрок не найден, создаём нового...');
+                    debug('Новый игрок!');
                     
+                    var companyName = null;
+                    var shouldGiveBonus = false;
+
+                    // Если есть реферал — получаем компанию пригласившего
+                    if (invitedBy) {
+                        var inviterResult = await supabase
+                            .from('players')
+                            .select('company, status')
+                            .eq('vk_id', parseInt(invitedBy))
+                            .maybeSingle();
+
+                        if (inviterResult.data && inviterResult.data.company && inviterResult.data.status === 'Владелец') {
+                            companyName = inviterResult.data.company;
+                            shouldGiveBonus = true;
+                            debug('Привязываем к компании: ' + companyName);
+                        }
+                    }
+
                     var newPlayer = {
                         vk_id: currentVkUser.id,
                         first_name: currentVkUser.first_name,
                         last_name: currentVkUser.last_name,
                         photo_200: currentVkUser.photo_200 || '',
-                        status: 'Биржа труда',
+                        status: companyName ? 'Работает' : 'Биржа труда',
+                        company: companyName,
+                        role: companyName ? 'Учёный' : null,
                         balance: 0,
                         experience: 0,
-                        income_per_hour: 0,
-                        invited_by: null
+                        income_per_hour: companyName ? 1 : 0,
+                        invited_by: invitedBy ? parseInt(invitedBy) : null
                     };
 
                     var insertResult = await supabase.from('players').insert([newPlayer]);
-                    if (insertResult.error) {
-                        debug('ОШИБКА ВСТАВКИ: ' + insertResult.error.message);
-                        throw insertResult.error;
+                    if (insertResult.error) throw insertResult.error;
+
+                    if (shouldGiveBonus) {
+                        await giveReferralBonus(parseInt(invitedBy));
                     }
-                    
-                    debug('Игрок создан, перезагружаем...');
+
                     location.reload();
-                } else {
-                    debug('Игрок найден в БД!');
-                    currentUser = result.data;
-                    debug('Данные: company=' + currentUser.company + ', balance=' + currentUser.balance + ', exp=' + currentUser.experience);
-                    renderAll();
-                    debug('Интерфейс отрисован!');
+                    return;
                 }
+
+                // ========== ЕСЛИ ИГРОК УЖЕ СУЩЕСТВУЕТ ==========
+                currentUser = result.data;
+                debug('Игрок найден. Компания: ' + (currentUser.company || 'нет'));
+
+                // ПРОВЕРЯЕМ: если перешёл по реферальной ссылке И ещё не в компании пригласившего
+                if (invitedBy && parseInt(invitedBy) !== currentUser.vk_id) {
+                    
+                    // Ищем компанию пригласившего
+                    var inviterResult = await supabase
+                        .from('players')
+                        .select('company, status')
+                        .eq('vk_id', parseInt(invitedBy))
+                        .maybeSingle();
+
+                    if (inviterResult.data && inviterResult.data.company && inviterResult.data.status === 'Владелец') {
+                        var newCompany = inviterResult.data.company;
+
+                        // Проверяем, не в этой ли компании он уже работает
+                        if (currentUser.company !== newCompany) {
+                            debug('Переманиваем в компанию: ' + newCompany);
+                            
+                            var oldCompany = currentUser.company;
+                            
+                            // Обновляем игрока
+                            var updateResult = await supabase
+                                .from('players')
+                                .update({
+                                    company: newCompany,
+                                    status: 'Работает',
+                                    role: 'Учёный',
+                                    income_per_hour: 1,
+                                    invited_by: parseInt(invitedBy)
+                                })
+                                .eq('vk_id', currentUser.vk_id);
+
+                            if (updateResult.error) throw updateResult.error;
+
+                            // Начисляем бонус пригласившему
+                            await giveReferralBonus(parseInt(invitedBy));
+
+                            // Обновляем currentUser для отрисовки
+                            currentUser.company = newCompany;
+                            currentUser.status = 'Работает';
+                            currentUser.role = 'Учёный';
+                            currentUser.income_per_hour = 1;
+                            currentUser.invited_by = parseInt(invitedBy);
+
+                            debug('Игрок перешёл из «' + (oldCompany || 'Биржи') + '» в «' + newCompany + '»');
+                        } else {
+                            debug('Игрок уже в этой компании');
+                        }
+                    }
+                }
+
+                renderAll();
+
             } catch (error) {
-                debug('КРИТИЧЕСКАЯ ОШИБКА: ' + (error.message || JSON.stringify(error)));
+                debug('ОШИБКА: ' + (error.message || JSON.stringify(error)));
                 console.error(error);
+            }
+        }
+
+        // ================= БОНУС ЗА ПРИГЛАШЕНИЕ =================
+        async function giveReferralBonus(inviterVkId) {
+            var result = await supabase
+                .from('players')
+                .select('experience')
+                .eq('vk_id', inviterVkId)
+                .maybeSingle();
+
+            if (result.data) {
+                var newExp = (result.data.experience || 0) + 500;
+                await supabase
+                    .from('players')
+                    .update({ experience: newExp })
+                    .eq('vk_id', inviterVkId);
+                debug('Начислено +500 опыта игроку ' + inviterVkId);
             }
         }
 
         // ================= ОТРИСОВКА =================
         function renderAll() {
-            debug('Отрисовываем интерфейс...');
-            
             document.getElementById('player-name').textContent = currentUser.first_name + ' ' + currentUser.last_name;
             document.getElementById('balance-value').textContent = currentUser.balance || 0;
             document.getElementById('exp-value').textContent = currentUser.experience || 0;
@@ -179,19 +262,27 @@
             var inviteBtn = document.getElementById('invite-btn');
 
             if (!currentUser.company || currentUser.company === 'Биржа труда') {
-                statusText.textContent = 'Вы на бирже труда. Создайте компанию!';
+                // Безработный
+                statusText.textContent = 'Вы на бирже труда. Создайте компанию или попросите друга пригласить вас!';
                 mainBtn.textContent = '🚀 Создать компанию';
                 mainBtn.className = 'btn-create';
                 mainBtn.style.display = 'block';
                 mainBtn.onclick = createCompany;
                 inviteBtn.style.display = 'none';
                 document.getElementById('employees-panel').style.display = 'none';
-            } else {
+            } else if (currentUser.status === 'Владелец') {
+                // Владелец компании
                 statusText.textContent = 'Вы владелец компании';
                 mainBtn.style.display = 'none';
                 inviteBtn.style.display = 'block';
                 inviteBtn.onclick = inviteFriend;
                 loadEmployees();
+            } else {
+                // Сотрудник
+                statusText.textContent = 'Вы работаете в компании «' + currentUser.company + '» как ' + (currentUser.role || 'Учёный');
+                mainBtn.style.display = 'none';
+                inviteBtn.style.display = 'none';
+                document.getElementById('employees-panel').style.display = 'none';
             }
         }
 
@@ -199,7 +290,6 @@
             var companyName = prompt('Введите название компании:', 'Компания ' + currentUser.first_name);
             if (!companyName) return;
 
-            debug('Создаём компанию: ' + companyName);
             var result = await supabase
                 .from('players')
                 .update({ 
@@ -210,7 +300,6 @@
                 .eq('vk_id', currentUser.vk_id);
 
             if (result.error) {
-                debug('ОШИБКА создания компании: ' + result.error.message);
                 alert('Ошибка: ' + result.error.message);
             } else {
                 alert('Компания «' + companyName + '» создана!');
@@ -237,7 +326,6 @@
             var listEl = document.getElementById('employees-list');
             listEl.innerHTML = 'Загрузка...';
             
-            debug('Загружаем сотрудников...');
             var result = await supabase
                 .from('players')
                 .select('*')
@@ -245,13 +333,11 @@
                 .neq('status', 'Владелец');
 
             if (result.error) {
-                debug('ОШИБКА загрузки сотрудников: ' + result.error.message);
                 listEl.innerHTML = 'Ошибка загрузки';
                 return;
             }
 
             var employees = result.data;
-            debug('Найдено сотрудников: ' + employees.length);
             document.getElementById('employees-count').textContent = employees.length;
 
             if (employees.length === 0) {
