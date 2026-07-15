@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Корпоративные Игры v2</title>
+    
+    <!-- 1. Подключаем VK Bridge НАПРЯМУЮ с CDN (самый надёжный способ) -->
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+    
+    <!-- 2. Подключаем Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div id="app">
+        <h2>Ваш статус:</h2>
+        <!-- Сюда выведется инфа -->
+        <p id="player-info">Проверка подключения к VK...</p>
+        
+        <!-- Кнопка для ручной диагностики (потом можно убрать) -->
+        <button id="force-init-btn" style="display: none; padding: 10px; margin: 10px;">🔄 Загрузить данные вручную</button>
+
+        <!-- Секция для владельца компании (скрыта по умолчанию) -->
+        <div id="owner-panel" style="display: none; margin-top: 20px;">
+            <h3>Панель компании</h3>
+            <ul id="jobless-list"></ul>
+        </div>
+    </div>
+
+    <script>
+        // ================= ГЛАВНЫЕ НАСТРОЙКИ (ЗАМЕНИ НА СВОИ) =================
+        const SUPABASE_URL = 'https://ТВОЙ_ID.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'ТВОЙ_ANON_KEY'; 
+        
+        // Создаём клиент Supabase
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let currentUserVkId = null;
+
+        // ================= ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ (С ЗАЩИТОЙ ОТ ОШИБОК) =================
+        async function initApp() {
+            // Показываем, что процесс пошёл
+            const infoElement = document.getElementById('player-info');
+            infoElement.textContent = 'Подключаемся к VK Bridge...';
+
+            try {
+                // ШАГ 0: Проверяем, доступен ли VK Bridge
+                // Если мы открыли страницу в обычном браузере, vkBridge будет undefined
+                if (typeof vkBridge === 'undefined') {
+                    infoElement.textContent = '❌ Ошибка: Открыто не в VK! Запустите приложение внутри ВКонтакте (на телефоне или на vk.com/app).';
+                    document.getElementById('force-init-btn').style.display = 'none'; // Кнопка не поможет
+                    return; // Прерываем выполнение
+                }
+
+                // ШАГ 1: Запрашиваем данные пользователя
+                infoElement.textContent = 'Получаем данные профиля...';
+                const user = await vkBridge.send('VKWebAppGetUserInfo');
+                currentUserVkId = user.id;
+                console.log('✅ VK User ID:', currentUserVkId);
+
+                // ШАГ 2: Проверяем игрока в БД
+                infoElement.textContent = 'Ищем вас в базе данных...';
+                const { data: existingPlayer, error: selectError } = await supabase
+                    .from('players')
+                    .select('*')
+                    .eq('vk_id', currentUserVkId)
+                    .maybeSingle(); // .maybeSingle() не вызовет ошибку, если запись не найдена
+
+                if (selectError) {
+                    console.error('Ошибка поиска в БД:', selectError);
+                    throw selectError;
+                }
+
+                // ШАГ 3: Логика нового/старого игрока
+                if (!existingPlayer) {
+                    // Новый игрок - добавляем
+                    infoElement.textContent = 'Впервые здесь! Регистрируем...';
+                    const { error: insertError } = await supabase
+                        .from('players')
+                        .insert([
+                            { 
+                                vk_id: currentUserVkId, 
+                                first_name: user.first_name, 
+                                last_name: user.last_name 
+                            }
+                        ]);
+
+                    if (insertError) {
+                        console.error('Ошибка вставки:', insertError);
+                        throw insertError;
+                    }
+                    // После вставки перезагружаем страницу
+                    location.reload();
+                } else {
+                    // Существующий игрок - показываем инфо
+                    displayPlayerInfo(existingPlayer);
+                    if (existingPlayer.company === 'Владелец') {
+                        showOwnerPanel();
+                    }
+                }
+
+            } catch (error) {
+                // САМАЯ ВАЖНАЯ ЧАСТЬ: ЛОВИМ ЛЮБУЮ ОШИБКУ И ПОКАЗЫВАЕМ ПОЛЬЗОВАТЕЛЮ
+                console.error('❌ КРИТИЧЕСКАЯ ОШИБКА:', error);
+                infoElement.textContent = `Ошибка загрузки: ${error.message || 'Неизвестная ошибка'}. Нажмите кнопку ниже для повтора.`;
+                // Показываем кнопку ручной перезагрузки
+                document.getElementById('force-init-btn').style.display = 'block';
+            }
+        }
+
+        // Функция показа статуса игрока
+        function displayPlayerInfo(player) {
+            const infoElement = document.getElementById('player-info');
+            if (player.company && player.company !== 'Биржа труда') {
+                infoElement.textContent = `👤 ${player.first_name} ${player.last_name} — Работает в компании «${player.company}»`;
+            } else {
+                infoElement.textContent = `👤 ${player.first_name} ${player.last_name} — Безработный (Биржа труда)`;
+            }
+        }
+
+        // Функция показа панели владельца
+        async function showOwnerPanel() {
+            document.getElementById('owner-panel').style.display = 'block';
+            const listElement = document.getElementById('jobless-list');
+            listElement.innerHTML = '<li>Загрузка кандидатов...</li>';
+            
+            try {
+                const { data: jobless, error } = await supabase
+                    .from('players')
+                    .select('*')
+                    .eq('status', 'Биржа труда');
+
+                if (error) throw error;
+                
+                listElement.innerHTML = ''; 
+                if (jobless.length === 0) {
+                    listElement.innerHTML = '<li>Нет безработных.</li>';
+                    return;
+                }
+
+                jobless.forEach(player => {
+                    const li = document.createElement('li');
+                    li.textContent = `${player.first_name} ${player.last_name} `;
+                    const btn = document.createElement('button');
+                    btn.textContent = 'Нанять за 100 монет';
+                    btn.onclick = () => hirePlayer(player.vk_id);
+                    li.appendChild(btn);
+                    listElement.appendChild(li);
+                });
+            } catch (e) {
+                listElement.innerHTML = '<li>Ошибка загрузки списка.</li>';
+                console.error(e);
+            }
+        }
+
+        // Логика найма
+        async function hirePlayer(employeeVkId) {
+            const companyName = `Компания_${currentUserVkId}`;
+            const { error } = await supabase
+                .from('players')
+                .update({ company: companyName, status: 'Работает' })
+                .eq('vk_id', employeeVkId);
+
+            if (error) {
+                alert('Ошибка найма!');
+            } else {
+                alert('Успешно нанят!');
+                showOwnerPanel(); // Обновить список
+            }
+        }
+
+        // ================= ЗАПУСК =================
+        // Ждём загрузку DOM и делаем первую попытку
+        document.addEventListener('DOMContentLoaded', initApp);
+        
+        // Вешаем обработчик на аварийную кнопку
+        document.getElementById('force-init-btn').addEventListener('click', initApp);
+        
+        // ДОПОЛНИТЕЛЬНЫЙ СЛУШАТЕЛЬ ДЛЯ VK (на случай, если DOMContentLoaded сработал рано)
+        if (typeof vkBridge !== 'undefined') {
+            vkBridge.send('VKWebAppInit').then(() => {
+                console.log('VK Bridge инициализирован');
+            }).catch(console.error);
+        }
+    </script>
+</body>
+</html>
