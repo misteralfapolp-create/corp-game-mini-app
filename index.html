@@ -3,153 +3,168 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Корпоративные Игры v2</title>
-    
-    <!-- 1. Подключаем VK Bridge -->
-    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
-    
-    <!-- 2. Подключаем Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>Корпоративные Игры v3</title>
 </head>
 <body>
     <div id="app">
         <h2>Ваш статус:</h2>
         <p id="player-info">Загрузка...</p>
-        
-        <button id="force-init-btn" style="display: none; padding: 10px; margin: 10px;">🔄 Попробовать снова</button>
-
+        <button id="force-init-btn" style="display: none; padding: 10px; margin: 10px;">Попробовать снова</button>
         <div id="owner-panel" style="display: none; margin-top: 20px;">
             <h3>Панель компании</h3>
             <ul id="jobless-list"></ul>
         </div>
     </div>
 
+    <!-- Подключаем Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Подключаем VK Bridge по-новому -->
     <script>
-        // ================= НАСТРОЙКИ (исправлено) =================
-        const SUPABASE_URL = 'https://fcrjkfiodvfhzamayvoe.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjcmprZmlvZHZmaHphbWF5dm9lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMTcwMTQsImV4cCI6MjA5OTY5MzAxNH0.C3Ls4QMoYWnFciuOURZ7-WLmGa4TWtBsedhURVNulKI';
-        
-        // Создаём клиент Supabase
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        let currentUserVkId = null;
+        // Создаём тег script и загружаем VK Bridge
+        var vkBridgeScript = document.createElement('script');
+        vkBridgeScript.src = 'https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js';
+        vkBridgeScript.onload = function() {
+            // VK Bridge загрузился, запускаем приложение
+            startApp();
+        };
+        vkBridgeScript.onerror = function() {
+            document.getElementById('player-info').textContent = 'Ошибка загрузки VK Bridge';
+        };
+        document.head.appendChild(vkBridgeScript);
+    </script>
 
-        // ================= ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ =================
+    <script>
+        // ================= НАСТРОЙКИ SUPABASE =================
+        var SUPABASE_URL = 'https://fcrjkfiodvfhzamayvoe.supabase.co';
+        var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjcmprZmlvZHZmaHphbWF5dm9lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMTcwMTQsImV4cCI6MjA5OTY5MzAxNH0.C3Ls4QMoYWnFciuOURZ7-WLmGa4TWtBsedhURVNulKI';
+        
+        var supabase = null;
+        var currentUserVkId = null;
+
+        // ================= ЗАПУСК ПРИЛОЖЕНИЯ =================
+        function startApp() {
+            // Инициализируем Supabase
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            
+            // Инициализируем VK Bridge
+            if (typeof vkBridge !== 'undefined') {
+                vkBridge.send('VKWebAppInit')
+                    .then(function() {
+                        console.log('VK Bridge готов');
+                        initApp();
+                    })
+                    .catch(function(err) {
+                        showError('Ошибка VK: ' + (err.message || 'неизвестная'));
+                    });
+            } else {
+                showError('VK Bridge не загрузился');
+            }
+        }
+
+        function showError(msg) {
+            var el = document.getElementById('player-info');
+            el.textContent = msg;
+            document.getElementById('force-init-btn').style.display = 'block';
+        }
+
+        // ================= ГЛАВНАЯ ЛОГИКА =================
         async function initApp() {
-            const infoElement = document.getElementById('player-info');
-            infoElement.textContent = 'Подключаемся к VK Bridge...';
+            var infoElement = document.getElementById('player-info');
+            infoElement.textContent = 'Получаем данные профиля...';
 
             try {
-                // Проверяем, доступен ли VK Bridge
-                if (typeof vkBridge === 'undefined') {
-                    infoElement.textContent = '❌ Ошибка: Открыто не в VK! Запустите внутри ВКонтакте.';
-                    return;
-                }
-
-                // Получаем данные пользователя
-                infoElement.textContent = 'Получаем данные профиля...';
-                const user = await vkBridge.send('VKWebAppGetUserInfo');
+                // Получаем данные пользователя VK
+                var user = await vkBridge.send('VKWebAppGetUserInfo');
                 currentUserVkId = user.id;
                 console.log('VK User ID:', currentUserVkId);
 
-                // Ищем игрока в БД
+                // Ищем игрока в базе
                 infoElement.textContent = 'Ищем вас в базе данных...';
-                const { data: existingPlayer, error: selectError } = await supabase
+                var result = await supabase
                     .from('players')
                     .select('*')
                     .eq('vk_id', currentUserVkId)
                     .maybeSingle();
 
-                if (selectError) {
-                    console.error('Ошибка поиска в БД:', selectError);
-                    throw selectError;
-                }
+                if (result.error) throw result.error;
 
-                // Новый или старый игрок
-                if (!existingPlayer) {
-                    infoElement.textContent = 'Впервые здесь! Регистрируем...';
-                    const { error: insertError } = await supabase
+                if (!result.data) {
+                    // Новый игрок
+                    infoElement.textContent = 'Регистрируем...';
+                    var insertResult = await supabase
                         .from('players')
-                        .insert([
-                            { 
-                                vk_id: currentUserVkId, 
-                                first_name: user.first_name, 
-                                last_name: user.last_name 
-                            }
-                        ]);
+                        .insert([{ 
+                            vk_id: currentUserVkId, 
+                            first_name: user.first_name, 
+                            last_name: user.last_name 
+                        }]);
 
-                    if (insertError) {
-                        console.error('Ошибка вставки:', insertError);
-                        throw insertError;
-                    }
+                    if (insertResult.error) throw insertResult.error;
                     location.reload();
                 } else {
-                    displayPlayerInfo(existingPlayer);
-                    if (existingPlayer.company === 'Владелец') {
+                    // Показываем статус
+                    displayPlayerInfo(result.data);
+                    if (result.data.company === 'Владелец') {
                         showOwnerPanel();
                     }
                 }
-
             } catch (error) {
-                console.error('КРИТИЧЕСКАЯ ОШИБКА:', error);
-                infoElement.textContent = 'Ошибка: ' + (error.message || JSON.stringify(error));
-                document.getElementById('force-init-btn').style.display = 'block';
+                console.error('Ошибка:', error);
+                showError('Ошибка: ' + (error.message || JSON.stringify(error)));
             }
         }
 
-        // Функция показа статуса
         function displayPlayerInfo(player) {
-            const infoElement = document.getElementById('player-info');
+            var el = document.getElementById('player-info');
             if (player.company && player.company !== 'Биржа труда') {
-                infoElement.textContent = '👤 ' + player.first_name + ' ' + player.last_name + ' — Работает в компании «' + player.company + '»';
+                el.textContent = player.first_name + ' ' + player.last_name + ' — Работает в компании ' + player.company;
             } else {
-                infoElement.textContent = '👤 ' + player.first_name + ' ' + player.last_name + ' — Безработный (Биржа труда)';
+                el.textContent = player.first_name + ' ' + player.last_name + ' — Безработный (Биржа труда)';
             }
         }
 
-        // Функция показа панели владельца
         async function showOwnerPanel() {
             document.getElementById('owner-panel').style.display = 'block';
-            const listElement = document.getElementById('jobless-list');
-            listElement.innerHTML = '<li>Загрузка кандидатов...</li>';
+            var listElement = document.getElementById('jobless-list');
+            listElement.innerHTML = '<li>Загрузка...</li>';
             
             try {
-                const { data: jobless, error } = await supabase
+                var result = await supabase
                     .from('players')
                     .select('*')
                     .eq('status', 'Биржа труда');
 
-                if (error) throw error;
+                if (result.error) throw result.error;
                 
                 listElement.innerHTML = ''; 
-                if (jobless.length === 0) {
+                if (result.data.length === 0) {
                     listElement.innerHTML = '<li>Нет безработных.</li>';
                     return;
                 }
 
-                jobless.forEach(player => {
-                    const li = document.createElement('li');
+                result.data.forEach(function(player) {
+                    var li = document.createElement('li');
                     li.textContent = player.first_name + ' ' + player.last_name + ' ';
-                    const btn = document.createElement('button');
+                    var btn = document.createElement('button');
                     btn.textContent = 'Нанять за 100 монет';
                     btn.onclick = function() { hirePlayer(player.vk_id); };
                     li.appendChild(btn);
                     listElement.appendChild(li);
                 });
             } catch (e) {
-                listElement.innerHTML = '<li>Ошибка загрузки списка.</li>';
-                console.error(e);
+                listElement.innerHTML = '<li>Ошибка загрузки.</li>';
             }
         }
 
-        // Логика найма
         async function hirePlayer(employeeVkId) {
-            const companyName = 'Компания_' + currentUserVkId;
-            const { error } = await supabase
+            var companyName = 'Компания_' + currentUserVkId;
+            var result = await supabase
                 .from('players')
                 .update({ company: companyName, status: 'Работает' })
                 .eq('vk_id', employeeVkId);
 
-            if (error) {
+            if (result.error) {
                 alert('Ошибка найма!');
             } else {
                 alert('Успешно нанят!');
@@ -157,26 +172,7 @@
             }
         }
 
-        // ================= ПРАВИЛЬНЫЙ ЗАПУСК =================
-        // Ждём загрузки страницы, потом инициализируем VK Bridge, потом запускаем приложение
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof vkBridge !== 'undefined') {
-                vkBridge.send('VKWebAppInit')
-                    .then(function() {
-                        console.log('VK Bridge инициализирован');
-                        initApp();
-                    })
-                    .catch(function(err) {
-                        console.error('Ошибка VKWebAppInit:', err);
-                        document.getElementById('player-info').textContent = 'Ошибка VK: ' + err.message;
-                        document.getElementById('force-init-btn').style.display = 'block';
-                    });
-            } else {
-                document.getElementById('player-info').textContent = '❌ VK Bridge не найден. Откройте внутри ВК.';
-            }
-        });
-
-        // Кнопка ручного повтора
+        // Кнопка повтора
         document.getElementById('force-init-btn').addEventListener('click', function() {
             document.getElementById('force-init-btn').style.display = 'none';
             initApp();
