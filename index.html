@@ -3,15 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Корпоративные Игры v17</title>
+    <title>Корпоративные Игры v18</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Всплывающие уведомления -->
+    <div id="toast-container"></div>
+
     <div id="app">
         <!-- Карточка игрока -->
-        <div class="card">
+        <div class="card profile-card">
             <div class="header">
                 <img id="header-avatar" class="header-avatar" src="" alt="Аватар">
                 <h2 id="player-name">Загрузка...</h2>
@@ -19,41 +22,48 @@
             </div>
             <div class="stats">
                 <div class="stat stat-main"><div class="value" id="exp-value">0</div><div class="label">⭐ Опыт</div></div>
-                <div class="stat"><div class="value" id="my-employees-count">0</div><div class="label">👥 Мои сотрудники</div></div>
+                <div class="stat"><div class="value" id="my-employees-count">0</div><div class="label">👥 Сотрудники</div></div>
                 <div class="stat"><div class="value" id="my-income">0</div><div class="label">📈 Доход/час</div></div>
             </div>
+            <button class="btn-invite-friend" id="invite-friend-btn">📨 Пригласить друга</button>
         </div>
 
         <!-- Сбор опыта -->
-        <div class="card" id="collect-panel" style="display:none;">
+        <div class="card collect-card" id="collect-panel" style="display:none;">
             <div class="collect-info">
-                <div class="amount" id="collect-amount">0</div>
-                <div class="label">🔬 Опыта готово к сбору</div>
-                <div class="hint" id="collect-rate"></div>
+                <span class="collect-amount" id="collect-amount">0</span>
+                <span class="collect-label">опыта готово</span>
             </div>
-            <button class="btn-collect" id="collect-btn">🔄 СОБРАТЬ ОПЫТ</button>
+            <button class="btn-collect" id="collect-btn">🔄 Собрать</button>
         </div>
 
-        <!-- Вкладки -->
-        <div class="card" id="tabs-panel">
+        <!-- Вкладки: Биржа / Топ -->
+        <div class="card">
             <div class="tab-bar">
-                <div class="tab active" id="tab-my-team" onclick="switchTab('my-team')">👥 Моя команда</div>
-                <div class="tab" id="tab-market" onclick="switchTab('market')">🏪 Биржа</div>
-                <div class="tab" id="tab-players" onclick="switchTab('players')">🏆 Топ-100</div>
-                <div class="tab" id="tab-clans" onclick="switchTab('clans')">🏢 Кланы</div>
+                <div class="tab active" id="tab-market" onclick="switchTab('market')">🏪 Биржа</div>
+                <div class="tab" id="tab-top" onclick="switchTab('top')">🏆 Топ</div>
             </div>
+            
+            <!-- Подвкладки топа -->
+            <div id="top-subtabs" style="display:none; margin-bottom:10px;">
+                <button class="subtab active" id="subtab-players" onclick="switchTopSubtab('players')">👤 Игроки</button>
+                <button class="subtab" id="subtab-clans" onclick="switchTopSubtab('clans')">🏢 Кланы</button>
+            </div>
+            
             <div id="tab-content"></div>
         </div>
 
-        <!-- Действия -->
-        <div class="card" id="action-panel">
-            <p id="status-text">Загрузка...</p>
+        <!-- Мои сотрудники (всегда внизу) -->
+        <div class="card" id="my-team-panel">
+            <div class="section-title">👥 Мои сотрудники (<span id="my-team-total">0</span>)</div>
+            <div id="my-team-list"></div>
+            <button class="btn-load-more" id="load-more-btn" style="display:none;">📥 Загрузить ещё</button>
+        </div>
+
+        <!-- Клан -->
+        <div class="card" id="clan-card" style="display:none;">
+            <p id="status-text"></p>
             <button class="btn-leave" id="leave-clan-btn" style="display:none;">🚪 Выйти из клана</button>
-            <div id="invite-block" style="display:none;">
-                <p class="section-title">🔗 Реферальная ссылка</p>
-                <input type="text" id="invite-link-input" readonly style="width:100%;padding:8px;margin-bottom:8px;border:1px solid #ddd;border-radius:6px;font-size:12px;" onclick="this.select()">
-                <button class="btn-copy" id="invite-copy-btn">📋 Скопировать</button>
-            </div>
         </div>
     </div>
 
@@ -64,7 +74,7 @@
             <h2 id="modal-player-name"></h2>
             <p id="modal-player-stats"></p>
             <div id="modal-player-employees"></div>
-            <button class="btn-back" onclick="closePlayerModal()" style="margin-top:10px;">🔙 Закрыть</button>
+            <button class="btn-back" onclick="closePlayerModal()">🔙 Закрыть</button>
         </div>
     </div>
 
@@ -77,7 +87,7 @@
             <div id="modal-clan-members"></div>
             <button class="btn-join" id="modal-join-btn" style="display:none;">✅ Вступить в клан</button>
             <button class="btn-leave" id="modal-leave-btn" style="display:none;">🚪 Выйти из клана</button>
-            <button class="btn-back" onclick="closeClanModal()" style="margin-top:10px;">🔙 Закрыть</button>
+            <button class="btn-back" onclick="closeClanModal()">🔙 Закрыть</button>
         </div>
     </div>
 
