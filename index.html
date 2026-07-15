@@ -3,7 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Корпоративные Игры v3</title>
+    <title>Корпоративные Игры v4</title>
+    
+    <!-- СНАЧАЛА Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- ПОТОМ VK Bridge -->
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 </head>
 <body>
     <div id="app">
@@ -16,56 +22,36 @@
         </div>
     </div>
 
-    <!-- Подключаем Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- Подключаем VK Bridge по-новому -->
-    <script>
-        // Создаём тег script и загружаем VK Bridge
-        var vkBridgeScript = document.createElement('script');
-        vkBridgeScript.src = 'https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js';
-        vkBridgeScript.onload = function() {
-            // VK Bridge загрузился, запускаем приложение
-            startApp();
-        };
-        vkBridgeScript.onerror = function() {
-            document.getElementById('player-info').textContent = 'Ошибка загрузки VK Bridge';
-        };
-        document.head.appendChild(vkBridgeScript);
-    </script>
-
     <script>
         // ================= НАСТРОЙКИ SUPABASE =================
         var SUPABASE_URL = 'https://fcrjkfiodvfhzamayvoe.supabase.co';
         var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjcmprZmlvZHZmaHphbWF5dm9lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMTcwMTQsImV4cCI6MjA5OTY5MzAxNH0.C3Ls4QMoYWnFciuOURZ7-WLmGa4TWtBsedhURVNulKI';
         
-        var supabase = null;
+        // Создаём клиент Supabase СРАЗУ (теперь библиотека уже загружена)
+        var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         var currentUserVkId = null;
 
         // ================= ЗАПУСК ПРИЛОЖЕНИЯ =================
         function startApp() {
-            // Инициализируем Supabase
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            var infoElement = document.getElementById('player-info');
             
-            // Инициализируем VK Bridge
-            if (typeof vkBridge !== 'undefined') {
-                vkBridge.send('VKWebAppInit')
-                    .then(function() {
-                        console.log('VK Bridge готов');
-                        initApp();
-                    })
-                    .catch(function(err) {
-                        showError('Ошибка VK: ' + (err.message || 'неизвестная'));
-                    });
-            } else {
-                showError('VK Bridge не загрузился');
+            if (typeof vkBridge === 'undefined') {
+                infoElement.textContent = 'Ошибка: VK Bridge не загрузился';
+                return;
             }
-        }
 
-        function showError(msg) {
-            var el = document.getElementById('player-info');
-            el.textContent = msg;
-            document.getElementById('force-init-btn').style.display = 'block';
+            infoElement.textContent = 'Инициализация VK...';
+            
+            vkBridge.send('VKWebAppInit')
+                .then(function() {
+                    console.log('VK Bridge готов');
+                    initApp();
+                })
+                .catch(function(err) {
+                    console.error('Ошибка VKWebAppInit:', err);
+                    infoElement.textContent = 'Ошибка VK: ' + (err.message || 'неизвестная');
+                    document.getElementById('force-init-btn').style.display = 'block';
+                });
         }
 
         // ================= ГЛАВНАЯ ЛОГИКА =================
@@ -74,12 +60,10 @@
             infoElement.textContent = 'Получаем данные профиля...';
 
             try {
-                // Получаем данные пользователя VK
                 var user = await vkBridge.send('VKWebAppGetUserInfo');
                 currentUserVkId = user.id;
                 console.log('VK User ID:', currentUserVkId);
 
-                // Ищем игрока в базе
                 infoElement.textContent = 'Ищем вас в базе данных...';
                 var result = await supabase
                     .from('players')
@@ -90,7 +74,6 @@
                 if (result.error) throw result.error;
 
                 if (!result.data) {
-                    // Новый игрок
                     infoElement.textContent = 'Регистрируем...';
                     var insertResult = await supabase
                         .from('players')
@@ -103,7 +86,6 @@
                     if (insertResult.error) throw insertResult.error;
                     location.reload();
                 } else {
-                    // Показываем статус
                     displayPlayerInfo(result.data);
                     if (result.data.company === 'Владелец') {
                         showOwnerPanel();
@@ -111,7 +93,8 @@
                 }
             } catch (error) {
                 console.error('Ошибка:', error);
-                showError('Ошибка: ' + (error.message || JSON.stringify(error)));
+                infoElement.textContent = 'Ошибка: ' + (error.message || JSON.stringify(error));
+                document.getElementById('force-init-btn').style.display = 'block';
             }
         }
 
@@ -176,6 +159,12 @@
         document.getElementById('force-init-btn').addEventListener('click', function() {
             document.getElementById('force-init-btn').style.display = 'none';
             initApp();
+        });
+
+        // Ждём, пока всё загрузится, потом стартуем
+        window.addEventListener('load', function() {
+            console.log('Страница загружена, запускаем приложение');
+            startApp();
         });
     </script>
 </body>
