@@ -1,0 +1,43 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, sans-serif; background: #f0f2f5; padding: 15px; padding-bottom: 80px; }
+.card { background: #fff; border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.header { text-align: center; margin-bottom: 10px; }
+.header-avatar { width: 60px; height: 60px; border-radius: 50%; margin-bottom: 8px; border: 2px solid #4a76a8; }
+.header h2 { font-size: 18px; margin-bottom: 4px; }
+.header .clan-name { color: #ff9800; font-weight: bold; font-size: 14px; cursor: pointer; text-decoration: underline; }
+.stats { display: flex; justify-content: space-around; text-align: center; margin: 12px 0; }
+.stat { flex: 1; }
+.stat .value { font-size: 22px; font-weight: bold; color: #4a76a8; }
+.stat .label { font-size: 11px; color: #888; }
+.stat-main .value { font-size: 32px; color: #2e7d32; }
+button { width: 100%; padding: 10px; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 6px; }
+.btn-create { background: #4a76a8; color: #fff; }
+.btn-copy { background: #ff9800; color: #fff; }
+.btn-collect { background: #4caf50; color: #fff; font-size: 18px; padding: 14px; }
+.btn-hire { background: #2196f3; color: #fff; padding: 4px 10px; width: auto; font-size: 12px; border-radius: 15px; }
+.btn-upgrade { background: #9c27b0; color: #fff; padding: 4px 10px; width: auto; font-size: 12px; border-radius: 15px; }
+.btn-steal { background: #f44336; color: #fff; padding: 4px 10px; width: auto; font-size: 12px; border-radius: 15px; }
+.btn-fire { background: #ff5722; color: #fff; padding: 4px 10px; width: auto; font-size: 12px; border-radius: 15px; }
+.btn-leave { background: #f44336; color: #fff; padding: 8px; font-size: 13px; }
+.btn-join { background: #4caf50; color: #fff; padding: 8px; font-size: 13px; }
+.collect-info { text-align: center; margin: 10px 0; padding: 10px; background: #e8f5e9; border-radius: 8px; }
+.collect-info .amount { font-size: 28px; font-weight: bold; color: #2e7d32; }
+.player-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; gap: 8px; }
+.player-item img { width: 40px; height: 40px; border-radius: 50%; }
+.rank { font-size: 20px; font-weight: bold; width: 30px; text-align: center; color: #ff9800; flex-shrink: 0; }
+.rank-1 { color: #ffd700; font-size: 24px; }
+.rank-2 { color: #c0c0c0; font-size: 22px; }
+.rank-3 { color: #cd7f32; font-size: 20px; }
+.section-title { font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #333; border-bottom: 2px solid #4a76a8; padding-bottom: 5px; }
+.tab-bar { display: flex; margin-bottom: 10px; flex-wrap: wrap; }
+.tab { flex: 1; text-align: center; padding: 8px; background: #eee; cursor: pointer; font-size: 11px; font-weight: bold; border-radius: 8px 8px 0 0; min-width: 60px; }
+.tab.active { background: #4a76a8; color: #fff; }
+.cost { font-size: 10px; color: #888; }
+.lvl { background: #9c27b0; color: #fff; border-radius: 10px; padding: 2px 6px; font-size: 10px; margin-left: 4px; }
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
+.modal-content { background: #fff; border-radius: 12px; padding: 20px; width: 90%; max-height: 80%; overflow-y: auto; }
+.modal-close { float: right; font-size: 24px; cursor: pointer; color: #888; }
+.clickable { cursor: pointer; }
+.clickable:hover { background: #f5f5f5; }
+.btn-group { display: flex; gap: 4px; flex-shrink: 0; }
+.info { flex: 1; min-width: 0; }
