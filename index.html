@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Корпоративные Игры v8</title>
+    <title>Корпоративные Игры v8.1</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <style>
@@ -30,7 +30,6 @@
 </head>
 <body>
     <div id="app">
-        <!-- ОТЛАДКА -->
         <div class="debug" id="debug-block">
             <b>Отладка:</b><br>
             <span id="debug-text">Загрузка...</span><br>
@@ -42,7 +41,6 @@
                 <h2 id="player-name">Загрузка...</h2>
                 <div class="company-name" id="company-display"></div>
             </div>
-            
             <div class="stats">
                 <div class="stat">
                     <div class="value" id="balance-value">0</div>
@@ -62,8 +60,6 @@
         <div class="card" id="action-panel">
             <p id="status-text">Загрузка...</p>
             <button id="main-action-btn" style="display:none;">Создать компанию</button>
-            
-            <!-- Блок приглашения -->
             <div id="invite-block" style="display:none;">
                 <div class="invite-link-box" id="invite-link-text"></div>
                 <button class="btn-invite" id="invite-send-btn">📨 Отправить другу (ВК)</button>
@@ -84,7 +80,7 @@
         // ================= НАСТРОЙКИ =================
         var SUPABASE_URL = 'https://fcrjkfiodvfhzamayvoe.supabase.co';
         var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjcmprZmlvZHZmaHphbWF5dm9lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMTcwMTQsImV4cCI6MjA5OTY5MzAxNH0.C3Ls4QMoYWnFciuOURZ7-WLmGa4TWtBsedhURVNulKI';
-        var APP_ID = '54679388'; // ЗАМЕНИ НА СВОЙ ID ПРИЛОЖЕНИЯ!
+        var APP_ID = '54679388';
         
         function debug(msg) {
             console.log('DEBUG:', msg);
@@ -97,7 +93,6 @@
 
         // ================= ЗАПУСК =================
         window.addEventListener('load', function() {
-            // Показываем полный URL для отладки
             document.getElementById('debug-url').textContent = 'URL: ' + window.location.href;
             
             if (typeof vkBridge !== 'undefined') {
@@ -112,16 +107,13 @@
         // ================= ГЛАВНАЯ ЛОГИКА =================
         async function initApp() {
             try {
-                // Получаем данные VK
                 currentVkUser = await vkBridge.send('VKWebAppGetUserInfo');
                 debug('Пользователь: ' + currentVkUser.first_name + ' (ID: ' + currentVkUser.id + ')');
 
-                // Пробуем получить ref из URL
                 var urlParams = new URLSearchParams(window.location.search);
                 var invitedBy = urlParams.get('ref');
                 debug('ref в URL: ' + (invitedBy || 'НЕТ'));
 
-                // Ищем игрока в БД
                 var result = await supabase
                     .from('players')
                     .select('*')
@@ -130,7 +122,6 @@
 
                 if (result.error) throw result.error;
 
-                // ========== НОВЫЙ ИГРОК ==========
                 if (!result.data) {
                     debug('Новый игрок, создаём...');
                     
@@ -180,11 +171,9 @@
                     return;
                 }
 
-                // ========== СУЩЕСТВУЮЩИЙ ИГРОК ==========
                 currentUser = result.data;
                 debug('Найден в БД. Компания: ' + (currentUser.company || 'нет') + ', Статус: ' + currentUser.status);
 
-                // Если перешёл по реферальной ссылке
                 if (invitedBy && parseInt(invitedBy) !== currentUser.vk_id) {
                     debug('Обрабатываем реферал...');
                     
@@ -213,7 +202,6 @@
 
                             await giveReferralBonus(parseInt(invitedBy));
 
-                            // Обновляем локальные данные
                             currentUser.company = newCompany;
                             currentUser.status = 'Работает';
                             currentUser.role = 'Учёный';
@@ -236,7 +224,6 @@
             }
         }
 
-        // ================= БОНУС =================
         async function giveReferralBonus(inviterVkId) {
             var result = await supabase
                 .from('players')
@@ -254,7 +241,6 @@
             }
         }
 
-        // ================= ОТРИСОВКА =================
         function renderAll() {
             document.getElementById('player-name').textContent = currentUser.first_name + ' ' + currentUser.last_name;
             document.getElementById('balance-value').textContent = currentUser.balance || 0;
@@ -272,7 +258,6 @@
             var inviteBlock = document.getElementById('invite-block');
 
             if (!currentUser.company || currentUser.company === 'Биржа труда') {
-                // Безработный
                 statusText.textContent = 'Вы на бирже труда. Создайте компанию!';
                 mainBtn.textContent = '🚀 Создать компанию';
                 mainBtn.className = 'btn-create';
@@ -281,17 +266,15 @@
                 inviteBlock.style.display = 'none';
                 document.getElementById('employees-panel').style.display = 'none';
             } else if (currentUser.status === 'Владелец') {
-                // Владелец
                 statusText.textContent = 'Вы владелец компании';
                 mainBtn.style.display = 'none';
                 
-                // Показываем блок приглашения
-               var refLink = 'https://vk.com/app' + APP_ID + '?ref=' + currentUser.vk_id;
-var directLink = 'https://
-misteralfapolp-create.github.io/corp-game-mini-app/?ref=' + currentUser.vk_id;
+                var refLink = 'https://vk.com/app' + APP_ID + '?ref=' + currentUser.vk_id;
+                var directLink = 'https://misteralfapolp-create.github.io/corp-game-mini-app/?ref=' + currentUser.vk_id;
+                
                 document.getElementById('invite-link-text').innerHTML = 
-    '🔗 Ссылка VK:<br><small>' + refLink + '</small><br><br>' +
-    '🔗 Прямая ссылка:<br><small>' + directLink + '</small>';
+                    '🔗 Ссылка VK:<br><small>' + refLink + '</small><br><br>' +
+                    '🔗 Прямая ссылка:<br><small>' + directLink + '</small>';
                 inviteBlock.style.display = 'block';
                 
                 document.getElementById('invite-send-btn').onclick = function() {
@@ -304,12 +287,11 @@ misteralfapolp-create.github.io/corp-game-mini-app/?ref=' + currentUser.vk_id;
                 };
                 
                 document.getElementById('invite-copy-btn').onclick = function() {
-                    copyLink(refLink);
+                    copyLink(directLink);
                 };
                 
                 loadEmployees();
             } else {
-                // Сотрудник
                 statusText.textContent = 'Вы работаете в «' + currentUser.company + '» как ' + (currentUser.role || 'Учёный');
                 mainBtn.style.display = 'none';
                 inviteBlock.style.display = 'none';
@@ -320,7 +302,7 @@ misteralfapolp-create.github.io/corp-game-mini-app/?ref=' + currentUser.vk_id;
         function copyLink(link) {
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(link).then(function() {
-                    alert('✅ Ссылка скопирована! Отправь её другу любым способом.');
+                    alert('✅ Ссылка скопирована! Отправь её другу любым способом.\n\n' + link);
                 });
             } else {
                 prompt('Скопируй ссылку вручную:', link);
@@ -333,11 +315,7 @@ misteralfapolp-create.github.io/corp-game-mini-app/?ref=' + currentUser.vk_id;
 
             var result = await supabase
                 .from('players')
-                .update({ 
-                    company: companyName, 
-                    status: 'Владелец',
-                    role: 'Владелец'
-                })
+                .update({ company: companyName, status: 'Владелец', role: 'Владелец' })
                 .eq('vk_id', currentUser.vk_id);
 
             if (result.error) {
@@ -359,10 +337,7 @@ misteralfapolp-create.github.io/corp-game-mini-app/?ref=' + currentUser.vk_id;
                 .eq('company', currentUser.company)
                 .neq('status', 'Владелец');
 
-            if (result.error) {
-                listEl.innerHTML = 'Ошибка загрузки';
-                return;
-            }
+            if (result.error) { listEl.innerHTML = 'Ошибка загрузки'; return; }
 
             var employees = result.data;
             document.getElementById('employees-count').textContent = employees.length;
@@ -378,17 +353,12 @@ misteralfapolp-create.github.io/corp-game-mini-app/?ref=' + currentUser.vk_id;
 
             employees.forEach(function(emp) {
                 totalIncome += (emp.income_per_hour || 0);
-
                 var item = document.createElement('div');
                 item.style.cssText = 'display:flex;align-items:center;padding:10px 0;border-bottom:1px solid #eee;';
                 item.innerHTML = 
                     '<img src="' + (emp.photo_200 || 'https://vk.com/images/camera_200.png') + '" style="width:40px;height:40px;border-radius:50%;margin-right:10px;" onerror="this.src=\'https://vk.com/images/camera_200.png\'">' +
-                    '<div style="flex:1;">' +
-                        '<div style="font-weight:bold;">' + emp.first_name + ' ' + emp.last_name + '</div>' +
-                        '<div style="font-size:12px;color:#888;">🔬 ' + (emp.role || 'Учёный') + '</div>' +
-                    '</div>' +
+                    '<div style="flex:1;"><div style="font-weight:bold;">' + emp.first_name + ' ' + emp.last_name + '</div><div style="font-size:12px;color:#888;">🔬 ' + (emp.role || 'Учёный') + '</div></div>' +
                     '<div style="color:#4caf50;font-weight:bold;">+' + (emp.income_per_hour || 0) + ' опыта/час</div>';
-                
                 listEl.appendChild(item);
             });
 
