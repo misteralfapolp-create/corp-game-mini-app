@@ -351,4 +351,42 @@ async function leaveClan() {
     location.reload();
 }
 
-// =================
+// ================= ОТРИСОВКА =================
+function renderAll() {
+    document.getElementById('header-avatar').src = currentUser.photo_200 || currentVkUser.photo_200 || 'https://vk.com/images/camera_200.png';
+    document.getElementById('player-name').textContent = currentUser.first_name + ' ' + currentUser.last_name;
+    document.getElementById('exp-value').textContent = currentUser.experience || 0;
+
+    var clanEl = document.getElementById('clan-display');
+    if (currentUser.company) {
+        clanEl.innerHTML = '🏢 <span style="cursor:pointer;text-decoration:underline;" onclick="openClanModal(\'' + currentUser.company + '\')">' + currentUser.company + '</span>';
+    } else { clanEl.textContent = ''; }
+
+    var statusText = document.getElementById('status-text');
+    var leaveClanBtn = document.getElementById('leave-clan-btn');
+    var collectPanel = document.getElementById('collect-panel');
+
+    var hasEmployees = (document.getElementById('my-employees-count').textContent !== '0');
+    collectPanel.style.display = hasEmployees ? 'block' : 'none';
+    if (hasEmployees) {
+        document.getElementById('collect-amount').textContent = currentUser.pending_experience || 0;
+        document.getElementById('collect-btn').onclick = collectExperience;
+    }
+
+    if (currentUser.company) {
+        statusText.textContent = '🏢 Клан: ' + currentUser.company;
+        leaveClanBtn.style.display = 'block'; leaveClanBtn.onclick = leaveClan;
+    } else {
+        statusText.textContent = 'Вы не в клане.';
+        leaveClanBtn.style.display = 'none';
+    }
+
+    document.getElementById('invite-block').style.display = 'block';
+    var refLink = 'https://vk.com/app' + APP_ID + '#ref_' + currentUser.vk_id;
+    document.getElementById('invite-link-input').value = refLink;
+    document.getElementById('invite-copy-btn').onclick = function() {
+        document.getElementById('invite-link-input').select(); document.execCommand('copy'); alert('✅ Скопировано!');
+    };
+
+    loadMyTeam();
+}
