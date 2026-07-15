@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Корпоративные Игры v12</title>
+    <title>Корпоративные Игры v13</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <style>
@@ -19,19 +19,24 @@
         .stat .value { font-size: 22px; font-weight: bold; color: #4a76a8; }
         .stat .label { font-size: 11px; color: #888; }
         .stat-main .value { font-size: 32px; color: #2e7d32; }
-        button { 
-            width: 100%; padding: 12px; border: none; border-radius: 8px; 
-            font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 8px;
-        }
+        button { width: 100%; padding: 10px; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 6px; }
         .btn-create { background: #4a76a8; color: #fff; }
         .btn-copy { background: #ff9800; color: #fff; }
         .btn-collect { background: #4caf50; color: #fff; font-size: 18px; padding: 14px; }
+        .btn-hire { background: #2196f3; color: #fff; padding: 4px 10px; width: auto; font-size: 12px; }
+        .btn-upgrade { background: #9c27b0; color: #fff; padding: 4px 10px; width: auto; font-size: 12px; }
+        .btn-steal { background: #f44336; color: #fff; padding: 4px 10px; width: auto; font-size: 12px; }
         .collect-info { text-align: center; margin: 10px 0; padding: 10px; background: #e8f5e9; border-radius: 8px; }
         .collect-info .amount { font-size: 28px; font-weight: bold; color: #2e7d32; }
         .collect-info .hint { font-size: 12px; color: #666; }
-        .employee-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
-        .employee-item img { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; }
-        .section-title { font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #333; }
+        .player-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .player-item img { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; }
+        .section-title { font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #333; border-bottom: 2px solid #4a76a8; padding-bottom: 5px; }
+        .tab-bar { display: flex; margin-bottom: 10px; }
+        .tab { flex: 1; text-align: center; padding: 10px; background: #eee; cursor: pointer; font-size: 13px; font-weight: bold; border-radius: 8px 8px 0 0; }
+        .tab.active { background: #4a76a8; color: #fff; }
+        .cost { font-size: 11px; color: #888; }
+        .lvl { background: #9c27b0; color: #fff; border-radius: 10px; padding: 2px 8px; font-size: 11px; margin-left: 5px; }
     </style>
 </head>
 <body>
@@ -55,7 +60,7 @@
             </div>
         </div>
 
-        <!-- Кнопка сбора опыта (владелец) -->
+        <!-- Сбор опыта (владелец) -->
         <div class="card" id="collect-panel" style="display:none;">
             <div class="collect-info">
                 <div class="amount" id="collect-amount">0</div>
@@ -63,6 +68,16 @@
                 <div class="hint" id="collect-rate"></div>
             </div>
             <button class="btn-collect" id="collect-btn">🔄 СОБРАТЬ ОПЫТ</button>
+        </div>
+
+        <!-- Биржа труда и сотрудники (владелец) -->
+        <div class="card" id="management-panel" style="display:none;">
+            <div class="tab-bar">
+                <div class="tab active" id="tab-employees" onclick="switchTab('employees')">👥 Мои сотрудники</div>
+                <div class="tab" id="tab-market" onclick="switchTab('market')">🏪 Биржа труда</div>
+                <div class="tab" id="tab-rivals" onclick="switchTab('rivals')">🎯 Перекупка</div>
+            </div>
+            <div id="tab-content"></div>
         </div>
 
         <!-- Действия -->
@@ -75,13 +90,6 @@
                 <button class="btn-copy" id="invite-copy-btn">📋 Скопировать и отправить другу</button>
             </div>
         </div>
-
-        <!-- Сотрудники -->
-        <div class="card" id="employees-panel" style="display:none;">
-            <h3>👥 Мои сотрудники</h3>
-            <div id="employees-list">Нет сотрудников</div>
-            <div style="margin-top:8px; color:#4caf50; font-weight:bold;" id="total-income"></div>
-        </div>
     </div>
 
     <script>
@@ -93,20 +101,17 @@
         var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         var currentUser = null;
         var currentVkUser = null;
+        var currentTab = 'employees'; // активная вкладка
 
         // ================= ЗАПУСК =================
         window.addEventListener('load', function() {
             if (typeof vkBridge !== 'undefined') {
-                vkBridge.send('VKWebAppInit')
-                    .then(function() { initApp(); })
-                    .catch(function(err) { console.error(err); });
+                vkBridge.send('VKWebAppInit').then(initApp);
             }
         });
 
         function getRefFromHash() {
-            var hash = window.location.hash;
-            if (!hash) return null;
-            var match = hash.match(/ref_(\d+)/);
+            var match = window.location.hash.match(/ref_(\d+)/);
             return match ? match[1] : null;
         }
 
@@ -116,146 +121,215 @@
                 currentVkUser = await vkBridge.send('VKWebAppGetUserInfo');
                 var invitedBy = getRefFromHash() || new URLSearchParams(window.location.search).get('ref');
 
-                var result = await supabase
-                    .from('players')
-                    .select('*')
-                    .eq('vk_id', currentVkUser.id)
-                    .maybeSingle();
-
+                var result = await supabase.from('players').select('*').eq('vk_id', currentVkUser.id).maybeSingle();
                 if (result.error) throw result.error;
 
                 if (!result.data) {
                     // Новый игрок
-                    var companyName = null;
-                    var shouldGiveBonus = false;
-
+                    var companyName = null, shouldGiveBonus = false;
                     if (invitedBy) {
-                        var inviterResult = await supabase
-                            .from('players')
-                            .select('company, status')
-                            .eq('vk_id', parseInt(invitedBy))
-                            .maybeSingle();
-
-                        if (inviterResult.data && inviterResult.data.company && inviterResult.data.status === 'Владелец') {
-                            companyName = inviterResult.data.company;
-                            shouldGiveBonus = true;
+                        var inv = await supabase.from('players').select('company, status').eq('vk_id', parseInt(invitedBy)).maybeSingle();
+                        if (inv.data && inv.data.company && inv.data.status === 'Владелец') {
+                            companyName = inv.data.company; shouldGiveBonus = true;
                         }
                     }
-
                     var now = new Date().toISOString();
-                    var newPlayer = {
-                        vk_id: currentVkUser.id,
-                        first_name: currentVkUser.first_name,
-                        last_name: currentVkUser.last_name,
-                        photo_200: currentVkUser.photo_200 || '',
-                        status: companyName ? 'Работает' : 'Биржа труда',
-                        company: companyName || null,
-                        role: companyName ? 'Учёный' : null,
-                        experience: 0,
-                        income_per_hour: companyName ? 1 : 0,
+                    await supabase.from('players').insert([{
+                        vk_id: currentVkUser.id, first_name: currentVkUser.first_name, last_name: currentVkUser.last_name,
+                        photo_200: currentVkUser.photo_200 || '', status: companyName ? 'Работает' : 'Биржа труда',
+                        company: companyName || null, role: companyName ? 'Учёный' : null,
+                        experience: 0, income_per_hour: companyName ? 1 : 0,
                         invited_by: invitedBy ? parseInt(invitedBy) : null,
-                        last_collect: now,
-                        pending_experience: 0
-                    };
-
-                    await supabase.from('players').insert([newPlayer]);
+                        last_collect: now, pending_experience: 0, level: 1, hire_cost: 100
+                    }]);
                     if (shouldGiveBonus) await giveReferralBonus(parseInt(invitedBy));
-                    location.reload();
-                    return;
+                    location.reload(); return;
                 }
 
                 currentUser = result.data;
-
-                // Проверяем поля
                 if (currentUser.last_collect === undefined) {
-                    await supabase.from('players').update({ last_collect: new Date().toISOString(), pending_experience: 0 }).eq('vk_id', currentUser.vk_id);
-                    currentUser.last_collect = new Date().toISOString();
-                    currentUser.pending_experience = 0;
+                    await supabase.from('players').update({ last_collect: new Date().toISOString(), pending_experience: 0, level: 1, hire_cost: 100 }).eq('vk_id', currentUser.vk_id);
+                    currentUser.last_collect = new Date().toISOString(); currentUser.pending_experience = 0; currentUser.level = 1; currentUser.hire_cost = 100;
                 }
 
                 // Реферал
                 if (invitedBy && parseInt(invitedBy) !== currentUser.vk_id) {
-                    var inviterResult = await supabase
-                        .from('players')
-                        .select('company, status')
-                        .eq('vk_id', parseInt(invitedBy))
-                        .maybeSingle();
-
-                    if (inviterResult.data && inviterResult.data.company && inviterResult.data.status === 'Владелец') {
-                        if (currentUser.company !== inviterResult.data.company) {
-                            await supabase.from('players').update({
-                                company: inviterResult.data.company, status: 'Работает', role: 'Учёный',
-                                income_per_hour: 1, invited_by: parseInt(invitedBy)
-                            }).eq('vk_id', currentUser.vk_id);
-
-                            await giveReferralBonus(parseInt(invitedBy));
-                            currentUser.company = inviterResult.data.company;
-                            currentUser.status = 'Работает';
-                            currentUser.role = 'Учёный';
-                            currentUser.income_per_hour = 1;
-                        }
+                    var inv = await supabase.from('players').select('company, status').eq('vk_id', parseInt(invitedBy)).maybeSingle();
+                    if (inv.data && inv.data.company && inv.data.status === 'Владелец' && currentUser.company !== inv.data.company) {
+                        await supabase.from('players').update({
+                            company: inv.data.company, status: 'Работает', role: 'Учёный', income_per_hour: 1, invited_by: parseInt(invitedBy)
+                        }).eq('vk_id', currentUser.vk_id);
+                        await giveReferralBonus(parseInt(invitedBy));
+                        currentUser.company = inv.data.company; currentUser.status = 'Работает'; currentUser.role = 'Учёный'; currentUser.income_per_hour = 1;
                     }
                 }
 
                 await calculatePendingExperience();
                 renderAll();
 
-            } catch (error) {
-                console.error(error);
-            }
+            } catch (e) { console.error(e); }
         }
 
         // ================= РАСЧЁТ ОПЫТА =================
         async function calculatePendingExperience() {
             if (currentUser.status !== 'Владелец') return;
-
-            var empResult = await supabase
-                .from('players')
-                .select('income_per_hour')
-                .eq('company', currentUser.company)
-                .neq('status', 'Владелец');
-
+            var empResult = await supabase.from('players').select('income_per_hour').eq('company', currentUser.company).neq('status', 'Владелец');
             if (empResult.error || !empResult.data.length) return;
-
             var totalPerHour = 0;
-            empResult.data.forEach(function(emp) { totalPerHour += (emp.income_per_hour || 0); });
-
-            var lastCollect = currentUser.last_collect ? new Date(currentUser.last_collect) : new Date();
-            var hoursPassed = (new Date() - lastCollect) / (1000 * 60 * 60);
+            empResult.data.forEach(function(e) { totalPerHour += (e.income_per_hour || 0); });
+            var hoursPassed = (new Date() - new Date(currentUser.last_collect || new Date())) / 3600000;
             var newPending = Math.floor((currentUser.pending_experience || 0) + totalPerHour * hoursPassed);
-
-            var nowStr = new Date().toISOString();
-            await supabase.from('players').update({ pending_experience: newPending, last_collect: nowStr }).eq('vk_id', currentUser.vk_id);
-
-            currentUser.pending_experience = newPending;
-            currentUser.last_collect = nowStr;
+            var now = new Date().toISOString();
+            await supabase.from('players').update({ pending_experience: newPending, last_collect: now }).eq('vk_id', currentUser.vk_id);
+            currentUser.pending_experience = newPending; currentUser.last_collect = now;
         }
 
-        // ================= СБОР ОПЫТА =================
         async function collectExperience() {
-            if (!currentUser.pending_experience || currentUser.pending_experience <= 0) {
-                alert('Пока нечего собирать! Опыт копится каждый час.');
-                return;
-            }
-
+            if (!currentUser.pending_experience) { alert('Нечего собирать!'); return; }
             var collected = currentUser.pending_experience;
-            var newExp = (currentUser.experience || 0) + collected;
-
-            await supabase.from('players').update({ 
-                experience: newExp, pending_experience: 0, last_collect: new Date().toISOString() 
-            }).eq('vk_id', currentUser.vk_id);
-
-            currentUser.experience = newExp;
-            currentUser.pending_experience = 0;
-            alert('✅ Собрано +' + collected + ' опыта!');
-            renderAll();
+            await supabase.from('players').update({ experience: (currentUser.experience || 0) + collected, pending_experience: 0, last_collect: new Date().toISOString() }).eq('vk_id', currentUser.vk_id);
+            currentUser.experience += collected; currentUser.pending_experience = 0;
+            alert('✅ +' + collected + ' опыта!'); renderAll();
         }
 
-        async function giveReferralBonus(inviterVkId) {
-            var result = await supabase.from('players').select('experience').eq('vk_id', inviterVkId).maybeSingle();
-            if (result.data) {
-                await supabase.from('players').update({ experience: (result.data.experience || 0) + 500 }).eq('vk_id', inviterVkId);
-            }
+        async function giveReferralBonus(id) {
+            var r = await supabase.from('players').select('experience').eq('vk_id', id).maybeSingle();
+            if (r.data) await supabase.from('players').update({ experience: (r.data.experience || 0) + 500 }).eq('vk_id', id);
+        }
+
+        // ================= ВКЛАДКИ =================
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+            document.getElementById('tab-' + tab).classList.add('active');
+            if (tab === 'employees') loadMyEmployees();
+            else if (tab === 'market') loadMarket();
+            else if (tab === 'rivals') loadRivals();
+        }
+
+        // ================= МОИ СОТРУДНИКИ (с прокачкой) =================
+        async function loadMyEmployees() {
+            var content = document.getElementById('tab-content');
+            content.innerHTML = 'Загрузка...';
+            var result = await supabase.from('players').select('*').eq('company', currentUser.company).neq('status', 'Владелец');
+            if (result.error) { content.innerHTML = 'Ошибка'; return; }
+            var emps = result.data;
+            document.getElementById('employees-count').textContent = emps.length;
+            if (!emps.length) { content.innerHTML = '<p style="color:#888;">Нет сотрудников.</p>'; return; }
+
+            content.innerHTML = '';
+            emps.forEach(function(emp) {
+                var upgradeCost = (emp.level || 1) * 50; // стоимость прокачки
+                var div = document.createElement('div');
+                div.className = 'player-item';
+                div.innerHTML = 
+                    '<img src="' + (emp.photo_200 || 'https://vk.com/images/camera_200.png') + '" onerror="this.src=\'https://vk.com/images/camera_200.png\'">' +
+                    '<div style="flex:1;"><div style="font-weight:bold;">' + emp.first_name + ' ' + emp.last_name + '<span class="lvl">Ур.' + (emp.level || 1) + '</span></div>' +
+                    '<div style="font-size:12px;color:#888;">🔬 ' + (emp.role || 'Учёный') + ' • +' + (emp.income_per_hour || 0) + ' оп/час</div></div>' +
+                    '<button class="btn-upgrade" data-id="' + emp.vk_id + '">⬆ Прокачать<br><span class="cost">' + upgradeCost + ' опыта</span></button>';
+                content.appendChild(div);
+            });
+
+            // Вешаем обработчики на кнопки прокачки
+            document.querySelectorAll('.btn-upgrade').forEach(function(btn) {
+                btn.onclick = async function() {
+                    var empId = parseInt(this.getAttribute('data-id'));
+                    var emp = emps.find(function(e) { return e.vk_id === empId; });
+                    var cost = (emp.level || 1) * 50;
+                    if (currentUser.experience < cost) { alert('Недостаточно опыта! Нужно ' + cost); return; }
+                    if (!confirm('Прокачать сотрудника до уровня ' + ((emp.level || 1) + 1) + ' за ' + cost + ' опыта?\nДоход увеличится на +1 оп/час.')) return;
+                    
+                    await supabase.from('players').update({ experience: currentUser.experience - cost }).eq('vk_id', currentUser.vk_id);
+                    await supabase.from('players').update({ level: (emp.level || 1) + 1, income_per_hour: (emp.income_per_hour || 0) + 1 }).eq('vk_id', empId);
+                    currentUser.experience -= cost;
+                    alert('✅ Сотрудник прокачан!');
+                    loadMyEmployees();
+                    renderAll();
+                };
+            });
+        }
+
+        // ================= БИРЖА ТРУДА (найм за опыт) =================
+        async function loadMarket() {
+            var content = document.getElementById('tab-content');
+            content.innerHTML = 'Загрузка...';
+            var result = await supabase.from('players').select('*').eq('status', 'Биржа труда');
+            if (result.error) { content.innerHTML = 'Ошибка'; return; }
+            var jobless = result.data;
+            if (!jobless.length) { content.innerHTML = '<p style="color:#888;">На бирже никого нет.</p>'; return; }
+
+            content.innerHTML = '';
+            var hireCost = 100; // базовая стоимость найма
+            jobless.forEach(function(player) {
+                var div = document.createElement('div');
+                div.className = 'player-item';
+                div.innerHTML = 
+                    '<img src="' + (player.photo_200 || 'https://vk.com/images/camera_200.png') + '" onerror="this.src=\'https://vk.com/images/camera_200.png\'">' +
+                    '<div style="flex:1;"><div style="font-weight:bold;">' + player.first_name + ' ' + player.last_name + '</div>' +
+                    '<div style="font-size:12px;color:#888;">🔍 Ищет работу</div></div>' +
+                    '<button class="btn-hire" data-id="' + player.vk_id + '">Нанять<br><span class="cost">' + hireCost + ' опыта</span></button>';
+                content.appendChild(div);
+            });
+
+            document.querySelectorAll('.btn-hire').forEach(function(btn) {
+                btn.onclick = async function() {
+                    var empId = parseInt(this.getAttribute('data-id'));
+                    if (currentUser.experience < hireCost) { alert('Недостаточно опыта! Нужно ' + hireCost); return; }
+                    if (!confirm('Нанять игрока за ' + hireCost + ' опыта?')) return;
+                    
+                    await supabase.from('players').update({ experience: currentUser.experience - hireCost }).eq('vk_id', currentUser.vk_id);
+                    await supabase.from('players').update({
+                        company: currentUser.company, status: 'Работает', role: 'Учёный', income_per_hour: 1, level: 1
+                    }).eq('vk_id', empId);
+                    currentUser.experience -= hireCost;
+                    alert('✅ Игрок нанят!');
+                    loadMarket();
+                    renderAll();
+                };
+            });
+        }
+
+        // ================= ПЕРЕКУПКА (чужие сотрудники) =================
+        async function loadRivals() {
+            var content = document.getElementById('tab-content');
+            content.innerHTML = 'Загрузка...';
+            // Ищем всех, кто работает в других компаниях (не у нас и не на бирже)
+            var result = await supabase.from('players').select('*').neq('company', currentUser.company).neq('status', 'Биржа труда').neq('status', 'Владелец');
+            if (result.error) { content.innerHTML = 'Ошибка'; return; }
+            var rivals = result.data;
+            if (!rivals.length) { content.innerHTML = '<p style="color:#888;">Некого перекупать.</p>'; return; }
+
+            content.innerHTML = '';
+            rivals.forEach(function(player) {
+                var stealCost = (player.hire_cost || 100) * 2; // перекупка в 2 раза дороже
+                var div = document.createElement('div');
+                div.className = 'player-item';
+                div.innerHTML = 
+                    '<img src="' + (player.photo_200 || 'https://vk.com/images/camera_200.png') + '" onerror="this.src=\'https://vk.com/images/camera_200.png\'">' +
+                    '<div style="flex:1;"><div style="font-weight:bold;">' + player.first_name + ' ' + player.last_name + '</div>' +
+                    '<div style="font-size:12px;color:#888;">🏢 ' + (player.company || '???') + ' • +' + (player.income_per_hour || 0) + ' оп/час</div></div>' +
+                    '<button class="btn-steal" data-id="' + player.vk_id + '">Перекупить<br><span class="cost">' + stealCost + ' опыта</span></button>';
+                content.appendChild(div);
+            });
+
+            document.querySelectorAll('.btn-steal').forEach(function(btn) {
+                btn.onclick = async function() {
+                    var empId = parseInt(this.getAttribute('data-id'));
+                    var target = rivals.find(function(r) { return r.vk_id === empId; });
+                    var cost = (target.hire_cost || 100) * 2;
+                    if (currentUser.experience < cost) { alert('Недостаточно опыта! Нужно ' + cost); return; }
+                    if (!confirm('Перекупить ' + target.first_name + ' у компании «' + target.company + '» за ' + cost + ' опыта?')) return;
+                    
+                    await supabase.from('players').update({ experience: currentUser.experience - cost }).eq('vk_id', currentUser.vk_id);
+                    await supabase.from('players').update({
+                        company: currentUser.company, status: 'Работает', role: 'Учёный', hire_cost: cost
+                    }).eq('vk_id', empId);
+                    currentUser.experience -= cost;
+                    alert('✅ Сотрудник перекуплен!');
+                    loadRivals();
+                    renderAll();
+                };
+            });
         }
 
         // ================= ОТРИСОВКА =================
@@ -271,16 +345,14 @@
             var mainBtn = document.getElementById('main-action-btn');
             var inviteBlock = document.getElementById('invite-block');
             var collectPanel = document.getElementById('collect-panel');
+            var managementPanel = document.getElementById('management-panel');
 
             if (!currentUser.company || currentUser.company === 'Биржа труда') {
                 statusText.textContent = 'Вы на бирже труда. Создайте компанию!';
                 mainBtn.textContent = '🚀 Создать компанию';
-                mainBtn.className = 'btn-create';
-                mainBtn.style.display = 'block';
+                mainBtn.className = 'btn-create'; mainBtn.style.display = 'block';
                 mainBtn.onclick = createCompany;
-                inviteBlock.style.display = 'none';
-                collectPanel.style.display = 'none';
-                document.getElementById('employees-panel').style.display = 'none';
+                inviteBlock.style.display = 'none'; collectPanel.style.display = 'none'; managementPanel.style.display = 'none';
             } else if (currentUser.status === 'Владелец') {
                 statusText.textContent = 'Вы владелец компании';
                 mainBtn.style.display = 'none';
@@ -289,70 +361,26 @@
                 document.getElementById('collect-amount').textContent = currentUser.pending_experience || 0;
                 document.getElementById('collect-btn').onclick = collectExperience;
                 
+                managementPanel.style.display = 'block';
+                loadMyEmployees();
+                
                 var refLink = 'https://vk.com/app' + APP_ID + '#ref_' + currentUser.vk_id;
                 document.getElementById('invite-link-input').value = refLink;
                 inviteBlock.style.display = 'block';
                 document.getElementById('invite-copy-btn').onclick = function() {
-                    document.getElementById('invite-link-input').select();
-                    document.execCommand('copy');
-                    alert('✅ Ссылка скопирована!');
+                    document.getElementById('invite-link-input').select(); document.execCommand('copy'); alert('✅ Скопировано!');
                 };
-                
-                loadEmployees();
             } else {
-                statusText.textContent = '🔬 ' + (currentUser.role || 'Учёный') + ' в компании «' + currentUser.company + '»';
-                mainBtn.style.display = 'none';
-                inviteBlock.style.display = 'none';
-                collectPanel.style.display = 'none';
-                document.getElementById('employees-panel').style.display = 'none';
+                statusText.textContent = '🔬 ' + (currentUser.role || 'Учёный') + ' в «' + currentUser.company + '»';
+                mainBtn.style.display = 'none'; inviteBlock.style.display = 'none'; collectPanel.style.display = 'none'; managementPanel.style.display = 'none';
             }
         }
 
         async function createCompany() {
-            var companyName = prompt('Название компании:', 'Компания ' + currentUser.first_name);
-            if (!companyName) return;
-            await supabase.from('players').update({ 
-                company: companyName, status: 'Владелец', role: 'Владелец',
-                last_collect: new Date().toISOString(), pending_experience: 0 
-            }).eq('vk_id', currentUser.vk_id);
-            alert('Компания «' + companyName + '» создана!');
-            location.reload();
-        }
-
-        async function loadEmployees() {
-            document.getElementById('employees-panel').style.display = 'block';
-            var listEl = document.getElementById('employees-list');
-            listEl.innerHTML = 'Загрузка...';
-            
-            var result = await supabase.from('players').select('*').eq('company', currentUser.company).neq('status', 'Владелец');
-            if (result.error) { listEl.innerHTML = 'Ошибка'; return; }
-
-            var employees = result.data;
-            document.getElementById('employees-count').textContent = employees.length;
-
-            if (employees.length === 0) {
-                listEl.innerHTML = '<p style="color:#888;">Нет сотрудников. Пригласи друга!</p>';
-                document.getElementById('total-income').textContent = '';
-                document.getElementById('collect-rate').textContent = '';
-                return;
-            }
-
-            listEl.innerHTML = '';
-            var totalIncome = 0;
-
-            employees.forEach(function(emp) {
-                totalIncome += (emp.income_per_hour || 0);
-                var item = document.createElement('div');
-                item.className = 'employee-item';
-                item.innerHTML = 
-                    '<img src="' + (emp.photo_200 || 'https://vk.com/images/camera_200.png') + '" onerror="this.src=\'https://vk.com/images/camera_200.png\'">' +
-                    '<div style="flex:1;"><div style="font-weight:bold;">' + emp.first_name + ' ' + emp.last_name + '</div><div style="font-size:12px;color:#888;">🔬 ' + (emp.role || 'Учёный') + '</div></div>' +
-                    '<div style="color:#4caf50;font-weight:bold;">+' + (emp.income_per_hour || 0) + ' оп/час</div>';
-                listEl.appendChild(item);
-            });
-
-            document.getElementById('total-income').textContent = '📈 Общий доход: +' + totalIncome + ' опыта/час';
-            document.getElementById('collect-rate').textContent = '📈 Общий доход: +' + totalIncome + ' опыта/час от всех сотрудников';
+            var name = prompt('Название компании:', 'Компания ' + currentUser.first_name);
+            if (!name) return;
+            await supabase.from('players').update({ company: name, status: 'Владелец', role: 'Владелец', last_collect: new Date().toISOString(), pending_experience: 0, level: 1, hire_cost: 100 }).eq('vk_id', currentUser.vk_id);
+            alert('Компания «' + name + '» создана!'); location.reload();
         }
     </script>
 </body>
