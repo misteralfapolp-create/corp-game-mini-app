@@ -3,168 +3,310 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Корпоративные Игры v4</title>
-    
-    <!-- СНАЧАЛА Supabase -->
+    <title>Корпоративные Игры v5</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- ПОТОМ VK Bridge -->
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, sans-serif; background: #f0f2f5; padding: 15px; }
+        .card { background: #fff; border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 10px; }
+        .header h2 { font-size: 18px; margin-bottom: 4px; }
+        .header .company-name { color: #4a76a8; font-weight: bold; }
+        .stats { display: flex; justify-content: space-around; text-align: center; margin: 12px 0; }
+        .stat { flex: 1; }
+        .stat .value { font-size: 22px; font-weight: bold; color: #4a76a8; }
+        .stat .label { font-size: 11px; color: #888; }
+        button { 
+            width: 100%; padding: 12px; border: none; border-radius: 8px; 
+            font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 8px;
+        }
+        .btn-create { background: #4a76a8; color: #fff; }
+        .btn-invite { background: #4caf50; color: #fff; }
+        .btn-hire { background: #ff9800; color: #fff; padding: 6px 12px; width: auto; font-size: 13px; }
+        .employee-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .employee-item img { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; }
+        .employee-info { flex: 1; }
+        .employee-name { font-weight: bold; }
+        .employee-role { font-size: 12px; color: #888; }
+        .employee-income { color: #4caf50; font-weight: bold; }
+        #force-init-btn { background: #eee; color: #333; width: auto; padding: 8px 16px; font-size: 13px; }
+    </style>
 </head>
 <body>
     <div id="app">
-        <h2>Ваш статус:</h2>
-        <p id="player-info">Загрузка...</p>
-        <button id="force-init-btn" style="display: none; padding: 10px; margin: 10px;">Попробовать снова</button>
-        <div id="owner-panel" style="display: none; margin-top: 20px;">
-            <h3>Панель компании</h3>
-            <ul id="jobless-list"></ul>
+        <div class="card">
+            <div class="header">
+                <h2 id="player-name">Загрузка...</h2>
+                <div class="company-name" id="company-display"></div>
+            </div>
+            
+            <div class="stats">
+                <div class="stat">
+                    <div class="value" id="balance-value">0</div>
+                    <div class="label">💰 Баланс</div>
+                </div>
+                <div class="stat">
+                    <div class="value" id="exp-value">0</div>
+                    <div class="label">⭐ Опыт</div>
+                </div>
+                <div class="stat">
+                    <div class="value" id="employees-count">0</div>
+                    <div class="label">👥 Сотрудников</div>
+                </div>
+            </div>
         </div>
+
+        <div class="card" id="action-panel">
+            <p id="status-text">Загрузка...</p>
+            <button id="main-action-btn" style="display:none;">Создать компанию</button>
+            <button id="invite-btn" class="btn-invite" style="display:none;">📨 Пригласить друга (+500 опыта)</button>
+        </div>
+
+        <div class="card" id="employees-panel" style="display:none;">
+            <h3>👥 Мои сотрудники</h3>
+            <div id="employees-list">Нет сотрудников</div>
+            <div style="margin-top:8px; color:#4caf50; font-weight:bold;" id="total-income"></div>
+        </div>
+
+        <button id="force-init-btn" style="display:none;">Попробовать снова</button>
     </div>
 
     <script>
-        // ================= НАСТРОЙКИ SUPABASE =================
+        // ================= НАСТРОЙКИ =================
         var SUPABASE_URL = 'https://fcrjkfiodvfhzamayvoe.supabase.co';
         var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjcmprZmlvZHZmaHphbWF5dm9lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMTcwMTQsImV4cCI6MjA5OTY5MzAxNH0.C3Ls4QMoYWnFciuOURZ7-WLmGa4TWtBsedhURVNulKI';
         
-        // Создаём клиент Supabase СРАЗУ (теперь библиотека уже загружена)
         var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        var currentUserVkId = null;
+        var currentUser = null; // Здесь будем хранить ВСЕ данные игрока
+        var currentVkUser = null; // Данные из VK
 
-        // ================= ЗАПУСК ПРИЛОЖЕНИЯ =================
-        function startApp() {
-            var infoElement = document.getElementById('player-info');
-            
-            if (typeof vkBridge === 'undefined') {
-                infoElement.textContent = 'Ошибка: VK Bridge не загрузился';
-                return;
+        // ================= ЗАПУСК =================
+        window.addEventListener('load', function() {
+            if (typeof vkBridge !== 'undefined') {
+                vkBridge.send('VKWebAppInit')
+                    .then(function() { initApp(); })
+                    .catch(function(err) { showError('Ошибка VK: ' + err.message); });
+            } else {
+                showError('Откройте в ВК');
             }
-
-            infoElement.textContent = 'Инициализация VK...';
-            
-            vkBridge.send('VKWebAppInit')
-                .then(function() {
-                    console.log('VK Bridge готов');
-                    initApp();
-                })
-                .catch(function(err) {
-                    console.error('Ошибка VKWebAppInit:', err);
-                    infoElement.textContent = 'Ошибка VK: ' + (err.message || 'неизвестная');
-                    document.getElementById('force-init-btn').style.display = 'block';
-                });
-        }
+        });
 
         // ================= ГЛАВНАЯ ЛОГИКА =================
         async function initApp() {
-            var infoElement = document.getElementById('player-info');
-            infoElement.textContent = 'Получаем данные профиля...';
-
             try {
-                var user = await vkBridge.send('VKWebAppGetUserInfo');
-                currentUserVkId = user.id;
-                console.log('VK User ID:', currentUserVkId);
+                // Получаем данные из ВК
+                currentVkUser = await vkBridge.send('VKWebAppGetUserInfo');
+                
+                // Проверяем реферальный параметр в URL
+                var urlParams = new URLSearchParams(window.location.search);
+                var invitedBy = urlParams.get('ref'); // ID того, кто пригласил
 
-                infoElement.textContent = 'Ищем вас в базе данных...';
+                // Ищем игрока в БД
                 var result = await supabase
                     .from('players')
                     .select('*')
-                    .eq('vk_id', currentUserVkId)
+                    .eq('vk_id', currentVkUser.id)
                     .maybeSingle();
 
                 if (result.error) throw result.error;
 
                 if (!result.data) {
-                    infoElement.textContent = 'Регистрируем...';
-                    var insertResult = await supabase
-                        .from('players')
-                        .insert([{ 
-                            vk_id: currentUserVkId, 
-                            first_name: user.first_name, 
-                            last_name: user.last_name 
-                        }]);
+                    // НОВЫЙ ИГРОК
+                    var newPlayer = {
+                        vk_id: currentVkUser.id,
+                        first_name: currentVkUser.first_name,
+                        last_name: currentVkUser.last_name,
+                        photo_200: currentVkUser.photo_200 || '',
+                        status: 'Биржа труда',
+                        balance: 0,
+                        experience: 0,
+                        income_per_hour: 0,
+                        invited_by: invitedBy ? parseInt(invitedBy) : null
+                    };
 
+                    var insertResult = await supabase.from('players').insert([newPlayer]);
                     if (insertResult.error) throw insertResult.error;
+
+                    // Если есть пригласивший — начисляем ему бонус
+                    if (invitedBy) {
+                        await giveReferralBonus(parseInt(invitedBy));
+                    }
+
                     location.reload();
                 } else {
-                    displayPlayerInfo(result.data);
-                    if (result.data.company === 'Владелец') {
-                        showOwnerPanel();
-                    }
+                    // СУЩЕСТВУЮЩИЙ ИГРОК
+                    currentUser = result.data;
+                    renderAll();
                 }
             } catch (error) {
                 console.error('Ошибка:', error);
-                infoElement.textContent = 'Ошибка: ' + (error.message || JSON.stringify(error));
-                document.getElementById('force-init-btn').style.display = 'block';
+                showError('Ошибка: ' + (error.message || 'Неизвестная'));
             }
         }
 
-        function displayPlayerInfo(player) {
-            var el = document.getElementById('player-info');
-            if (player.company && player.company !== 'Биржа труда') {
-                el.textContent = player.first_name + ' ' + player.last_name + ' — Работает в компании ' + player.company;
-            } else {
-                el.textContent = player.first_name + ' ' + player.last_name + ' — Безработный (Биржа труда)';
-            }
-        }
-
-        async function showOwnerPanel() {
-            document.getElementById('owner-panel').style.display = 'block';
-            var listElement = document.getElementById('jobless-list');
-            listElement.innerHTML = '<li>Загрузка...</li>';
-            
-            try {
-                var result = await supabase
-                    .from('players')
-                    .select('*')
-                    .eq('status', 'Биржа труда');
-
-                if (result.error) throw result.error;
-                
-                listElement.innerHTML = ''; 
-                if (result.data.length === 0) {
-                    listElement.innerHTML = '<li>Нет безработных.</li>';
-                    return;
-                }
-
-                result.data.forEach(function(player) {
-                    var li = document.createElement('li');
-                    li.textContent = player.first_name + ' ' + player.last_name + ' ';
-                    var btn = document.createElement('button');
-                    btn.textContent = 'Нанять за 100 монет';
-                    btn.onclick = function() { hirePlayer(player.vk_id); };
-                    li.appendChild(btn);
-                    listElement.appendChild(li);
-                });
-            } catch (e) {
-                listElement.innerHTML = '<li>Ошибка загрузки.</li>';
-            }
-        }
-
-        async function hirePlayer(employeeVkId) {
-            var companyName = 'Компания_' + currentUserVkId;
+        // ================= БОНУС ЗА ПРИГЛАШЕНИЕ =================
+        async function giveReferralBonus(inviterVkId) {
+            // Начисляем 500 опыта пригласившему
             var result = await supabase
                 .from('players')
-                .update({ company: companyName, status: 'Работает' })
-                .eq('vk_id', employeeVkId);
+                .select('experience')
+                .eq('vk_id', inviterVkId)
+                .maybeSingle();
 
-            if (result.error) {
-                alert('Ошибка найма!');
-            } else {
-                alert('Успешно нанят!');
-                showOwnerPanel();
+            if (result.data) {
+                var newExp = (result.data.experience || 0) + 500;
+                await supabase
+                    .from('players')
+                    .update({ experience: newExp })
+                    .eq('vk_id', inviterVkId);
             }
         }
 
-        // Кнопка повтора
-        document.getElementById('force-init-btn').addEventListener('click', function() {
-            document.getElementById('force-init-btn').style.display = 'none';
-            initApp();
-        });
+        // ================= ОТРИСОВКА ИНТЕРФЕЙСА =================
+        function renderAll() {
+            // Имя игрока
+            document.getElementById('player-name').textContent = currentUser.first_name + ' ' + currentUser.last_name;
+            
+            // Название компании
+            var companyEl = document.getElementById('company-display');
+            if (currentUser.company && currentUser.company !== 'Биржа труда') {
+                companyEl.textContent = '🏢 ' + currentUser.company;
+            } else {
+                companyEl.textContent = '';
+            }
 
-        // Ждём, пока всё загрузится, потом стартуем
-        window.addEventListener('load', function() {
-            console.log('Страница загружена, запускаем приложение');
-            startApp();
+            // Баланс и опыт
+            document.getElementById('balance-value').textContent = currentUser.balance || 0;
+            document.getElementById('exp-value').textContent = currentUser.experience || 0;
+
+            // Статус и кнопки
+            var statusText = document.getElementById('status-text');
+            var mainBtn = document.getElementById('main-action-btn');
+            var inviteBtn = document.getElementById('invite-btn');
+
+            if (!currentUser.company || currentUser.company === 'Биржа труда') {
+                // Безработный
+                statusText.textContent = 'Вы на бирже труда. Создайте компанию!';
+                mainBtn.textContent = '🚀 Создать компанию';
+                mainBtn.className = 'btn-create';
+                mainBtn.style.display = 'block';
+                mainBtn.onclick = createCompany;
+                inviteBtn.style.display = 'none';
+            } else {
+                // Владелец компании
+                statusText.textContent = 'Вы владелец компании';
+                mainBtn.style.display = 'none';
+                inviteBtn.style.display = 'block';
+                inviteBtn.onclick = inviteFriend;
+                loadEmployees();
+            }
+        }
+
+        // ================= СОЗДАНИЕ КОМПАНИИ =================
+        async function createCompany() {
+            var companyName = prompt('Введите название компании:', 'Компания ' + currentUser.first_name);
+            if (!companyName) return;
+
+            var result = await supabase
+                .from('players')
+                .update({ 
+                    company: companyName, 
+                    status: 'Владелец',
+                    role: 'Владелец'
+                })
+                .eq('vk_id', currentUser.vk_id);
+
+            if (result.error) {
+                alert('Ошибка: ' + result.error.message);
+            } else {
+                alert('Компания «' + companyName + '» создана!');
+                location.reload();
+            }
+        }
+
+        // ================= ПРИГЛАШЕНИЕ ДРУГА =================
+        function inviteFriend() {
+            var appId = '54679388'; // Твой ID приложения (видно в ошибках консоли)
+            var refLink = 'https://vk.com/app' + appId + '?ref=' + currentUser.vk_id;
+            
+            vkBridge.send('VKWebAppShare', {
+                link: refLink,
+                text: 'Присоединяйся к моей компании «' + currentUser.company + '»! Стань моим учёным! 🔬'
+            }).catch(function() {
+                // Если не получилось через VK, просто копируем в буфер
+                navigator.clipboard.writeText(refLink).then(function() {
+                    alert('Ссылка скопирована! Отправь её другу.\n\n' + refLink + '\n\nЗа каждого друга +500 опыта!');
+                });
+            });
+        }
+
+        // ================= ЗАГРУЗКА СОТРУДНИКОВ =================
+        async function loadEmployees() {
+            document.getElementById('employees-panel').style.display = 'block';
+            var listEl = document.getElementById('employees-list');
+            
+            // Ищем всех, у кого в company указано название нашей компании, и кто не владелец
+            var result = await supabase
+                .from('players')
+                .select('*')
+                .eq('company', currentUser.company)
+                .neq('status', 'Владелец');
+
+            if (result.error) {
+                listEl.innerHTML = 'Ошибка загрузки';
+                return;
+            }
+
+            var employees = result.data;
+            document.getElementById('employees-count').textContent = employees.length;
+
+            if (employees.length === 0) {
+                listEl.innerHTML = '<p style="color:#888;">Пока нет сотрудников. Пригласи друга!</p>';
+                document.getElementById('total-income').textContent = '';
+                return;
+            }
+
+            listEl.innerHTML = '';
+            var totalIncome = 0;
+
+            employees.forEach(function(emp) {
+                // Назначаем роль и доход, если ещё нет
+                if (!emp.role) {
+                    emp.role = 'Учёный';
+                    emp.income_per_hour = 1;
+                    supabase.from('players')
+                        .update({ role: 'Учёный', income_per_hour: 1 })
+                        .eq('vk_id', emp.vk_id)
+                        .then(function() {});
+                }
+
+                totalIncome += (emp.income_per_hour || 0);
+
+                var item = document.createElement('div');
+                item.className = 'employee-item';
+                item.innerHTML = 
+                    '<img src="' + (emp.photo_200 || 'https://vk.com/images/camera_200.png') + '" onerror="this.src=\'https://vk.com/images/camera_200.png\'">' +
+                    '<div class="employee-info">' +
+                        '<div class="employee-name">' + emp.first_name + ' ' + emp.last_name + '</div>' +
+                        '<div class="employee-role">🔬 ' + (emp.role || 'Учёный') + '</div>' +
+                    '</div>' +
+                    '<div class="employee-income">+' + (emp.income_per_hour || 0) ' опыта/час</div>';
+                
+                listEl.appendChild(item);
+            });
+
+            document.getElementById('total-income').textContent = '📈 Общий доход: +' + totalIncome + ' опыта/час';
+        }
+
+        function showError(msg) {
+            document.getElementById('player-name').textContent = msg;
+            document.getElementById('force-init-btn').style.display = 'block';
+        }
+
+        document.getElementById('force-init-btn').addEventListener('click', function() {
+            this.style.display = 'none';
+            initApp();
         });
     </script>
 </body>
