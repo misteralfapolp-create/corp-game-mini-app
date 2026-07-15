@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Корпоративные Игры v15</title>
+    <title>Корпоративные Игры v16</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <style>
@@ -25,6 +25,7 @@
         .btn-collect { background: #4caf50; color: #fff; font-size: 18px; padding: 14px; }
         .btn-hire { background: #2196f3; color: #fff; padding: 4px 10px; width: auto; font-size: 12px; border-radius: 15px; }
         .btn-upgrade { background: #9c27b0; color: #fff; padding: 4px 10px; width: auto; font-size: 12px; border-radius: 15px; }
+        .btn-steal { background: #f44336; color: #fff; padding: 4px 10px; width: auto; font-size: 12px; border-radius: 15px; }
         .btn-leave { background: #f44336; color: #fff; padding: 8px; font-size: 13px; }
         .btn-join { background: #4caf50; color: #fff; padding: 8px; font-size: 13px; }
         .collect-info { text-align: center; margin: 10px 0; padding: 10px; background: #e8f5e9; border-radius: 8px; }
@@ -44,6 +45,8 @@
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
         .modal-content { background: #fff; border-radius: 12px; padding: 20px; width: 90%; max-height: 80%; overflow-y: auto; }
         .modal-close { float: right; font-size: 24px; cursor: pointer; color: #888; }
+        .clickable { cursor: pointer; }
+        .clickable:hover { background: #f5f5f5; }
     </style>
 </head>
 <body>
@@ -62,7 +65,7 @@
             </div>
         </div>
 
-        <!-- Сбор опыта (если есть сотрудники) -->
+        <!-- Сбор опыта -->
         <div class="card" id="collect-panel" style="display:none;">
             <div class="collect-info">
                 <div class="amount" id="collect-amount">0</div>
@@ -77,7 +80,6 @@
             <div class="tab-bar">
                 <div class="tab active" id="tab-my-team" onclick="switchTab('my-team')">👥 Моя команда</div>
                 <div class="tab" id="tab-market" onclick="switchTab('market')">🏪 Биржа</div>
-                <div class="tab" id="tab-rivals" onclick="switchTab('rivals')">🎯 Переманить</div>
                 <div class="tab" id="tab-players" onclick="switchTab('players')">🏆 Топ-100</div>
                 <div class="tab" id="tab-clans" onclick="switchTab('clans')">🏢 Кланы</div>
             </div>
@@ -87,13 +89,23 @@
         <!-- Действия -->
         <div class="card" id="action-panel">
             <p id="status-text">Загрузка...</p>
-            <button id="main-action-btn" style="display:none;">Создать клан</button>
             <button class="btn-leave" id="leave-clan-btn" style="display:none;">🚪 Выйти из клана</button>
             <div id="invite-block" style="display:none;">
                 <p class="section-title">🔗 Реферальная ссылка</p>
                 <input type="text" id="invite-link-input" readonly style="width:100%;padding:8px;margin-bottom:8px;border:1px solid #ddd;border-radius:6px;font-size:12px;" onclick="this.select()">
                 <button class="btn-copy" id="invite-copy-btn">📋 Скопировать</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно: сотрудники игрока (из топа) -->
+    <div class="modal" id="player-modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closePlayerModal()">✕</span>
+            <h2 id="modal-player-name"></h2>
+            <p id="modal-player-stats"></p>
+            <div id="modal-player-employees"></div>
+            <button class="btn-back" onclick="closePlayerModal()" style="margin-top:10px;">🔙 Закрыть</button>
         </div>
     </div>
 
@@ -128,6 +140,12 @@
             try {
                 currentVkUser = await vkBridge.send('VKWebAppGetUserInfo');
                 var invitedBy = getRefFromHash() || new URLSearchParams(window.location.search).get('ref');
+                
+                // ВАЖНО: если пригласивший — это я сам, игнорируем
+                if (invitedBy && parseInt(invitedBy) === currentVkUser.id) {
+                    invitedBy = null;
+                }
+
                 var result = await supabase.from('players').select('*').eq('vk_id', currentVkUser.id).maybeSingle();
                 if (result.error) throw result.error;
 
@@ -149,10 +167,6 @@
                     await supabase.from('players').update({ owner_id: null, last_collect: new Date().toISOString(), pending_experience: 0 }).eq('vk_id', currentUser.vk_id);
                     currentUser.owner_id = null; currentUser.last_collect = new Date().toISOString(); currentUser.pending_experience = 0;
                 }
-                // Если игрок ничей — он сам себе хозяин
-                if (!currentUser.owner_id && currentUser.status !== 'Биржа труда') {
-                    currentUser.owner_id = currentUser.vk_id;
-                }
 
                 await calculatePendingExperience();
                 await updateStats();
@@ -160,7 +174,7 @@
             } catch (e) { console.error(e); }
         }
 
-        // ================= РАСЧЁТ ОПЫТА (от ВСЕХ моих сотрудников) =================
+        // ================= РАСЧЁТ ОПЫТА =================
         async function calculatePendingExperience() {
             var empResult = await supabase.from('players').select('income_per_hour').eq('owner_id', currentUser.vk_id);
             if (empResult.error || !empResult.data.length) return;
@@ -201,12 +215,11 @@
             document.getElementById('tab-' + tab).classList.add('active');
             if (tab === 'my-team') loadMyTeam();
             else if (tab === 'market') loadMarket();
-            else if (tab === 'rivals') loadRivals();
             else if (tab === 'players') loadTopPlayers();
             else if (tab === 'clans') loadClans();
         }
 
-        // ================= МОЯ КОМАНДА (кого я нанял) =================
+        // ================= МОЯ КОМАНДА =================
         async function loadMyTeam() {
             var content = document.getElementById('tab-content');
             content.innerHTML = 'Загрузка...';
@@ -247,7 +260,8 @@
         async function loadMarket() {
             var content = document.getElementById('tab-content');
             content.innerHTML = 'Загрузка...';
-            var result = await supabase.from('players').select('*').eq('status', 'Биржа труда').order('experience', { ascending: false });
+            // Только те, кто на бирже и НЕ я сам
+            var result = await supabase.from('players').select('*').eq('status', 'Биржа труда').neq('vk_id', currentUser.vk_id).order('experience', { ascending: false });
             if (result.error) { content.innerHTML = 'Ошибка'; return; }
             var jobless = result.data;
             if (!jobless.length) { content.innerHTML = '<p style="color:#888;">Биржа пуста.</p>'; return; }
@@ -276,60 +290,76 @@
             });
         }
 
-        // ================= ПЕРЕМАНИТЬ =================
-        async function loadRivals() {
-            var content = document.getElementById('tab-content');
-            content.innerHTML = 'Загрузка...';
-            var result = await supabase.from('players').select('*').neq('owner_id', currentUser.vk_id).neq('status', 'Биржа труда').neq('vk_id', currentUser.vk_id);
-            if (result.error) { content.innerHTML = 'Ошибка'; return; }
-            var rivals = result.data;
-            if (!rivals.length) { content.innerHTML = '<p style="color:#888;">Некого переманивать.</p>'; return; }
-            content.innerHTML = '<div class="section-title">🎯 Переманить сотрудника</div>';
-            rivals.forEach(function(p) {
-                var stealCost = Math.floor((p.hire_cost || 100) * 1.5);
-                var div = document.createElement('div');
-                div.className = 'player-item';
-                div.innerHTML = 
-                    '<img src="' + (p.photo_200 || 'https://vk.com/images/camera_200.png') + '" onerror="this.src=\'https://vk.com/images/camera_200.png\'">' +
-                    '<div style="flex:1;"><div style="font-weight:bold;">' + p.first_name + ' ' + p.last_name + '</div>' +
-                    '<div style="font-size:12px;color:#888;">Владелец ID:' + (p.owner_id || '?') + ' • 💰' + (p.hire_cost || 100) + '</div></div>' +
-                    '<button class="btn-hire" data-id="' + p.vk_id + '" style="background:#f44336;">Перекупить<br><span class="cost">' + stealCost + ' оп</span></button>';
-                content.appendChild(div);
-            });
-            document.querySelectorAll('.btn-hire').forEach(function(btn) {
-                btn.onclick = async function() {
-                    var empId = parseInt(this.getAttribute('data-id'));
-                    var target = rivals.find(function(r) { return r.vk_id === empId; });
-                    var cost = Math.floor((target.hire_cost || 100) * 1.5);
-                    if (currentUser.experience < cost) { alert('Недостаточно опыта! Нужно ' + cost); return; }
-                    if (!confirm('Перекупить за ' + cost + ' опыта?')) return;
-                    await supabase.from('players').update({ experience: currentUser.experience - cost }).eq('vk_id', currentUser.vk_id);
-                    await supabase.from('players').update({ owner_id: currentUser.vk_id, hire_cost: cost }).eq('vk_id', empId);
-                    currentUser.experience -= cost;
-                    alert('✅ Перекуплен!'); loadRivals(); renderAll();
-                };
-            });
-        }
-
-        // ================= ТОП-100 =================
+        // ================= ТОП-100 (кликабельные) =================
         async function loadTopPlayers() {
             var content = document.getElementById('tab-content');
             content.innerHTML = 'Загрузка...';
             var result = await supabase.from('players').select('*').order('experience', { ascending: false }).limit(100);
             if (result.error) { content.innerHTML = 'Ошибка'; return; }
-            content.innerHTML = '<div class="section-title">🏆 Топ-100 игроков</div>';
+            content.innerHTML = '<div class="section-title">🏆 Топ-100 игроков (нажми, чтобы увидеть команду)</div>';
             result.data.forEach(function(p, i) {
                 var rankClass = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : '';
+                var isMe = (p.vk_id === currentUser.vk_id);
                 var div = document.createElement('div');
-                div.className = 'player-item';
+                div.className = 'player-item clickable';
+                div.style.background = isMe ? '#e8f5e9' : '';
                 div.innerHTML = 
                     '<div class="rank ' + rankClass + '">' + (i + 1) + '</div>' +
                     '<img src="' + (p.photo_200 || 'https://vk.com/images/camera_200.png') + '" onerror="this.src=\'https://vk.com/images/camera_200.png\'">' +
-                    '<div style="flex:1;"><div style="font-weight:bold;">' + p.first_name + ' ' + p.last_name + '</div>' +
-                    '<div style="font-size:12px;color:#888;">⭐' + (p.experience || 0) + ' • 👥' + (p.owner_id ? 'Есть команда' : 'Одиночка') + '</div></div>';
+                    '<div style="flex:1;"><div style="font-weight:bold;">' + p.first_name + ' ' + p.last_name + (isMe ? ' ⭐' : '') + '</div>' +
+                    '<div style="font-size:12px;color:#888;">⭐' + (p.experience || 0) + ' • 👥' + (p.owner_id ? 'Команда' : 'Одиночка') + '</div></div>';
+                div.onclick = function() { openPlayerModal(p); };
                 content.appendChild(div);
             });
         }
+
+        // ================= МОДАЛКА ИГРОКА (сотрудники + перекупка) =================
+        function openPlayerModal(player) {
+            document.getElementById('player-modal').style.display = 'flex';
+            document.getElementById('modal-player-name').textContent = player.first_name + ' ' + player.last_name;
+            
+            // Загружаем сотрудников этого игрока
+            supabase.from('players').select('*').eq('owner_id', player.vk_id).order('experience', { ascending: false }).then(function(result) {
+                var list = document.getElementById('modal-player-employees');
+                if (!result.data || !result.data.length) {
+                    document.getElementById('modal-player-stats').textContent = '⭐' + (player.experience || 0) + ' опыта • Нет сотрудников';
+                    list.innerHTML = '<p style="color:#888;">У этого игрока нет сотрудников.</p>';
+                } else {
+                    document.getElementById('modal-player-stats').textContent = '⭐' + (player.experience || 0) + ' опыта • 👥 ' + result.data.length + ' сотрудников';
+                    list.innerHTML = '';
+                    result.data.forEach(function(emp) {
+                        var stealCost = Math.floor((emp.hire_cost || 100) * 1.5);
+                        var div = document.createElement('div');
+                        div.className = 'player-item';
+                        div.innerHTML = 
+                            '<img src="' + (emp.photo_200 || 'https://vk.com/images/camera_200.png') + '" onerror="this.src=\'https://vk.com/images/camera_200.png\'">' +
+                            '<div style="flex:1;"><div style="font-weight:bold;">' + emp.first_name + ' ' + emp.last_name + '<span class="lvl">Ур.' + (emp.level || 1) + '</span></div>' +
+                            '<div style="font-size:12px;color:#888;">🔬 +' + (emp.income_per_hour || 0) + ' оп/час • 💰' + (emp.hire_cost || 100) + '</div></div>';
+                        
+                        // Кнопка перекупить (только если это не мой сотрудник)
+                        if (emp.owner_id !== currentUser.vk_id && emp.vk_id !== currentUser.vk_id) {
+                            var btn = document.createElement('button');
+                            btn.className = 'btn-steal';
+                            btn.innerHTML = 'Перекупить<br><span class="cost">' + stealCost + ' оп</span>';
+                            btn.onclick = async function(e) {
+                                e.stopPropagation();
+                                if (currentUser.experience < stealCost) { alert('Недостаточно опыта! Нужно ' + stealCost); return; }
+                                if (!confirm('Перекупить ' + emp.first_name + ' за ' + stealCost + ' опыта?')) return;
+                                await supabase.from('players').update({ experience: currentUser.experience - stealCost }).eq('vk_id', currentUser.vk_id);
+                                await supabase.from('players').update({ owner_id: currentUser.vk_id, hire_cost: stealCost }).eq('vk_id', emp.vk_id);
+                                currentUser.experience -= stealCost;
+                                alert('✅ Перекуплен!');
+                                closePlayerModal();
+                                renderAll();
+                            };
+                            div.appendChild(btn);
+                        }
+                        list.appendChild(div);
+                    });
+                }
+            });
+        }
+        function closePlayerModal() { document.getElementById('player-modal').style.display = 'none'; }
 
         // ================= КЛАНЫ =================
         async function loadClans() {
@@ -345,12 +375,11 @@
             });
             var sorted = Object.values(clans).sort(function(a, b) { return b.count - a.count; });
             content.innerHTML = '<div class="section-title">🏢 Кланы</div>';
-            if (!sorted.length) { content.innerHTML += '<p style="color:#888;">Кланов пока нет.</p>'; return; }
+            if (!sorted.length) { content.innerHTML += '<p style="color:#888;">Кланов пока нет.</p>'; }
             sorted.forEach(function(c, i) {
                 var isMyClan = (c.name === currentUser.company);
                 var div = document.createElement('div');
-                div.className = 'player-item';
-                div.style.cursor = 'pointer';
+                div.className = 'player-item clickable';
                 div.style.background = isMyClan ? '#e8f5e9' : '';
                 div.innerHTML = 
                     '<div style="font-weight:bold;width:25px;">' + (i + 1) + '.</div>' +
@@ -359,7 +388,6 @@
                 div.onclick = function() { openClanModal(c.name); };
                 content.appendChild(div);
             });
-            // Кнопка создать клан
             if (!currentUser.company) {
                 var btn = document.createElement('button');
                 btn.className = 'btn-create';
@@ -369,7 +397,6 @@
             }
         }
 
-        // ================= МОДАЛКА КЛАНА =================
         async function openClanModal(clanName) {
             document.getElementById('clan-modal').style.display = 'flex';
             document.getElementById('modal-clan-name').textContent = '🏢 ' + clanName;
@@ -384,20 +411,17 @@
                     div.innerHTML = 
                         '<img src="' + (p.photo_200 || 'https://vk.com/images/camera_200.png') + '" onerror="this.src=\'https://vk.com/images/camera_200.png\'">' +
                         '<div style="flex:1;"><div style="font-weight:bold;">' + p.first_name + ' ' + p.last_name + '</div>' +
-                        '<div style="font-size:12px;color:#888;">⭐' + (p.experience || 0) + ' • 👥' + (p.owner_id ? 'Команда' : '') + '</div></div>';
+                        '<div style="font-size:12px;color:#888;">⭐' + (p.experience || 0) + '</div></div>';
                     list.appendChild(div);
                 });
-
                 var joinBtn = document.getElementById('modal-join-btn');
                 var leaveBtn = document.getElementById('modal-leave-btn');
                 joinBtn.style.display = 'none'; leaveBtn.style.display = 'none';
-
                 if (currentUser.company === clanName) {
-                    // Игрок уже в этом клане — кнопка выйти
                     leaveBtn.style.display = 'block';
-                    leaveBtn.textContent = '🚪 Выйти из клана (стоимость: ' + Math.floor((currentUser.hire_cost || 100) * 1.5) + ' опыта)';
+                    var cost = Math.floor((currentUser.hire_cost || 100) * 1.5);
+                    leaveBtn.textContent = '🚪 Выйти из клана (' + cost + ' опыта)';
                     leaveBtn.onclick = async function() {
-                        var cost = Math.floor((currentUser.hire_cost || 100) * 1.5);
                         if (currentUser.experience < cost) { alert('Недостаточно опыта! Нужно ' + cost); return; }
                         if (!confirm('Выйти из клана за ' + cost + ' опыта?')) return;
                         await supabase.from('players').update({ experience: currentUser.experience - cost, company: null }).eq('vk_id', currentUser.vk_id);
@@ -405,7 +429,6 @@
                         closeClanModal(); renderAll(); location.reload();
                     };
                 } else {
-                    // Не в клане — кнопка вступить
                     joinBtn.style.display = 'block';
                     joinBtn.textContent = '✅ Вступить в клан (бесплатно)';
                     joinBtn.onclick = async function() {
@@ -448,12 +471,9 @@
             } else { clanEl.textContent = ''; }
 
             var statusText = document.getElementById('status-text');
-            var mainBtn = document.getElementById('main-action-btn');
-            var inviteBlock = document.getElementById('invite-block');
-            var collectPanel = document.getElementById('collect-panel');
             var leaveClanBtn = document.getElementById('leave-clan-btn');
+            var collectPanel = document.getElementById('collect-panel');
 
-            // Показываем сбор опыта, если есть сотрудники
             var hasEmployees = (document.getElementById('my-employees-count').textContent !== '0');
             collectPanel.style.display = hasEmployees ? 'block' : 'none';
             if (hasEmployees) {
@@ -461,7 +481,6 @@
                 document.getElementById('collect-btn').onclick = collectExperience;
             }
 
-            // Статус
             if (currentUser.company) {
                 statusText.textContent = '🏢 Клан: ' + currentUser.company;
                 leaveClanBtn.style.display = 'block'; leaveClanBtn.onclick = leaveClan;
@@ -470,9 +489,7 @@
                 leaveClanBtn.style.display = 'none';
             }
 
-            // Всегда показываем вкладки
-            mainBtn.style.display = 'none';
-            inviteBlock.style.display = 'block';
+            document.getElementById('invite-block').style.display = 'block';
             var refLink = 'https://vk.com/app' + APP_ID + '#ref_' + currentUser.vk_id;
             document.getElementById('invite-link-input').value = refLink;
             document.getElementById('invite-copy-btn').onclick = function() {
