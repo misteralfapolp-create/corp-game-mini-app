@@ -3,20 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Корпоративные Игры v18</title>
+    <title>Корпоративные Игры v19</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Всплывающие уведомления -->
     <div id="toast-container"></div>
 
     <div id="app">
         <!-- Карточка игрока -->
         <div class="card profile-card">
             <div class="header">
-                <img id="header-avatar" class="header-avatar" src="" alt="Аватар">
+                <img id="header-avatar" class="header-avatar" src="" alt="Аватар" onclick="openVkProfile()" title="Открыть профиль ВК">
                 <h2 id="player-name">Загрузка...</h2>
                 <div class="clan-name" id="clan-display"></div>
             </div>
@@ -37,23 +36,20 @@
             <button class="btn-collect" id="collect-btn">🔄 Собрать</button>
         </div>
 
-        <!-- Вкладки: Биржа / Топ -->
+        <!-- Вкладки -->
         <div class="card">
             <div class="tab-bar">
                 <div class="tab active" id="tab-market" onclick="switchTab('market')">🏪 Биржа</div>
                 <div class="tab" id="tab-top" onclick="switchTab('top')">🏆 Топ</div>
             </div>
-            
-            <!-- Подвкладки топа -->
             <div id="top-subtabs" style="display:none; margin-bottom:10px;">
                 <button class="subtab active" id="subtab-players" onclick="switchTopSubtab('players')">👤 Игроки</button>
                 <button class="subtab" id="subtab-clans" onclick="switchTopSubtab('clans')">🏢 Кланы</button>
             </div>
-            
             <div id="tab-content"></div>
         </div>
 
-        <!-- Мои сотрудники (всегда внизу) -->
+        <!-- Мои сотрудники -->
         <div class="card" id="my-team-panel">
             <div class="section-title">👥 Мои сотрудники (<span id="my-team-total">0</span>)</div>
             <div id="my-team-list"></div>
@@ -71,7 +67,7 @@
     <div class="modal" id="player-modal">
         <div class="modal-content">
             <span class="modal-close" onclick="closePlayerModal()">✕</span>
-            <h2 id="modal-player-name"></h2>
+            <div id="modal-player-header"></div>
             <p id="modal-player-stats"></p>
             <div id="modal-player-employees"></div>
             <button class="btn-back" onclick="closePlayerModal()">🔙 Закрыть</button>
