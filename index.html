@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Корпоративные Игры v8.1</title>
+    <title>Корпоративные Игры v9</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <style>
@@ -24,8 +24,8 @@
         .btn-create { background: #4a76a8; color: #fff; }
         .btn-invite { background: #4caf50; color: #fff; }
         .btn-copy { background: #ff9800; color: #fff; }
+        .btn-join { background: #e91e63; color: #fff; }
         .debug { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 13px; color: #856404; word-break: break-all; }
-        .invite-link-box { background: #f5f5f5; padding: 10px; border-radius: 8px; margin: 10px 0; word-break: break-all; font-size: 13px; color: #333; }
     </style>
 </head>
 <body>
@@ -33,7 +33,7 @@
         <div class="debug" id="debug-block">
             <b>Отладка:</b><br>
             <span id="debug-text">Загрузка...</span><br>
-            <span id="debug-url" style="font-size:11px;"></span>
+            <span id="debug-url" style="font-size:10px;"></span>
         </div>
 
         <div class="card">
@@ -42,18 +42,9 @@
                 <div class="company-name" id="company-display"></div>
             </div>
             <div class="stats">
-                <div class="stat">
-                    <div class="value" id="balance-value">0</div>
-                    <div class="label">💰 Баланс</div>
-                </div>
-                <div class="stat">
-                    <div class="value" id="exp-value">0</div>
-                    <div class="label">⭐ Опыт</div>
-                </div>
-                <div class="stat">
-                    <div class="value" id="employees-count">0</div>
-                    <div class="label">👥 Сотрудников</div>
-                </div>
+                <div class="stat"><div class="value" id="balance-value">0</div><div class="label">💰 Баланс</div></div>
+                <div class="stat"><div class="value" id="exp-value">0</div><div class="label">⭐ Опыт</div></div>
+                <div class="stat"><div class="value" id="employees-count">0</div><div class="label">👥 Сотрудников</div></div>
             </div>
         </div>
 
@@ -61,9 +52,13 @@
             <p id="status-text">Загрузка...</p>
             <button id="main-action-btn" style="display:none;">Создать компанию</button>
             <div id="invite-block" style="display:none;">
-                <div class="invite-link-box" id="invite-link-text"></div>
-                <button class="btn-invite" id="invite-send-btn">📨 Отправить другу (ВК)</button>
+                <p style="margin-bottom:8px;">🔗 Твоя ссылка для приглашения:</p>
+                <input type="text" id="invite-link-input" readonly style="width:100%;padding:8px;margin-bottom:8px;border:1px solid #ddd;border-radius:6px;font-size:12px;" onclick="this.select()">
                 <button class="btn-copy" id="invite-copy-btn">📋 Скопировать ссылку</button>
+            </div>
+            <div id="join-block" style="display:none;">
+                <p style="margin-bottom:8px;color:#e91e63;">Тебя пригласили в компанию!</p>
+                <button class="btn-join" id="join-company-btn">✅ Вступить в компанию</button>
             </div>
         </div>
 
@@ -72,8 +67,6 @@
             <div id="employees-list">Нет сотрудников</div>
             <div style="margin-top:8px; color:#4caf50; font-weight:bold;" id="total-income"></div>
         </div>
-
-        <button id="force-init-btn" style="display:none;">Попробовать снова</button>
     </div>
 
     <script>
@@ -90,6 +83,7 @@
         var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         var currentUser = null;
         var currentVkUser = null;
+        var pendingInviterId = null; // ID пригласившего (сохраняем временно)
 
         // ================= ЗАПУСК =================
         window.addEventListener('load', function() {
@@ -110,10 +104,18 @@
                 currentVkUser = await vkBridge.send('VKWebAppGetUserInfo');
                 debug('Пользователь: ' + currentVkUser.first_name + ' (ID: ' + currentVkUser.id + ')');
 
+                // Ищем ВСЕ возможные параметры с ID пригласившего
                 var urlParams = new URLSearchParams(window.location.search);
-                var invitedBy = urlParams.get('ref');
-                debug('ref в URL: ' + (invitedBy || 'НЕТ'));
+                var invitedBy = urlParams.get('ref') || urlParams.get('vk_ref') || urlParams.get('inviter');
+                
+                // Если ref содержит что-то кроме цифр — это не ID
+                if (invitedBy && invitedBy !== 'other' && !/^\d+$/.test(invitedBy)) {
+                    invitedBy = null;
+                }
+                
+                debug('ID пригласившего из URL: ' + (invitedBy || 'НЕТ'));
 
+                // Ищем игрока в БД
                 var result = await supabase
                     .from('players')
                     .select('*')
@@ -122,61 +124,49 @@
 
                 if (result.error) throw result.error;
 
+                // ========== НОВЫЙ ИГРОК ==========
                 if (!result.data) {
                     debug('Новый игрок, создаём...');
                     
-                    var companyName = null;
-                    var shouldGiveBonus = false;
-
-                    if (invitedBy) {
-                        debug('Ищем пригласившего (ID: ' + invitedBy + ')...');
-                        var inviterResult = await supabase
-                            .from('players')
-                            .select('company, status')
-                            .eq('vk_id', parseInt(invitedBy))
-                            .maybeSingle();
-
-                        debug('Пригласивший найден: ' + (inviterResult.data ? 'ДА, компания: ' + inviterResult.data.company : 'НЕТ'));
-                        
-                        if (inviterResult.data && inviterResult.data.company && inviterResult.data.status === 'Владелец') {
-                            companyName = inviterResult.data.company;
-                            shouldGiveBonus = true;
-                            debug('Назначаем в компанию: ' + companyName);
-                        }
-                    }
-
                     var newPlayer = {
                         vk_id: currentVkUser.id,
                         first_name: currentVkUser.first_name,
                         last_name: currentVkUser.last_name,
                         photo_200: currentVkUser.photo_200 || '',
-                        status: companyName ? 'Работает' : 'Биржа труда',
-                        company: companyName,
-                        role: companyName ? 'Учёный' : null,
+                        status: 'Биржа труда',
+                        company: null,
+                        role: null,
                         balance: 0,
                         experience: 0,
-                        income_per_hour: companyName ? 1 : 0,
-                        invited_by: invitedBy ? parseInt(invitedBy) : null
+                        income_per_hour: 0,
+                        invited_by: null
                     };
 
                     var insertResult = await supabase.from('players').insert([newPlayer]);
                     if (insertResult.error) throw insertResult.error;
 
-                    if (shouldGiveBonus) {
-                        await giveReferralBonus(parseInt(invitedBy));
+                    debug('Создан. Проверяем реферал...');
+                    
+                    // Если есть ID пригласившего — показываем кнопку «Вступить»
+                    if (invitedBy) {
+                        pendingInviterId = invitedBy;
+                        currentUser = newPlayer;
+                        currentUser.status = 'Биржа труда';
+                        currentUser.company = null;
+                        renderJoinButton();
+                        return;
                     }
 
-                    debug('Создан! Компания: ' + (companyName || 'нет') + '. Перезагрузка...');
                     location.reload();
                     return;
                 }
 
+                // ========== СУЩЕСТВУЮЩИЙ ИГРОК ==========
                 currentUser = result.data;
                 debug('Найден в БД. Компания: ' + (currentUser.company || 'нет') + ', Статус: ' + currentUser.status);
 
+                // Если есть реферал и игрок не в компании пригласившего
                 if (invitedBy && parseInt(invitedBy) !== currentUser.vk_id) {
-                    debug('Обрабатываем реферал...');
-                    
                     var inviterResult = await supabase
                         .from('players')
                         .select('company, status')
@@ -184,35 +174,12 @@
                         .maybeSingle();
 
                     if (inviterResult.data && inviterResult.data.company && inviterResult.data.status === 'Владелец') {
-                        var newCompany = inviterResult.data.company;
-                        
-                        if (currentUser.company !== newCompany) {
-                            debug('ПЕРЕМАНИВАЕМ в ' + newCompany);
-                            
-                            await supabase
-                                .from('players')
-                                .update({
-                                    company: newCompany,
-                                    status: 'Работает',
-                                    role: 'Учёный',
-                                    income_per_hour: 1,
-                                    invited_by: parseInt(invitedBy)
-                                })
-                                .eq('vk_id', currentUser.vk_id);
-
-                            await giveReferralBonus(parseInt(invitedBy));
-
-                            currentUser.company = newCompany;
-                            currentUser.status = 'Работает';
-                            currentUser.role = 'Учёный';
-                            currentUser.income_per_hour = 1;
-                            
-                            debug('Успешно переманен!');
-                        } else {
-                            debug('Уже в этой компании, пропускаем');
+                        if (currentUser.company !== inviterResult.data.company) {
+                            // Показываем кнопку «Вступить»
+                            pendingInviterId = invitedBy;
+                            renderJoinButton();
+                            return;
                         }
-                    } else {
-                        debug('У пригласившего нет компании или он не владелец');
                     }
                 }
 
@@ -220,27 +187,71 @@
 
             } catch (error) {
                 debug('ОШИБКА: ' + (error.message || JSON.stringify(error)));
-                console.error(error);
             }
         }
 
-        async function giveReferralBonus(inviterVkId) {
-            var result = await supabase
-                .from('players')
-                .select('experience')
-                .eq('vk_id', inviterVkId)
-                .maybeSingle();
-
-            if (result.data) {
-                var newExp = (result.data.experience || 0) + 500;
-                await supabase
+        // ================= КНОПКА «ВСТУПИТЬ В КОМПАНИЮ» =================
+        function renderJoinButton() {
+            document.getElementById('player-name').textContent = currentVkUser.first_name + ' ' + currentVkUser.last_name;
+            document.getElementById('company-display').textContent = '';
+            document.getElementById('balance-value').textContent = '0';
+            document.getElementById('exp-value').textContent = '0';
+            
+            document.getElementById('status-text').textContent = 'Вас пригласили в компанию!';
+            document.getElementById('main-action-btn').style.display = 'none';
+            document.getElementById('invite-block').style.display = 'none';
+            document.getElementById('join-block').style.display = 'block';
+            
+            document.getElementById('join-company-btn').onclick = async function() {
+                debug('Вступаем в компанию...');
+                
+                var inviterResult = await supabase
                     .from('players')
-                    .update({ experience: newExp })
-                    .eq('vk_id', inviterVkId);
-                debug('+500 опыта игроку ' + inviterVkId);
-            }
+                    .select('company, status')
+                    .eq('vk_id', parseInt(pendingInviterId))
+                    .maybeSingle();
+
+                if (!inviterResult.data || !inviterResult.data.company) {
+                    alert('Компания больше не существует');
+                    location.reload();
+                    return;
+                }
+
+                var updateResult = await supabase
+                    .from('players')
+                    .update({
+                        company: inviterResult.data.company,
+                        status: 'Работает',
+                        role: 'Учёный',
+                        income_per_hour: 1,
+                        invited_by: parseInt(pendingInviterId)
+                    })
+                    .eq('vk_id', currentVkUser.id);
+
+                if (updateResult.error) {
+                    alert('Ошибка: ' + updateResult.error.message);
+                } else {
+                    // Бонус пригласившему
+                    var bonusResult = await supabase
+                        .from('players')
+                        .select('experience')
+                        .eq('vk_id', parseInt(pendingInviterId))
+                        .maybeSingle();
+
+                    if (bonusResult.data) {
+                        await supabase
+                            .from('players')
+                            .update({ experience: (bonusResult.data.experience || 0) + 500 })
+                            .eq('vk_id', parseInt(pendingInviterId));
+                    }
+
+                    alert('✅ Вы вступили в компанию «' + inviterResult.data.company + '»!');
+                    location.reload();
+                }
+            };
         }
 
+        // ================= ОТРИСОВКА =================
         function renderAll() {
             document.getElementById('player-name').textContent = currentUser.first_name + ' ' + currentUser.last_name;
             document.getElementById('balance-value').textContent = currentUser.balance || 0;
@@ -256,6 +267,9 @@
             var statusText = document.getElementById('status-text');
             var mainBtn = document.getElementById('main-action-btn');
             var inviteBlock = document.getElementById('invite-block');
+            var joinBlock = document.getElementById('join-block');
+
+            joinBlock.style.display = 'none';
 
             if (!currentUser.company || currentUser.company === 'Биржа труда') {
                 statusText.textContent = 'Вы на бирже труда. Создайте компанию!';
@@ -270,24 +284,14 @@
                 mainBtn.style.display = 'none';
                 
                 var refLink = 'https://vk.com/app' + APP_ID + '?ref=' + currentUser.vk_id;
-                var directLink = 'https://misteralfapolp-create.github.io/corp-game-mini-app/?ref=' + currentUser.vk_id;
-                
-                document.getElementById('invite-link-text').innerHTML = 
-                    '🔗 Ссылка VK:<br><small>' + refLink + '</small><br><br>' +
-                    '🔗 Прямая ссылка:<br><small>' + directLink + '</small>';
+                document.getElementById('invite-link-input').value = refLink;
                 inviteBlock.style.display = 'block';
                 
-                document.getElementById('invite-send-btn').onclick = function() {
-                    vkBridge.send('VKWebAppShare', {
-                        link: refLink,
-                        text: 'Присоединяйся к моей компании «' + currentUser.company + '»! Стань моим учёным! 🔬'
-                    }).catch(function() {
-                        copyLink(refLink);
-                    });
-                };
-                
                 document.getElementById('invite-copy-btn').onclick = function() {
-                    copyLink(directLink);
+                    var input = document.getElementById('invite-link-input');
+                    input.select();
+                    document.execCommand('copy');
+                    alert('✅ Ссылка скопирована! Отправь другу В ЛИЧНЫЕ СООБЩЕНИЯ ВК.\n\n' + refLink);
                 };
                 
                 loadEmployees();
@@ -296,16 +300,6 @@
                 mainBtn.style.display = 'none';
                 inviteBlock.style.display = 'none';
                 document.getElementById('employees-panel').style.display = 'none';
-            }
-        }
-
-        function copyLink(link) {
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(link).then(function() {
-                    alert('✅ Ссылка скопирована! Отправь её другу любым способом.\n\n' + link);
-                });
-            } else {
-                prompt('Скопируй ссылку вручную:', link);
             }
         }
 
@@ -343,7 +337,7 @@
             document.getElementById('employees-count').textContent = employees.length;
 
             if (employees.length === 0) {
-                listEl.innerHTML = '<p style="color:#888;">Пока нет сотрудников. Скопируй ссылку и отправь другу!</p>';
+                listEl.innerHTML = '<p style="color:#888;">Пока нет сотрудников. Скопируй ссылку и отправь другу В ЛИЧНЫЕ СООБЩЕНИЯ ВК!</p>';
                 document.getElementById('total-income').textContent = '';
                 return;
             }
@@ -364,11 +358,6 @@
 
             document.getElementById('total-income').textContent = '📈 Общий доход: +' + totalIncome + ' опыта/час';
         }
-
-        document.getElementById('force-init-btn').addEventListener('click', function() {
-            this.style.display = 'none';
-            initApp();
-        });
     </script>
 </body>
 </html>
