@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Корпоративные Игры v10</title>
+    <title>Корпоративные Игры v11</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <style>
@@ -11,8 +11,9 @@
         body { font-family: -apple-system, sans-serif; background: #f0f2f5; padding: 15px; }
         .card { background: #fff; border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .header { text-align: center; margin-bottom: 10px; }
+        .header-avatar { width: 60px; height: 60px; border-radius: 50%; margin-bottom: 8px; border: 2px solid #4a76a8; }
         .header h2 { font-size: 18px; margin-bottom: 4px; }
-        .header .company-name { color: #4a76a8; font-weight: bold; }
+        .header .company-name { color: #4a76a8; font-weight: bold; font-size: 16px; }
         .stats { display: flex; justify-content: space-around; text-align: center; margin: 12px 0; }
         .stat { flex: 1; }
         .stat .value { font-size: 22px; font-weight: bold; color: #4a76a8; }
@@ -23,19 +24,25 @@
         }
         .btn-create { background: #4a76a8; color: #fff; }
         .btn-copy { background: #ff9800; color: #fff; }
+        .btn-collect { background: #4caf50; color: #fff; font-size: 18px; padding: 14px; animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.8; }
+            100% { opacity: 1; }
+        }
         .debug { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 13px; color: #856404; word-break: break-all; }
+        .collect-info { text-align: center; margin: 10px 0; padding: 10px; background: #e8f5e9; border-radius: 8px; }
+        .collect-info .amount { font-size: 28px; font-weight: bold; color: #2e7d32; }
+        .collect-info .hint { font-size: 12px; color: #666; }
+        .employee-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .employee-item img { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; }
     </style>
 </head>
 <body>
     <div id="app">
-        <div class="debug" id="debug-block">
-            <b>Отладка:</b><br>
-            <span id="debug-text">Загрузка...</span><br>
-            <span id="debug-url" style="font-size:10px;"></span>
-        </div>
-
         <div class="card">
             <div class="header">
+                <img id="header-avatar" class="header-avatar" src="" alt="Аватар">
                 <h2 id="player-name">Загрузка...</h2>
                 <div class="company-name" id="company-display"></div>
             </div>
@@ -44,6 +51,17 @@
                 <div class="stat"><div class="value" id="exp-value">0</div><div class="label">⭐ Опыт</div></div>
                 <div class="stat"><div class="value" id="employees-count">0</div><div class="label">👥 Сотрудников</div></div>
             </div>
+        </div>
+
+        <!-- Кнопка сбора опыта (только для владельца) -->
+        <div class="card" id="collect-panel" style="display:none;">
+            <div class="collect-info">
+                <div class="amount" id="collect-amount">0</div>
+                <div class="label">🔬 Опыта готово к сбору</div>
+                <div class="hint" id="collect-rate"></div>
+            </div>
+            <button class="btn-collect" id="collect-btn">🔄 СОБРАТЬ ОПЫТ</button>
+            <p style="text-align:center;font-size:11px;color:#888;margin-top:5px;">Опыт копится каждый час от всех сотрудников</p>
         </div>
 
         <div class="card" id="action-panel">
@@ -69,62 +87,32 @@
         var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjcmprZmlvZHZmaHphbWF5dm9lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMTcwMTQsImV4cCI6MjA5OTY5MzAxNH0.C3Ls4QMoYWnFciuOURZ7-WLmGa4TWtBsedhURVNulKI';
         var APP_ID = '54679388';
         
-        function debug(msg) {
-            console.log('DEBUG:', msg);
-            document.getElementById('debug-text').textContent = msg;
-        }
-
         var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         var currentUser = null;
         var currentVkUser = null;
 
         // ================= ЗАПУСК =================
         window.addEventListener('load', function() {
-            // Показываем ВСЁ: URL, хеш, параметры
-            var fullInfo = 'URL: ' + window.location.href + '\n';
-            fullInfo += 'Хеш: ' + window.location.hash + '\n';
-            fullInfo += 'Поиск: ' + window.location.search;
-            document.getElementById('debug-url').textContent = fullInfo;
-            
             if (typeof vkBridge !== 'undefined') {
                 vkBridge.send('VKWebAppInit')
                     .then(function() { initApp(); })
-                    .catch(function(err) { debug('Ошибка VK: ' + err.message); });
-            } else {
-                debug('VK Bridge не найден');
+                    .catch(function(err) { console.error(err); });
             }
         });
 
-        // Функция для извлечения ref из хеша
         function getRefFromHash() {
-            var hash = window.location.hash; // например: #ref_588689950
+            var hash = window.location.hash;
             if (!hash) return null;
-            
-            // Ищем ref_ в хеше
             var match = hash.match(/ref_(\d+)/);
-            if (match) {
-                return match[1]; // возвращаем только цифры ID
-            }
-            return null;
-        }
-
-        // Функция для извлечения ref из параметров
-        function getRefFromParams() {
-            var params = new URLSearchParams(window.location.search);
-            return params.get('ref');
+            return match ? match[1] : null;
         }
 
         // ================= ГЛАВНАЯ ЛОГИКА =================
         async function initApp() {
             try {
                 currentVkUser = await vkBridge.send('VKWebAppGetUserInfo');
-                debug('Пользователь: ' + currentVkUser.first_name + ' (ID: ' + currentVkUser.id + ')');
+                var invitedBy = getRefFromHash() || new URLSearchParams(window.location.search).get('ref');
 
-                // Пробуем получить ref из хеша И из параметров
-                var invitedBy = getRefFromHash() || getRefFromParams();
-                debug('ID пригласившего: ' + (invitedBy || 'НЕТ'));
-
-                // Ищем игрока в БД
                 var result = await supabase
                     .from('players')
                     .select('*')
@@ -135,13 +123,10 @@
 
                 // ========== НОВЫЙ ИГРОК ==========
                 if (!result.data) {
-                    debug('Новый игрок!');
-                    
                     var companyName = null;
                     var shouldGiveBonus = false;
 
                     if (invitedBy) {
-                        debug('Ищем пригласившего (ID: ' + invitedBy + ')...');
                         var inviterResult = await supabase
                             .from('players')
                             .select('company, status')
@@ -151,12 +136,10 @@
                         if (inviterResult.data && inviterResult.data.company && inviterResult.data.status === 'Владелец') {
                             companyName = inviterResult.data.company;
                             shouldGiveBonus = true;
-                            debug('✅ Будет назначен в компанию: ' + companyName);
-                        } else {
-                            debug('❌ У пригласившего нет компании');
                         }
                     }
 
+                    var now = new Date().toISOString();
                     var newPlayer = {
                         vk_id: currentVkUser.id,
                         first_name: currentVkUser.first_name,
@@ -168,32 +151,38 @@
                         balance: 0,
                         experience: 0,
                         income_per_hour: companyName ? 1 : 0,
-                        invited_by: invitedBy ? parseInt(invitedBy) : null
+                        invited_by: invitedBy ? parseInt(invitedBy) : null,
+                        last_collect: now,
+                        pending_experience: 0
                     };
-
-                    debug('Создаём: company=' + (companyName || 'null') + ', role=' + (companyName ? 'Учёный' : 'null'));
 
                     var insertResult = await supabase.from('players').insert([newPlayer]);
                     if (insertResult.error) throw insertResult.error;
 
                     if (shouldGiveBonus) {
-                        debug('Начисляем бонус пригласившему...');
                         await giveReferralBonus(parseInt(invitedBy));
                     }
 
-                    debug('Готово! Перезагружаем...');
                     location.reload();
                     return;
                 }
 
                 // ========== СУЩЕСТВУЮЩИЙ ИГРОК ==========
                 currentUser = result.data;
-                debug('Найден: company=' + (currentUser.company || 'нет') + ', status=' + currentUser.status);
 
-                // Если перешёл по реферальной ссылке
+                // Проверяем новые поля (если старая таблица — добавляем)
+                if (currentUser.last_collect === undefined || currentUser.pending_experience === undefined) {
+                    var now = new Date().toISOString();
+                    await supabase
+                        .from('players')
+                        .update({ last_collect: now, pending_experience: 0 })
+                        .eq('vk_id', currentUser.vk_id);
+                    currentUser.last_collect = now;
+                    currentUser.pending_experience = 0;
+                }
+
+                // Обработка реферала
                 if (invitedBy && parseInt(invitedBy) !== currentUser.vk_id) {
-                    debug('Обрабатываем реферал...');
-                    
                     var inviterResult = await supabase
                         .from('players')
                         .select('company, status')
@@ -201,15 +190,11 @@
                         .maybeSingle();
 
                     if (inviterResult.data && inviterResult.data.company && inviterResult.data.status === 'Владелец') {
-                        var newCompany = inviterResult.data.company;
-                        
-                        if (currentUser.company !== newCompany) {
-                            debug('🔄 ПЕРЕМАНИВАЕМ в «' + newCompany + '»');
-                            
+                        if (currentUser.company !== inviterResult.data.company) {
                             await supabase
                                 .from('players')
                                 .update({
-                                    company: newCompany,
+                                    company: inviterResult.data.company,
                                     status: 'Работает',
                                     role: 'Учёный',
                                     income_per_hour: 1,
@@ -219,25 +204,90 @@
 
                             await giveReferralBonus(parseInt(invitedBy));
 
-                            currentUser.company = newCompany;
+                            currentUser.company = inviterResult.data.company;
                             currentUser.status = 'Работает';
                             currentUser.role = 'Учёный';
                             currentUser.income_per_hour = 1;
-                            
-                            debug('✅ Успешно!');
-                        } else {
-                            debug('Уже в этой компании');
                         }
-                    } else {
-                        debug('Пригласивший не владелец');
                     }
                 }
 
+                // Расчёт накопленного опыта
+                await calculatePendingExperience();
                 renderAll();
 
             } catch (error) {
-                debug('ОШИБКА: ' + (error.message || JSON.stringify(error)));
                 console.error(error);
+            }
+        }
+
+        // ================= РАСЧЁТ НАКОПЛЕННОГО ОПЫТА =================
+        async function calculatePendingExperience() {
+            if (currentUser.status !== 'Владелец') return;
+
+            // Получаем всех сотрудников
+            var empResult = await supabase
+                .from('players')
+                .select('income_per_hour')
+                .eq('company', currentUser.company)
+                .neq('status', 'Владелец');
+
+            if (empResult.error || !empResult.data.length) return;
+
+            // Общий доход в час
+            var totalPerHour = 0;
+            empResult.data.forEach(function(emp) {
+                totalPerHour += (emp.income_per_hour || 0);
+            });
+
+            // Сколько прошло часов с последнего сбора
+            var lastCollect = currentUser.last_collect ? new Date(currentUser.last_collect) : new Date();
+            var now = new Date();
+            var hoursPassed = (now - lastCollect) / (1000 * 60 * 60); // переводим миллисекунды в часы
+
+            // Накопленный опыт (округляем вниз)
+            var newPending = Math.floor((currentUser.pending_experience || 0) + totalPerHour * hoursPassed);
+
+            // Обновляем в БД
+            var nowStr = now.toISOString();
+            await supabase
+                .from('players')
+                .update({ 
+                    pending_experience: newPending,
+                    last_collect: nowStr
+                })
+                .eq('vk_id', currentUser.vk_id);
+
+            currentUser.pending_experience = newPending;
+            currentUser.last_collect = nowStr;
+        }
+
+        // ================= СБОР ОПЫТА =================
+        async function collectExperience() {
+            if (!currentUser.pending_experience || currentUser.pending_experience <= 0) {
+                alert('Пока нечего собирать! Подождите, пока сотрудники накопят опыт.');
+                return;
+            }
+
+            var collected = currentUser.pending_experience;
+            var newExp = (currentUser.experience || 0) + collected;
+
+            var result = await supabase
+                .from('players')
+                .update({ 
+                    experience: newExp,
+                    pending_experience: 0,
+                    last_collect: new Date().toISOString()
+                })
+                .eq('vk_id', currentUser.vk_id);
+
+            if (result.error) {
+                alert('Ошибка: ' + result.error.message);
+            } else {
+                currentUser.experience = newExp;
+                currentUser.pending_experience = 0;
+                alert('✅ Собрано ' + collected + ' опыта!');
+                renderAll();
             }
         }
 
@@ -254,11 +304,15 @@
                     .from('players')
                     .update({ experience: newExp })
                     .eq('vk_id', inviterVkId);
-                debug('💰 +500 опыта → ' + inviterVkId);
             }
         }
 
+        // ================= ОТРИСОВКА =================
         function renderAll() {
+            // Аватар
+            document.getElementById('header-avatar').src = currentUser.photo_200 || currentVkUser.photo_200 || 'https://vk.com/images/camera_200.png';
+            
+            // Имя и компания
             document.getElementById('player-name').textContent = currentUser.first_name + ' ' + currentUser.last_name;
             document.getElementById('balance-value').textContent = currentUser.balance || 0;
             document.getElementById('exp-value').textContent = currentUser.experience || 0;
@@ -273,20 +327,35 @@
             var statusText = document.getElementById('status-text');
             var mainBtn = document.getElementById('main-action-btn');
             var inviteBlock = document.getElementById('invite-block');
+            var collectPanel = document.getElementById('collect-panel');
 
             if (!currentUser.company || currentUser.company === 'Биржа труда') {
+                // Безработный
                 statusText.textContent = 'Вы на бирже труда. Создайте компанию!';
                 mainBtn.textContent = '🚀 Создать компанию';
                 mainBtn.className = 'btn-create';
                 mainBtn.style.display = 'block';
                 mainBtn.onclick = createCompany;
                 inviteBlock.style.display = 'none';
+                collectPanel.style.display = 'none';
                 document.getElementById('employees-panel').style.display = 'none';
             } else if (currentUser.status === 'Владелец') {
+                // Владелец
                 statusText.textContent = 'Вы владелец компании';
                 mainBtn.style.display = 'none';
                 
-                // ПРАВИЛЬНЫЙ формат ссылки с #ref_
+                // Панель сбора опыта
+                collectPanel.style.display = 'block';
+                document.getElementById('collect-amount').textContent = currentUser.pending_experience || 0;
+                
+                // Считаем общий доход в час
+                var totalRate = 0;
+                var empList = document.getElementById('employees-list');
+                // (будет посчитано в loadEmployees)
+                
+                document.getElementById('collect-btn').onclick = collectExperience;
+                
+                // Ссылка
                 var refLink = 'https://vk.com/app' + APP_ID + '#ref_' + currentUser.vk_id;
                 document.getElementById('invite-link-input').value = refLink;
                 inviteBlock.style.display = 'block';
@@ -295,14 +364,16 @@
                     var input = document.getElementById('invite-link-input');
                     input.select();
                     document.execCommand('copy');
-                    alert('✅ Ссылка скопирована!\n\nОтправь её другу в личные сообщения ВК.\n\n' + refLink);
+                    alert('✅ Ссылка скопирована! Отправь другу в личные сообщения ВК.');
                 };
                 
                 loadEmployees();
             } else {
+                // Сотрудник
                 statusText.textContent = 'Вы работаете в «' + currentUser.company + '» как ' + (currentUser.role || 'Учёный');
                 mainBtn.style.display = 'none';
                 inviteBlock.style.display = 'none';
+                collectPanel.style.display = 'none';
                 document.getElementById('employees-panel').style.display = 'none';
             }
         }
@@ -311,9 +382,16 @@
             var companyName = prompt('Введите название компании:', 'Компания ' + currentUser.first_name);
             if (!companyName) return;
 
+            var now = new Date().toISOString();
             var result = await supabase
                 .from('players')
-                .update({ company: companyName, status: 'Владелец', role: 'Владелец' })
+                .update({ 
+                    company: companyName, 
+                    status: 'Владелец', 
+                    role: 'Владелец',
+                    last_collect: now,
+                    pending_experience: 0
+                })
                 .eq('vk_id', currentUser.vk_id);
 
             if (result.error) {
@@ -343,6 +421,7 @@
             if (employees.length === 0) {
                 listEl.innerHTML = '<p style="color:#888;">Пока нет сотрудников. Отправь реферальную ссылку другу!</p>';
                 document.getElementById('total-income').textContent = '';
+                document.getElementById('collect-rate').textContent = '';
                 return;
             }
 
@@ -352,15 +431,16 @@
             employees.forEach(function(emp) {
                 totalIncome += (emp.income_per_hour || 0);
                 var item = document.createElement('div');
-                item.style.cssText = 'display:flex;align-items:center;padding:10px 0;border-bottom:1px solid #eee;';
+                item.className = 'employee-item';
                 item.innerHTML = 
-                    '<img src="' + (emp.photo_200 || 'https://vk.com/images/camera_200.png') + '" style="width:40px;height:40px;border-radius:50%;margin-right:10px;" onerror="this.src=\'https://vk.com/images/camera_200.png\'">' +
+                    '<img src="' + (emp.photo_200 || 'https://vk.com/images/camera_200.png') + '" onerror="this.src=\'https://vk.com/images/camera_200.png\'">' +
                     '<div style="flex:1;"><div style="font-weight:bold;">' + emp.first_name + ' ' + emp.last_name + '</div><div style="font-size:12px;color:#888;">🔬 ' + (emp.role || 'Учёный') + '</div></div>' +
                     '<div style="color:#4caf50;font-weight:bold;">+' + (emp.income_per_hour || 0) + ' опыта/час</div>';
                 listEl.appendChild(item);
             });
 
             document.getElementById('total-income').textContent = '📈 Общий доход: +' + totalIncome + ' опыта/час';
+            document.getElementById('collect-rate').textContent = '📈 Общий доход: +' + totalIncome + ' опыта/час от всех сотрудников';
         }
     </script>
 </body>
