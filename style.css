@@ -1,72 +1,51 @@
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; padding: 12px; padding-bottom: 20px; color: #222; }
-.card { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-
-/* Профиль */
-.profile-card { text-align: center; }
-.header-avatar { width: 64px; height: 64px; border-radius: 50%; margin-bottom: 6px; border: 3px solid #4a76a8; }
-.header h2 { font-size: 18px; font-weight: 700; }
-.clan-name { color: #ff9800; font-weight: 600; font-size: 13px; cursor: pointer; margin-top: 2px; }
-.stats { display: flex; justify-content: space-around; margin: 14px 0; }
-.stat { flex: 1; }
-.stat .value { font-size: 22px; font-weight: 700; color: #4a76a8; }
-.stat .label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
-.stat-main .value { font-size: 30px; color: #2e7d32; }
-.btn-invite-friend { width: 100%; padding: 10px; background: #e3f2fd; color: #1565c0; border: 1.5px dashed #1565c0; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; margin-top: 4px; }
-
-/* Сбор опыта */
-.collect-card { display: flex; align-items: center; justify-content: space-between; background: #e8f5e9; }
-.collect-amount { font-size: 26px; font-weight: 700; color: #2e7d32; }
-.collect-label { font-size: 13px; color: #555; margin-left: 4px; }
-.btn-collect { padding: 10px 20px; background: #4caf50; color: #fff; border: none; border-radius: 10px; font-weight: 700; font-size: 15px; cursor: pointer; }
-
-/* Вкладки */
-.tab-bar { display: flex; gap: 0; margin-bottom: 12px; }
-.tab { flex: 1; text-align: center; padding: 10px; background: #f5f5f5; cursor: pointer; font-size: 13px; font-weight: 600; border-radius: 10px 10px 0 0; transition: 0.2s; }
-.tab.active { background: #4a76a8; color: #fff; }
-.subtab { padding: 6px 16px; margin-right: 6px; background: #eee; border: none; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; }
-.subtab.active { background: #ff9800; color: #fff; }
-
-/* Сотрудники */
-.section-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; color: #333; }
-.player-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; gap: 10px; }
-.player-item:last-child { border-bottom: none; }
-.player-item img { width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; }
-.player-item .info { flex: 1; min-width: 0; }
-.player-item .name { font-weight: 600; font-size: 14px; }
-.player-item .detail { font-size: 11px; color: #888; }
-.rank { font-size: 18px; font-weight: 700; width: 28px; text-align: center; color: #ff9800; flex-shrink: 0; }
-.rank-1 { color: #ffd700; font-size: 22px; }
-.rank-2 { color: #c0c0c0; font-size: 20px; }
-.rank-3 { color: #cd7f32; font-size: 18px; }
-.lvl { background: #9c27b0; color: #fff; border-radius: 10px; padding: 2px 7px; font-size: 10px; margin-left: 4px; font-weight: 600; }
-.cost { font-size: 10px; opacity: 0.7; }
-.btn-group { display: flex; gap: 4px; flex-shrink: 0; }
-
-/* Кнопки */
-button { border: none; cursor: pointer; font-weight: 600; transition: 0.15s; }
-button:active { transform: scale(0.96); }
-.btn-hire { background: #2196f3; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 12px; }
-.btn-upgrade { background: #9c27b0; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 12px; }
-.btn-fire { background: #ff5722; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 12px; }
-.btn-steal { background: #f44336; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 12px; }
-.btn-leave { background: #f44336; color: #fff; padding: 8px 16px; border-radius: 10px; font-size: 13px; width: 100%; }
-.btn-join { background: #4caf50; color: #fff; padding: 8px 16px; border-radius: 10px; font-size: 13px; width: 100%; }
-.btn-back { background: #607d8b; color: #fff; padding: 10px; border-radius: 10px; width: 100%; margin-top: 10px; }
-.btn-load-more { background: #e0e0e0; color: #333; padding: 10px; border-radius: 10px; width: 100%; font-size: 13px; }
-.btn-create { background: #4a76a8; color: #fff; padding: 10px; border-radius: 10px; width: 100%; margin-top: 8px; }
-
-/* Модальные окна */
-.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
-.modal-content { background: #fff; border-radius: 16px; padding: 20px; width: 92%; max-height: 80%; overflow-y: auto; }
-.modal-close { float: right; font-size: 22px; cursor: pointer; color: #999; }
-.clickable { cursor: pointer; }
-
-/* Уведомления (toast) */
-#toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
-.toast { background: #333; color: #fff; padding: 10px 20px; border-radius: 25px; font-size: 13px; font-weight: 600; text-align: center; animation: slideDown 0.3s ease-out, fadeOut 0.3s 2.5s forwards; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-.toast.success { background: #4caf50; }
-.toast.error { background: #f44336; }
-.toast.info { background: #2196f3; }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes fadeOut { to { opacity: 0; } }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,sans-serif;background:#f0f2f5;padding:12px 12px 20px;color:#222}
+.card{background:#fff;border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.profile-card{text-align:center}
+.header-avatar{width:64px;height:64px;border-radius:50%;margin-bottom:6px;border:3px solid #4a76a8;cursor:pointer}
+.header h2{font-size:18px;font-weight:700}
+.clan-name{color:#ff9800;font-weight:600;font-size:13px;cursor:pointer;margin-top:2px}
+.stats{display:flex;justify-content:space-around;margin:12px 0}
+.stat{flex:1}.stat .value{font-size:22px;font-weight:700;color:#4a76a8}
+.stat .label{font-size:10px;color:#888;text-transform:uppercase}
+.stat-main .value{font-size:28px;color:#2e7d32}
+.btn-invite-friend{width:100%;padding:10px;background:#e3f2fd;color:#1565c0;border:1.5px dashed #1565c0;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;margin-top:6px}
+.collect-card{display:flex;align-items:center;justify-content:space-between;background:#e8f5e9}
+.collect-amount{font-size:26px;font-weight:700;color:#2e7d32}
+.collect-label{font-size:13px;color:#555;margin-left:4px}
+.btn-collect{padding:10px 20px;background:#4caf50;color:#fff;border:none;border-radius:10px;font-weight:700;font-size:15px;cursor:pointer}
+.tab-bar{display:flex;margin-bottom:10px}
+.tab{flex:1;text-align:center;padding:10px;background:#f5f5f5;cursor:pointer;font-size:13px;font-weight:600;border-radius:10px 10px 0 0}
+.tab.active{background:#4a76a8;color:#fff}
+.subtab{padding:6px 16px;margin-right:6px;background:#eee;border:none;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer}
+.subtab.active{background:#ff9800;color:#fff}
+.section-title{font-size:15px;font-weight:700;margin-bottom:10px}
+.player-item{display:flex;align-items:center;padding:10px 0;border-bottom:1px solid #f0f0f0;gap:10px}
+.player-item:last-child{border-bottom:none}
+.player-item img{width:42px;height:42px;border-radius:50%;flex-shrink:0;cursor:pointer}
+.player-item .info{flex:1;min-width:0;cursor:pointer}
+.player-item .name{font-weight:600;font-size:14px}
+.player-item .detail{font-size:11px;color:#888}
+.rank{font-size:18px;font-weight:700;width:28px;text-align:center;color:#ff9800;flex-shrink:0}
+.rank-1{color:#ffd700;font-size:22px}.rank-2{color:#c0c0c0;font-size:20px}.rank-3{color:#cd7f32;font-size:18px}
+.lvl{background:#9c27b0;color:#fff;border-radius:10px;padding:2px 7px;font-size:10px;margin-left:4px;font-weight:600}
+.btn-group{display:flex;gap:4px;flex-shrink:0}
+button{border:none;cursor:pointer;font-weight:600;transition:.15s}
+button:active{transform:scale(.96)}
+.btn-hire{background:#2196f3;color:#fff;padding:6px 12px;border-radius:20px;font-size:12px}
+.btn-upgrade{background:#9c27b0;color:#fff;padding:6px 12px;border-radius:20px;font-size:12px}
+.btn-fire{background:#ff5722;color:#fff;padding:6px 12px;border-radius:20px;font-size:12px}
+.btn-steal{background:#f44336;color:#fff;padding:6px 12px;border-radius:20px;font-size:12px}
+.btn-leave{background:#f44336;color:#fff;padding:8px 16px;border-radius:10px;font-size:13px;width:100%}
+.btn-join{background:#4caf50;color:#fff;padding:8px 16px;border-radius:10px;font-size:13px;width:100%}
+.btn-back{background:#607d8b;color:#fff;padding:10px;border-radius:10px;width:100%;margin-top:10px}
+.btn-load-more{background:#e0e0e0;color:#333;padding:10px;border-radius:10px;width:100%;font-size:13px}
+.btn-create{background:#4a76a8;color:#fff;padding:10px;border-radius:10px;width:100%;margin-top:8px}
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1000;justify-content:center;align-items:center}
+.modal-content{background:#fff;border-radius:16px;padding:20px;width:92%;max-height:80%;overflow-y:auto}
+.modal-close{float:right;font-size:22px;cursor:pointer;color:#999}
+#toast-container{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{background:#333;color:#fff;padding:10px 20px;border-radius:25px;font-size:13px;font-weight:600;text-align:center;animation:slideDown .3s ease-out,fadeOut .3s 2.5s forwards;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.toast.success{background:#4caf50}.toast.error{background:#f44336}.toast.info{background:#2196f3}
+@keyframes slideDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeOut{to{opacity:0}}
