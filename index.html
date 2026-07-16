@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Корпоративные Игры v22</title>
+    <title>Корпоративные Игры v23</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <link rel="stylesheet" href="style.css">
@@ -13,13 +13,13 @@
     <div id="toast-container"></div>
     
     <div id="app">
-        <!-- Навигация (2 кнопки слева) -->
+        <!-- Навигация -->
         <div class="nav-bar" id="nav-bar">
             <div class="nav-btn" id="nav-top" onclick="goTo('top')">🏆<br>Топ</div>
-            <div class="nav-btn" id="nav-clans" onclick="goTo('clans')">🏢<br>Кланы</div>
+            <div class="nav-btn" id="nav-companies" onclick="goTo('companies')">🏢<br>Компании</div>
         </div>
 
-        <!-- Экран Профиль -->
+        <!-- Профиль -->
         <div id="screen-profile" class="screen active">
             <div class="card profile-card">
                 <div class="header">
@@ -27,14 +27,17 @@
                     <h2 id="player-name">Загрузка...</h2>
                     <button class="btn-quit-job" id="quit-job-btn" style="display:none;">🚪 Уволиться</button>
                     <div id="owner-info"></div>
-                    <div class="clan-name" id="clan-display"></div>
+                    <div class="company-name-display" id="company-display"></div>
                 </div>
                 <div class="stats">
                     <div class="stat stat-main"><div class="value" id="exp-value">0</div><div class="label">⭐ Опыт</div></div>
                     <div class="stat"><div class="value" id="my-employees-count">0</div><div class="label">👥 Сотрудники</div></div>
                     <div class="stat"><div class="value" id="my-income">0</div><div class="label">📈 Доход/час</div></div>
                 </div>
-                <button class="btn-invite-friend" id="invite-friend-btn">📨 Пригласить друга</button>
+                <div style="display:flex;gap:6px;margin-top:6px;">
+                    <button class="btn-invite-friend" id="invite-friend-btn" style="flex:1;">📨 Пригласить</button>
+                    <button class="btn-settings" id="settings-btn" onclick="openSettings()">⚙️</button>
+                </div>
             </div>
             <div class="card collect-card" id="collect-panel" style="display:none;">
                 <div class="collect-info"><span class="collect-amount" id="collect-amount">0</span><span class="collect-label">опыта готово</span></div>
@@ -45,28 +48,37 @@
                 <div id="my-team-list"><p style="color:#aaa;text-align:center;">Загрузка...</p></div>
                 <button class="btn-load-more" id="load-more-btn" style="display:none;">📥 Загрузить ещё</button>
             </div>
-            <div class="card" id="clan-card" style="display:none;">
+            <div class="card" id="company-card" style="display:none;">
                 <p id="status-text"></p>
-                <button class="btn-leave" id="leave-clan-btn" style="display:none;">🚪 Выйти из клана</button>
+                <button class="btn-leave" id="leave-company-btn" style="display:none;">🚪 Выйти из компании</button>
             </div>
         </div>
 
-        <!-- Экран Топ -->
+        <!-- Топ -->
         <div id="screen-top" class="screen">
             <div class="card">
                 <div class="subtab-bar">
                     <button class="subtab active" id="subtab-players" onclick="switchTopSubtab('players')">👤 Игроки</button>
-                    <button class="subtab" id="subtab-clans" onclick="switchTopSubtab('clans')">🏢 Кланы</button>
+                    <button class="subtab" id="subtab-companies" onclick="switchTopSubtab('companies')">🏢 Компании</button>
                 </div>
                 <div id="top-content"></div>
             </div>
         </div>
 
-        <!-- Экран Кланы -->
-        <div id="screen-clans" class="screen">
+        <!-- Компании -->
+        <div id="screen-companies" class="screen">
             <div class="card">
-                <div class="section-title">🏢 Все кланы</div>
-                <div id="clans-content"></div>
+                <div class="section-title">🏢 Все компании</div>
+                <div id="companies-content"></div>
+            </div>
+        </div>
+
+        <!-- Моя компания -->
+        <div id="screen-my-company" class="screen">
+            <div class="card">
+                <div class="section-title">🏢 <span id="my-company-name"></span></div>
+                <p id="my-company-stats"></p>
+                <div id="my-company-members"></div>
             </div>
         </div>
     </div>
@@ -84,16 +96,28 @@
         </div>
     </div>
 
-    <!-- Модалка клана -->
-    <div class="modal" id="clan-modal">
+    <!-- Модалка компании -->
+    <div class="modal" id="company-modal">
         <div class="modal-content">
-            <span class="modal-close" onclick="closeClanModal()">✕</span>
-            <h2 id="modal-clan-name"></h2>
-            <p id="modal-clan-stats"></p>
-            <div id="modal-clan-members"></div>
+            <span class="modal-close" onclick="closeCompanyModal()">✕</span>
+            <h2 id="modal-company-name"></h2>
+            <p id="modal-company-stats"></p>
+            <div id="modal-company-members"></div>
             <button class="btn-join" id="modal-join-btn" style="display:none;">✅ Вступить (бесплатно)</button>
-            <button class="btn-leave" id="modal-leave-btn" style="display:none;">🚪 Выйти из клана</button>
-            <button class="btn-back" onclick="closeClanModal()">🔙 Закрыть</button>
+            <button class="btn-leave" id="modal-leave-btn" style="display:none;">🚪 Выйти из компании</button>
+            <button class="btn-back" onclick="closeCompanyModal()">🔙 Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Модалка настроек -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeSettings()">✕</span>
+            <h2>⚙️ Настройки</h2>
+            <p style="margin:10px 0;color:#aaa;">Промокод можно ввести только 1 раз</p>
+            <input type="text" id="promo-input" placeholder="Введите промокод" style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#fff;font-size:14px;margin-bottom:8px;">
+            <button class="btn-collect" id="promo-go-btn" style="width:100%;">🎁 Применить</button>
+            <button class="btn-back" onclick="closeSettings()" style="margin-top:8px;">🔙 Закрыть</button>
         </div>
     </div>
 
