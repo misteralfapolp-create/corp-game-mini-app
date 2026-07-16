@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Корпоративные Игры v24</title>
+    <title>Корпоративные Игры</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <link rel="stylesheet" href="style.css">
@@ -15,7 +15,7 @@
     <div id="app">
         <div class="nav-bar" id="nav-bar">
             <div class="nav-btn" id="nav-top" onclick="goTo('top')">🏆<br>Топ</div>
-            <div class="nav-btn" id="nav-companies" onclick="goTo('companies')">🏢<br>Компании</div>
+            <div class="nav-btn" id="nav-mycompany" onclick="goTo('my-company')">🏢<br>Моя компания</div>
         </div>
 
         <!-- Профиль -->
@@ -60,21 +60,13 @@
             </div>
         </div>
 
-        <!-- Компании -->
-        <div id="screen-companies" class="screen">
-            <div class="card">
-                <div class="section-title">🏢 Все компании</div>
-                <div id="companies-content"></div>
-            </div>
-        </div>
-
         <!-- Моя компания -->
         <div id="screen-my-company" class="screen">
             <div class="card">
                 <div class="section-title">🏢 <span id="my-company-name"></span></div>
                 <p id="my-company-stats"></p>
                 <div id="my-company-members"></div>
-                <button class="btn-leave" id="my-company-leave-btn" style="display:none;">🚪 Выйти из компании</button>
+                <button class="btn-leave" id="my-company-leave-btn" style="display:none;">🚪 Выйти из компании (бесплатно)</button>
             </div>
         </div>
     </div>
@@ -101,7 +93,7 @@
             <p id="modal-company-stats"></p>
             <div id="modal-company-members"></div>
             <button class="btn-join" id="modal-join-btn" style="display:none;">✅ Вступить (бесплатно)</button>
-            <button class="btn-leave" id="modal-leave-btn" style="display:none;">🚪 Выйти из компании</button>
+            <button class="btn-leave" id="modal-leave-btn" style="display:none;">🚪 Выйти из компании (бесплатно)</button>
             <button class="btn-back" onclick="closeCompanyModal()">🔙 Закрыть</button>
         </div>
     </div>
