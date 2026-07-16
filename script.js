@@ -120,16 +120,13 @@ async function loadTopCompaniesScreen(){
     if(r.error){c.innerHTML='Ошибка';return}
     var comps={};r.data.forEach(function(p){if(!p.company)return;if(!comps[p.company])comps[p.company]={name:p.company,totalExp:0,count:0,groupId:p.company_group_id};comps[p.company].totalExp+=(p.experience||0);comps[p.company].count++});
     var sorted=Object.values(comps).sort(function(a,b){return b.totalExp-a.totalExp});
-    c.innerHTML='';if(!sorted.length){c.innerHTML='<p style="color:#aaa;">Компаний пока нет</p>';return}
+    c.innerHTML='';if(!sorted.length){c.innerHTML='<p style="color:#aaa;">Компаний пока нет</p>'}
     sorted.forEach(function(co,i){
         var isMine=co.name===currentUser.company;
         var div=document.createElement('div');div.className='player-item';div.style.background=isMine?'rgba(76,175,80,0.1)':'';
-        var groupIcon = co.groupId ? ' 📱' : '';
+        var groupIcon=co.groupId?' 📱':'';
         div.innerHTML='<div style="font-weight:700;width:25px;">'+(i+1)+'.</div><div class="info"><div class="name">'+co.name+groupIcon+(isMine?' ⭐':'')+'</div><div class="detail">👥 '+co.count+' уч. • ⭐'+co.totalExp+' опыта</div></div>';
-        div.onclick=function(){
-            if(co.groupId) window.open('https://vk.com/club'+co.groupId, '_blank');
-            openCompanyModal(co.name);
-        };
+        div.onclick=function(){if(co.groupId)window.open('https://vk.com/club'+co.groupId,'_blank');openCompanyModal(co.name)};
         c.appendChild(div);
     });
     if(!currentUser.company){var btn=document.createElement('button');btn.className='btn-create';btn.textContent='🚀 Создать компанию';btn.onclick=createCompany;c.appendChild(btn)}
@@ -137,41 +134,30 @@ async function loadTopCompaniesScreen(){
 
 // ================= МОЯ КОМПАНИЯ =================
 async function loadMyCompanyScreen(){
-    if(!currentUser.company){toast('Вы не в компании!','info');goTo('profile');return}
+    if(!currentUser.company){
+        document.getElementById('my-company-name').textContent='У вас нет компании';
+        document.getElementById('my-company-stats').textContent='';
+        document.getElementById('my-company-members').innerHTML='<p style="color:#aaa;text-align:center;margin:20px 0;">Создайте свою компанию и приглашайте друзей!</p><button class="btn-create" onclick="createCompany()">🚀 Создать компанию</button>';
+        document.getElementById('my-company-leave-btn').style.display='none';
+        return;
+    }
     document.getElementById('my-company-name').textContent=currentUser.company;
-    if(currentUser.company_group_id){
-        document.getElementById('my-company-name').innerHTML += ' <a href="https://vk.com/club'+currentUser.company_group_id+'" target="_blank" style="color:#4a76a8;font-size:12px;">📱 Группа</a>';
-    }
+    if(currentUser.company_group_id){document.getElementById('my-company-name').innerHTML+=' <a href="https://vk.com/club'+currentUser.company_group_id+'" target="_blank" style="color:#4a76a8;font-size:12px;">📱 Группа</a>'}
     var r=await supabase.from('players').select('*').eq('company',currentUser.company).order('experience',{ascending:false});
-    if(r.data){
-        document.getElementById('my-company-stats').textContent='👥 '+r.data.length+' сотрудников';
-        var list=document.getElementById('my-company-members');list.innerHTML='';
-        r.data.forEach(function(p,i){var div=document.createElement('div');div.className='player-item';div.innerHTML='<div style="font-weight:700;width:25px;">'+(i+1)+'.</div><img src="'+(p.photo_200||'https://vk.com/images/camera_200.png')+'" onerror="this.src=\'https://vk.com/images/camera_200.png\'"><div class="info" onclick="openPlayerModalById('+p.vk_id+')"><div class="name">'+p.first_name+' '+p.last_name+'</div><div class="detail">⭐'+(p.experience||0)+'</div></div>';list.appendChild(div)});
-    }
+    if(r.data){document.getElementById('my-company-stats').textContent='👥 '+r.data.length+' сотрудников';var list=document.getElementById('my-company-members');list.innerHTML='';r.data.forEach(function(p,i){var div=document.createElement('div');div.className='player-item';div.innerHTML='<div style="font-weight:700;width:25px;">'+(i+1)+'.</div><img src="'+(p.photo_200||'https://vk.com/images/camera_200.png')+'" onerror="this.src=\'https://vk.com/images/camera_200.png\'"><div class="info" onclick="openPlayerModalById('+p.vk_id+')"><div class="name">'+p.first_name+' '+p.last_name+'</div><div class="detail">⭐'+(p.experience||0)+'</div></div>';list.appendChild(div)})}
     document.getElementById('my-company-leave-btn').style.display='block';
-    document.getElementById('my-company-leave-btn').onclick=async function(){
-        await supabase.from('players').update({company:null,company_group_id:null}).eq('vk_id',currentUser.vk_id);
-        currentUser.company=null;currentUser.company_group_id=null;
-        toast('Вышли из компании','info');goTo('profile');location.reload();
-    };
+    document.getElementById('my-company-leave-btn').onclick=async function(){await supabase.from('players').update({company:null,company_group_id:null}).eq('vk_id',currentUser.vk_id);currentUser.company=null;currentUser.company_group_id=null;toast('Вышли из компании','info');goTo('profile');location.reload()}
 }
 
 // ================= СОЗДАНИЕ КОМПАНИИ =================
 async function createCompany(){
-    var name = prompt('Введите название компании:', 'Компания ' + currentUser.first_name);
+    var name=prompt('Введите название компании:','Компания '+currentUser.first_name);
     if(!name)return;
-    
-    var groupId = prompt('Введите ID группы ВК (число из адреса vk.com/clubXXXX) или нажмите Отмена, если нет группы:', '');
-    var finalGroupId = groupId && !isNaN(parseInt(groupId)) ? parseInt(groupId) : null;
-    
-    await supabase.from('players').update({
-        company: name,
-        company_group_id: finalGroupId
-    }).eq('vk_id', currentUser.vk_id);
-    currentUser.company = name;
-    currentUser.company_group_id = finalGroupId;
-    toast('✅ Компания «' + name + '» создана!', 'success');
-    location.reload();
+    var groupId=prompt('Введите ID группы ВК (число из vk.com/clubXXXX) или 0 если нет группы:','0');
+    var finalGroupId=groupId&&!isNaN(parseInt(groupId))&&parseInt(groupId)>0?parseInt(groupId):null;
+    await supabase.from('players').update({company:name,company_group_id:finalGroupId}).eq('vk_id',currentUser.vk_id);
+    currentUser.company=name;currentUser.company_group_id=finalGroupId;
+    toast('✅ Компания «'+name+'» создана!','success');location.reload();
 }
 
 // ================= МОДАЛКА ИГРОКА =================
@@ -200,14 +186,11 @@ function closePlayerModal(){document.getElementById('player-modal').style.displa
 async function openCompanyModal(name){
     var r0=await supabase.from('players').select('company,company_group_id').eq('company',name).limit(1);
     var groupId=(r0.data&&r0.data.length>0)?r0.data[0].company_group_id:null;
-    
     document.getElementById('company-modal').style.display='flex';
     document.getElementById('modal-company-name').innerHTML='🏢 '+name;
     if(groupId)document.getElementById('modal-company-name').innerHTML+=' <a href="https://vk.com/club'+groupId+'" target="_blank" style="color:#4a76a8;font-size:13px;">📱</a>';
-    
     var r=await supabase.from('players').select('*').eq('company',name);
-    if(r.data){document.getElementById('modal-company-stats').textContent='👥 '+r.data.length+' сотрудников';var list=document.getElementById('modal-company-members');list.innerHTML='';
-        r.data.forEach(function(p){var div=document.createElement('div');div.className='player-item';div.innerHTML='<img src="'+(p.photo_200||'https://vk.com/images/camera_200.png')+'" onerror="this.src=\'https://vk.com/images/camera_200.png\'"><div class="info" onclick="closeCompanyModal();openPlayerModalById('+p.vk_id+')"><div class="name">'+p.first_name+' '+p.last_name+'</div><div class="detail">⭐'+(p.experience||0)+'</div></div>';list.appendChild(div)});
+    if(r.data){document.getElementById('modal-company-stats').textContent='👥 '+r.data.length+' сотрудников';var list=document.getElementById('modal-company-members');list.innerHTML='';r.data.forEach(function(p){var div=document.createElement('div');div.className='player-item';div.innerHTML='<img src="'+(p.photo_200||'https://vk.com/images/camera_200.png')+'" onerror="this.src=\'https://vk.com/images/camera_200.png\'"><div class="info" onclick="closeCompanyModal();openPlayerModalById('+p.vk_id+')"><div class="name">'+p.first_name+' '+p.last_name+'</div><div class="detail">⭐'+(p.experience||0)+'</div></div>';list.appendChild(div)});
         var jb=document.getElementById('modal-join-btn'),lb=document.getElementById('modal-leave-btn');jb.style.display='none';lb.style.display='none';
         if(currentUser.company===name){lb.style.display='block';lb.textContent='🚪 Выйти из компании (бесплатно)';lb.onclick=async function(){await supabase.from('players').update({company:null,company_group_id:null}).eq('vk_id',currentUser.vk_id);currentUser.company=null;currentUser.company_group_id=null;toast('Вышли из компании','info');closeCompanyModal();location.reload()}}
         else{jb.style.display='block';jb.onclick=async function(){await supabase.from('players').update({company:name}).eq('vk_id',currentUser.vk_id);currentUser.company=name;toast('✅ Вступили!','success');closeCompanyModal();location.reload()}}}
@@ -238,10 +221,7 @@ function renderAll(){
     document.getElementById('player-name').textContent=currentUser.first_name+' '+currentUser.last_name;
     document.getElementById('exp-value').textContent=currentUser.experience||0;
     var compEl=document.getElementById('company-display');
-    if(currentUser.company){
-        var groupLink=currentUser.company_group_id?' <a href="https://vk.com/club'+currentUser.company_group_id+'" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>':'';
-        compEl.innerHTML='🏢 <span style="cursor:pointer;" onclick="goTo(\'my-company\')">'+currentUser.company+'</span>'+groupLink;
-    }else{compEl.textContent=''}
+    if(currentUser.company){var groupLink=currentUser.company_group_id?' <a href="https://vk.com/club'+currentUser.company_group_id+'" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>':'';compEl.innerHTML='🏢 <span style="cursor:pointer;" onclick="goTo(\'my-company\')">'+currentUser.company+'</span>'+groupLink}else{compEl.textContent=''}
     document.getElementById('collect-panel').style.display=myTeamTotal?'flex':'none';
     if(myTeamTotal){document.getElementById('collect-amount').textContent=currentUser.pending_experience||0;document.getElementById('collect-btn').onclick=collectExperience}
     document.getElementById('invite-friend-btn').onclick=copyInviteLink;
