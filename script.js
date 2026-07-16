@@ -149,15 +149,72 @@ async function loadMyCompanyScreen(){
     document.getElementById('my-company-leave-btn').onclick=async function(){await supabase.from('players').update({company:null,company_group_id:null}).eq('vk_id',currentUser.vk_id);currentUser.company=null;currentUser.company_group_id=null;toast('Вышли из компании','info');goTo('profile');location.reload()}
 }
 
-// ================= СОЗДАНИЕ КОМПАНИИ =================
+
+// ================= СОЗДАНИЕ КОМПАНИИ (выбор группы через VK) =================
 async function createCompany(){
-    var name=prompt('Введите название компании:','Компания '+currentUser.first_name);
-    if(!name)return;
-    var groupId=prompt('Введите ID группы ВК (число из vk.com/clubXXXX) или 0 если нет группы:','0');
-    var finalGroupId=groupId&&!isNaN(parseInt(groupId))&&parseInt(groupId)>0?parseInt(groupId):null;
-    await supabase.from('players').update({company:name,company_group_id:finalGroupId}).eq('vk_id',currentUser.vk_id);
-    currentUser.company=name;currentUser.company_group_id=finalGroupId;
-    toast('✅ Компания «'+name+'» создана!','success');location.reload();
+    var name = prompt('Введите название компании:', 'Компания ' + currentUser.first_name);
+    if(!name) return;
+    
+    try {
+        // Запрашиваем список групп через VK Bridge (нативный диалог)
+        var result = await vkBridge.send('VKWebAppGetCommunityAuthToken', {
+            app_id: parseInt(APP_ID),
+            scope: 'manage'
+        });
+        
+        if(result.groups && result.groups.length > 0){
+            // Создаём массив для выбора
+            var groupNames = result.groups.map(function(g, i){
+                return (i+1) + '. ' + g.name;
+            }).join('\n');
+            
+            var choice = prompt('Выберите группу (введите номер):\n\n' + groupNames + '\n\n0. Без группы');
+            if(choice === null) return;
+            
+            var idx = parseInt(choice) - 1;
+            var finalGroupId = null;
+            
+            if(idx >= 0 && idx < result.groups.length){
+                finalGroupId = result.groups[idx].id;
+            }
+            
+            await supabase.from('players').update({
+                company: name,
+                company_group_id: finalGroupId
+            }).eq('vk_id', currentUser.vk_id);
+            
+            currentUser.company = name;
+            currentUser.company_group_id = finalGroupId;
+            toast('✅ Компания «' + name + '» создана!', 'success');
+            location.reload();
+        } else {
+            // Нет групп — создаём без привязки
+            await supabase.from('players').update({
+                company: name,
+                company_group_id: null
+            }).eq('vk_id', currentUser.vk_id);
+            
+            currentUser.company = name;
+            currentUser.company_group_id = null;
+            toast('✅ Компания «' + name + '» создана!', 'success');
+            location.reload();
+        }
+    } catch(e) {
+        // Если VK Bridge не сработал — ручной ввод ID
+        console.log('Не удалось получить группы через VK:', e);
+        var groupId = prompt('VK не показал группы. Введите ID группы (число) или 0:', '0');
+        var finalGroupId = groupId && parseInt(groupId) > 0 ? parseInt(groupId) : null;
+        
+        await supabase.from('players').update({
+            company: name,
+            company_group_id: finalGroupId
+        }).eq('vk_id', currentUser.vk_id);
+        
+        currentUser.company = name;
+        currentUser.company_group_id = finalGroupId;
+        toast('✅ Компания «' + name + '» создана!', 'success');
+        location.reload();
+    }
 }
 
 // ================= МОДАЛКА ИГРОКА =================
