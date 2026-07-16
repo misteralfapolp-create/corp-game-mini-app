@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Корпоративные Игры v21</title>
+    <title>Корпоративные Игры v22</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <link rel="stylesheet" href="style.css">
@@ -13,21 +13,20 @@
     <div id="toast-container"></div>
     
     <div id="app">
-        <!-- Навигация (квадраты слева) -->
-        <div class="nav-bar">
-            <div class="nav-btn active" id="nav-profile" onclick="goTo('profile')">🏠<br>Профиль</div>
+        <!-- Навигация (2 кнопки слева) -->
+        <div class="nav-bar" id="nav-bar">
             <div class="nav-btn" id="nav-top" onclick="goTo('top')">🏆<br>Топ</div>
             <div class="nav-btn" id="nav-clans" onclick="goTo('clans')">🏢<br>Кланы</div>
         </div>
 
-        <!-- Главный экран (профиль) -->
+        <!-- Экран Профиль -->
         <div id="screen-profile" class="screen active">
-            <div class="card profile-card" id="profile-card">
+            <div class="card profile-card">
                 <div class="header">
                     <img id="header-avatar" class="header-avatar" src="" alt="Аватар" onclick="openVkProfile()">
                     <h2 id="player-name">Загрузка...</h2>
                     <button class="btn-quit-job" id="quit-job-btn" style="display:none;">🚪 Уволиться</button>
-                    <div id="owner-info" style="font-size:12px;color:#f44336;margin-top:4px;"></div>
+                    <div id="owner-info"></div>
                     <div class="clan-name" id="clan-display"></div>
                 </div>
                 <div class="stats">
@@ -37,21 +36,15 @@
                 </div>
                 <button class="btn-invite-friend" id="invite-friend-btn">📨 Пригласить друга</button>
             </div>
-
-            <!-- Сбор опыта -->
             <div class="card collect-card" id="collect-panel" style="display:none;">
                 <div class="collect-info"><span class="collect-amount" id="collect-amount">0</span><span class="collect-label">опыта готово</span></div>
                 <button class="btn-collect" id="collect-btn">🔄 Собрать</button>
             </div>
-
-            <!-- Мои сотрудники -->
             <div class="card">
                 <div class="section-title">👥 Мои сотрудники (<span id="my-team-total">0</span>)</div>
                 <div id="my-team-list"><p style="color:#aaa;text-align:center;">Загрузка...</p></div>
                 <button class="btn-load-more" id="load-more-btn" style="display:none;">📥 Загрузить ещё</button>
             </div>
-
-            <!-- Клан -->
             <div class="card" id="clan-card" style="display:none;">
                 <p id="status-text"></p>
                 <button class="btn-leave" id="leave-clan-btn" style="display:none;">🚪 Выйти из клана</button>
@@ -85,6 +78,7 @@
             <div id="modal-player-header"></div>
             <p id="modal-player-stats"></p>
             <button class="btn-hire" id="modal-hire-btn" style="display:none;">💼 Нанять</button>
+            <button class="btn-leave" id="modal-fire-btn" style="display:none;">🔥 Уволить</button>
             <div id="modal-player-employees"></div>
             <button class="btn-back" onclick="closePlayerModal()">🔙 Закрыть</button>
         </div>
