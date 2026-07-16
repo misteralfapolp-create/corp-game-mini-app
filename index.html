@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Корпоративные Игры v23</title>
+    <title>Корпоративные Игры v24</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <link rel="stylesheet" href="style.css">
@@ -13,7 +13,6 @@
     <div id="toast-container"></div>
     
     <div id="app">
-        <!-- Навигация -->
         <div class="nav-bar" id="nav-bar">
             <div class="nav-btn" id="nav-top" onclick="goTo('top')">🏆<br>Топ</div>
             <div class="nav-btn" id="nav-companies" onclick="goTo('companies')">🏢<br>Компании</div>
@@ -35,7 +34,7 @@
                     <div class="stat"><div class="value" id="my-income">0</div><div class="label">📈 Доход/час</div></div>
                 </div>
                 <div style="display:flex;gap:6px;margin-top:6px;">
-                    <button class="btn-invite-friend" id="invite-friend-btn" style="flex:1;">📨 Пригласить</button>
+                    <button class="btn-invite-friend" id="invite-friend-btn" style="flex:1;">📨 Пригласить (+500)</button>
                     <button class="btn-settings" id="settings-btn" onclick="openSettings()">⚙️</button>
                 </div>
             </div>
@@ -47,10 +46,6 @@
                 <div class="section-title">👥 Мои сотрудники (<span id="my-team-total">0</span>)</div>
                 <div id="my-team-list"><p style="color:#aaa;text-align:center;">Загрузка...</p></div>
                 <button class="btn-load-more" id="load-more-btn" style="display:none;">📥 Загрузить ещё</button>
-            </div>
-            <div class="card" id="company-card" style="display:none;">
-                <p id="status-text"></p>
-                <button class="btn-leave" id="leave-company-btn" style="display:none;">🚪 Выйти из компании</button>
             </div>
         </div>
 
@@ -79,6 +74,7 @@
                 <div class="section-title">🏢 <span id="my-company-name"></span></div>
                 <p id="my-company-stats"></p>
                 <div id="my-company-members"></div>
+                <button class="btn-leave" id="my-company-leave-btn" style="display:none;">🚪 Выйти из компании</button>
             </div>
         </div>
     </div>
@@ -88,6 +84,7 @@
         <div class="modal-content">
             <span class="modal-close" onclick="closePlayerModal()">✕</span>
             <div id="modal-player-header"></div>
+            <div id="modal-player-owner" style="margin:6px 0;"></div>
             <p id="modal-player-stats"></p>
             <button class="btn-hire" id="modal-hire-btn" style="display:none;">💼 Нанять</button>
             <button class="btn-leave" id="modal-fire-btn" style="display:none;">🔥 Уволить</button>
@@ -109,7 +106,7 @@
         </div>
     </div>
 
-    <!-- Модалка настроек -->
+    <!-- Настройки -->
     <div class="modal" id="settings-modal">
         <div class="modal-content">
             <span class="modal-close" onclick="closeSettings()">✕</span>
