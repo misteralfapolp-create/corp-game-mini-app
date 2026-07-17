@@ -208,16 +208,34 @@ async function loadMyCompanyScreen(){
     document.getElementById('my-company-leave-btn').onclick=async function(){await supabase.from('players').update({company:null,company_group_id:null,company_photo:null}).eq('vk_id',currentUser.vk_id);currentUser.company=null;currentUser.company_group_id=null;currentUser.company_photo=null;toast('Вышли из компании','info');goTo('profile');location.reload()}
 }
 
-// ================= СОЗДАНИЕ КОМПАНИИ (через VKWebAppGetCommunityAuthToken) =================
+// ================= СОЗДАНИЕ КОМПАНИИ (с запросом прав) =================
 async function createCompany(){
     try {
-        // Пробуем получить группы через VK Bridge (упрощённый метод)
-        var result = await vkBridge.send('VKWebAppGetCommunityAuthToken', {
-            app_id: parseInt(APP_ID)
+        // Шаг 1: Запрашиваем права на доступ к группам
+        var authResult = await vkBridge.send('VKWebAppGetAuthToken', {
+            app_id: parseInt(APP_ID),
+            scope: 'groups,photos'
         });
         
-        if(result.groups && result.groups.length > 0){
-            var groups = result.groups;
+        if (!authResult.access_token) {
+            showManualCompanyCreate('Не удалось получить права доступа.');
+            return;
+        }
+        
+        // Шаг 2: Получаем список групп через API с токеном
+        var groupsResult = await vkBridge.send('VKWebAppCallAPIMethod', {
+            method: 'groups.get',
+            params: {
+                filter: 'admin',
+                extended: 1,
+                fields: 'photo_200',
+                access_token: authResult.access_token,
+                v: '5.199'
+            }
+        });
+        
+        if (groupsResult.response && groupsResult.response.items && groupsResult.response.items.length > 0) {
+            var groups = groupsResult.response.items;
             var modal = document.getElementById('company-modal');
             modal.style.display = 'flex';
             document.getElementById('modal-company-name').textContent = '🚀 Выберите группу';
@@ -232,17 +250,17 @@ async function createCompany(){
                 div.style.cursor = 'pointer';
                 div.innerHTML = 
                     '<img src="' + (g.photo_200 || 'https://vk.com/images/camera_200.png') + '" style="width:42px;height:42px;border-radius:50%;" onerror="this.src=\'https://vk.com/images/camera_200.png\'">' +
-                    '<div class="info"><div class="name">' + (g.name || 'Группа #' + g.id) + '</div><div class="detail">ID: ' + g.id + '</div></div>';
+                    '<div class="info"><div class="name">' + g.name + '</div><div class="detail">👥 ' + (g.members_count || 0) + ' подписчиков • vk.com/club' + g.id + '</div></div>';
                 div.onclick = async function(){
                     await supabase.from('players').update({
-                        company: g.name || ('Группа ' + g.id),
+                        company: g.name,
                         company_group_id: g.id,
                         company_photo: g.photo_200 || ''
                     }).eq('vk_id', currentUser.vk_id);
-                    currentUser.company = g.name || ('Группа ' + g.id);
+                    currentUser.company = g.name;
                     currentUser.company_group_id = g.id;
                     currentUser.company_photo = g.photo_200 || '';
-                    toast('✅ Компания «' + (g.name || 'Группа ' + g.id) + '» создана!', 'success');
+                    toast('✅ Компания «' + g.name + '» создана!', 'success');
                     closeCompanyModal();
                     location.reload();
                 };
@@ -259,27 +277,26 @@ async function createCompany(){
             list.appendChild(closeBtn);
             
         } else {
-            // Если групп нет — показываем ручной ввод
-            showManualCompanyCreate();
+            showManualCompanyCreate('У вас нет групп в управлении.');
         }
     } catch(e) {
-        console.log('VK Bridge error:', e);
-        // Если VK Bridge не сработал — показываем ручной ввод
-        showManualCompanyCreate();
+        console.log('Error:', e);
+        showManualCompanyCreate('Ошибка при получении групп. Попробуйте снова.');
     }
 }
 
-function showManualCompanyCreate(){
+function showManualCompanyCreate(message){
     var modal = document.getElementById('company-modal');
     modal.style.display = 'flex';
     document.getElementById('modal-company-name').textContent = '🚀 Создать компанию';
-    document.getElementById('modal-company-stats').textContent = 'Введите данные компании';
+    document.getElementById('modal-company-stats').textContent = message;
     
     var list = document.getElementById('modal-company-members');
     list.innerHTML = 
-        '<p style="color:#aaa;text-align:center;">Не удалось получить список групп автоматически.</p>' +
+        '<p style="color:#aaa;text-align:center;">Можно создать компанию вручную:</p>' +
         '<input type="text" id="manual-company-name" placeholder="Название компании" style="width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#fff;">' +
-        '<input type="text" id="manual-company-group" placeholder="ID группы (необязательно)" style="width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#fff;">' +
+        '<input type="text" id="manual-company-group" placeholder="ID группы ВК (например: 240295160)" style="width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#fff;">' +
+        '<p style="font-size:11px;color:#888;">ID группы можно найти в адресе: vk.com/club<u>123456</u></p>' +
         '<button class="btn-create" id="manual-create-btn">✅ Создать</button>' +
         '<button class="btn-back" onclick="closeCompanyModal()" style="margin-top:8px;">🔙 Отмена</button>';
     
