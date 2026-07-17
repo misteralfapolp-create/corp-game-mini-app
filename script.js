@@ -97,10 +97,18 @@ async function updateAllStats(){
         var myCost=currentUser.hire_cost||100;
         quitBtn.textContent='🚪 Уволиться ('+myCost+' опыта)';
         quitBtn.onclick=async function(){
-            if((currentUser.experience||0)<myCost){toast('Недостаточно опыта!','error');return}
-            await supabase.from('players').update({experience:Math.max(0,(currentUser.experience||0)-myCost),owner_id:null,status:'Биржа труда',role:null}).eq('vk_id',currentUser.vk_id);
-            currentUser.experience=Math.max(0,(currentUser.experience||0)-myCost);currentUser.owner_id=null;currentUser.status='Биржа труда';
-            toast('Вы уволились!','info');location.reload();
+            if((currentUser.experience||0)<myCost){toast('Недостаточно опыта! Нужно '+myCost,'error');return}
+            await supabase.from('players').update({
+                experience: Math.max(0, (currentUser.experience||0) - myCost),
+                owner_id: null,
+                status: 'Биржа труда',
+                role: null,
+                income_per_hour: 0,
+                level: 1,
+                hire_cost: 100
+            }).eq('vk_id', currentUser.vk_id);
+            toast('Вы уволились! -'+myCost+' опыта','info');
+            location.reload();
         };
         var owner=await supabase.from('players').select('first_name,last_name,vk_id').eq('vk_id',currentUser.owner_id).maybeSingle();
         if(owner.data)ownerInfo.innerHTML='🔒 Нанят: <b onclick="openPlayerModalById('+owner.data.vk_id+')" style="cursor:pointer;text-decoration:underline;">'+owner.data.first_name+' '+owner.data.last_name+'</b>';
@@ -215,23 +223,22 @@ function openPlayerModal(player){
     var isInMyChain=false;
     if(currentUser.owner_id&&player.vk_id===currentUser.owner_id)isInMyChain=true;
     
-    // НАНЯТЬ: только если игрок на бирже, не я сам, не мой владелец, не в цепочке
+    // НАНЯТЬ
     if((!player.owner_id||player.status==='Биржа труда')&&player.vk_id!==currentUser.vk_id&&!isMyOwner&&!isInMyChain){
         var hireCost=player.hire_cost||100;
         hireBtn.style.display='block';
         hireBtn.textContent='💼 Нанять за '+hireCost+' опыта';
         hireBtn.onclick=async function(){
             if((currentUser.experience||0)<hireCost){toast('Недостаточно опыта!','error');return}
-            // Только списываем стоимость найма, НЕ прибавляем опыт
             await supabase.from('players').update({experience:Math.max(0,(currentUser.experience||0)-hireCost)}).eq('vk_id',currentUser.vk_id);
             await supabase.from('players').update({owner_id:currentUser.vk_id,status:'Работает',role:'Учёный',income_per_hour:1,level:1,hire_cost:hireCost}).eq('vk_id',player.vk_id);
             currentUser.experience=Math.max(0,(currentUser.experience||0)-hireCost);
-            toast('✅ Нанят! Доход будет накапливаться со временем','success');
+            toast('✅ Нанят! Доход будет накапливаться','success');
             closePlayerModal();updateAllStats();loadMyTeam(true);renderAll();
         };
     }
     
-    // УВОЛИТЬ: если это мой сотрудник
+    // УВОЛИТЬ
     if(isMyEmployee){
         var fireIncome=Math.floor((player.hire_cost||100)*0.8);
         fireBtn.style.display='block';
@@ -258,7 +265,6 @@ function openPlayerModal(player){
                 var stealCost=Math.floor((emp.hire_cost||100)*1.5);
                 var div=document.createElement('div');div.className='player-item';
                 div.innerHTML='<img src="'+(emp.photo_200||'https://vk.com/images/camera_200.png')+'" onerror="this.src=\'https://vk.com/images/camera_200.png\'" onclick="event.stopPropagation();openPlayerModalById('+emp.vk_id+')"><div class="info" onclick="openPlayerModalById('+emp.vk_id+')"><div class="name">'+emp.first_name+' '+emp.last_name+'<span class="lvl">'+(emp.level||1)+' ур</span></div><div class="detail">🔬 +'+(emp.income_per_hour||0)+' оп/час • 💰'+(emp.hire_cost||100)+'</div></div>';
-                // Нельзя перекупить своего владельца
                 if(emp.owner_id!==currentUser.vk_id&&emp.vk_id!==currentUser.vk_id&&emp.vk_id!==currentUser.owner_id){
                     var btn=document.createElement('button');btn.className='btn-steal';btn.textContent='💰 '+stealCost;
                     btn.onclick=async function(e){
@@ -267,7 +273,7 @@ function openPlayerModal(player){
                         await supabase.from('players').update({experience:Math.max(0,(currentUser.experience||0)-stealCost)}).eq('vk_id',currentUser.vk_id);
                         await supabase.from('players').update({owner_id:currentUser.vk_id,hire_cost:stealCost}).eq('vk_id',emp.vk_id);
                         currentUser.experience=Math.max(0,(currentUser.experience||0)-stealCost);
-                        toast('✅ Перекуплен! Доход будет накапливаться','success');
+                        toast('✅ Перекуплен!','success');
                         closePlayerModal();updateAllStats();loadMyTeam(true);renderAll();
                     };
                     div.appendChild(btn);
