@@ -99,27 +99,14 @@ async function updateAllStats(){
             if((currentUser.experience||0)<myCost){toast('Недостаточно опыта! Нужно '+myCost,'error');return}
             var newExp = Math.max(0, (currentUser.experience||0) - myCost);
             var { error } = await supabase.from('players').update({
-                experience: newExp,
-                owner_id: null,
-                status: 'Биржа труда',
-                role: null,
-                income_per_hour: 0,
-                level: 1,
-                hire_cost: 100
+                experience: newExp, owner_id: null, status: 'Биржа труда',
+                role: null, income_per_hour: 0, level: 1, hire_cost: 100
             }).eq('vk_id', currentUser.vk_id);
-            
             if(error){toast('Ошибка: '+error.message,'error');return}
-            
-            currentUser.experience = newExp;
-            currentUser.owner_id = null;
-            currentUser.status = 'Биржа труда';
-            currentUser.role = null;
-            currentUser.income_per_hour = 0;
-            currentUser.level = 1;
-            currentUser.hire_cost = 100;
-            
-            toast('✅ Вы уволились!','success');
-            location.reload();
+            currentUser.experience = newExp; currentUser.owner_id = null;
+            currentUser.status = 'Биржа труда'; currentUser.role = null;
+            currentUser.income_per_hour = 0; currentUser.level = 1; currentUser.hire_cost = 100;
+            toast('✅ Вы уволились!','success'); location.reload();
         };
         var owner=await supabase.from('players').select('first_name,last_name,vk_id').eq('vk_id',currentUser.owner_id).maybeSingle();
         if(owner.data)ownerInfo.innerHTML='🔒 Нанят: <b onclick="openPlayerModalById('+owner.data.vk_id+')" style="cursor:pointer;text-decoration:underline;">'+owner.data.first_name+' '+owner.data.last_name+'</b>';
@@ -154,11 +141,8 @@ async function upgradeEmployee(emp){var cost=Math.floor((emp.hire_cost||100)*1.5
 async function fireEmployee(emp){var fireIncome=Math.floor((emp.hire_cost||100)*0.8);await supabase.from('players').update({experience:(currentUser.experience||0)+fireIncome}).eq('vk_id',currentUser.vk_id);await supabase.from('players').update({owner_id:null,status:'Биржа труда',role:null,income_per_hour:0,level:1,hire_cost:100}).eq('vk_id',emp.vk_id);currentUser.experience+=fireIncome;toast('🔥 Уволен! +'+fireIncome+' опыта','info');await updateAllStats();loadMyTeam(true);renderAll()}
 
 // ================= МОДАЛКА «ЗАРАБОТАТЬ» =================
-function openEarnModal(){
-    document.getElementById('earn-modal').style.display='flex';
-    renderEarnTasks();
-}
-function closeEarnModal(){document.getElementById('earn-modal').style.display='none'}
+function openEarnModal(){document.getElementById('earn-modal').style.display='flex';renderEarnTasks();}
+function closeEarnModal(){document.getElementById('earn-modal').style.display='none';}
 function renderEarnTasks(){
     var groupActions=document.getElementById('earn-group-actions');
     if(currentUser.task_group_done){groupActions.innerHTML='<span class="btn-earn-done">✅ Выполнено</span>'}
@@ -174,22 +158,16 @@ async function checkGroupTask(){
     if(currentUser.task_group_done){toast('Уже выполнено!','info');return}
     try{
         var result=await vkBridge.send('VKWebAppCallAPIMethod',{method:'groups.isMember',params:{group_id:GROUP_ID,user_id:currentUser.vk_id,v:'5.199'}});
-        if(result.response===1){
-            await supabase.from('players').update({experience:(currentUser.experience||0)+1000,task_group_done:true}).eq('vk_id',currentUser.vk_id);
-            currentUser.experience+=1000;currentUser.task_group_done=true;toast('✅ +1000 опыта!','success');renderAll();
-        }else{toast('Не подписаны','error')}
-    }catch(e){
-        await supabase.from('players').update({experience:(currentUser.experience||0)+1000,task_group_done:true}).eq('vk_id',currentUser.vk_id);
-        currentUser.experience+=1000;currentUser.task_group_done=true;toast('✅ +1000 опыта!','success');renderAll();
-    }
+        if(result.response===1){await supabase.from('players').update({experience:(currentUser.experience||0)+1000,task_group_done:true}).eq('vk_id',currentUser.vk_id);currentUser.experience+=1000;currentUser.task_group_done=true;toast('✅ +1000 опыта!','success');renderAll();}
+        else{toast('Не подписаны','error')}
+    }catch(e){await supabase.from('players').update({experience:(currentUser.experience||0)+1000,task_group_done:true}).eq('vk_id',currentUser.vk_id);currentUser.experience+=1000;currentUser.task_group_done=true;toast('✅ +1000 опыта!','success');renderAll();}
 }
 function doPromoTask(){closeEarnModal();openSettings();toast('Введите промокод START2025','info')}
 function inviteFriend(){
     var refLink='https://vk.com/app'+APP_ID+'#ref_'+currentUser.vk_id;
     closeEarnModal();
     vkBridge.send('VKWebAppShare',{link:refLink,text:'Присоединяйся к игре «Корпоративные Игры»! Нанимай сотрудников, прокачивай их и соревнуйся с друзьями! 🏢'})
-    .then(function(){toast('📨 Отправлено!','success');})
-    .catch(function(){copyInviteLink();});
+    .then(function(){toast('📨 Отправлено!','success');}).catch(function(){copyInviteLink();});
 }
 function copyInviteLink(){
     var link='https://vk.com/app'+APP_ID+'#ref_'+currentUser.vk_id;
@@ -230,7 +208,7 @@ async function loadMyCompanyScreen(){
     document.getElementById('my-company-leave-btn').onclick=async function(){await supabase.from('players').update({company:null,company_group_id:null,company_photo:null}).eq('vk_id',currentUser.vk_id);currentUser.company=null;currentUser.company_group_id=null;currentUser.company_photo=null;toast('Вышли из компании','info');goTo('profile');location.reload()}
 }
 
-// ================= СОЗДАНИЕ КОМПАНИИ (выбор группы ВК) =================
+// ================= СОЗДАНИЕ КОМПАНИИ (нативный выбор группы ВК) =================
 async function createCompany(){
     try {
         var result = await vkBridge.send('VKWebAppGetCommunityAuthToken', {app_id: parseInt(APP_ID), scope: 'manage'});
@@ -238,7 +216,7 @@ async function createCompany(){
             var modal = document.getElementById('company-modal');
             modal.style.display = 'flex';
             document.getElementById('modal-company-name').textContent = '🚀 Выберите группу';
-            document.getElementById('modal-company-stats').textContent = 'Выберите группу для компании';
+            document.getElementById('modal-company-stats').textContent = 'Выберите группу для создания компании';
             var list = document.getElementById('modal-company-members');
             list.innerHTML = '';
             result.groups.forEach(function(g){
@@ -253,33 +231,24 @@ async function createCompany(){
                 };
                 list.appendChild(div);
             });
-            var noGroupBtn = document.createElement('button');
-            noGroupBtn.className = 'btn-back'; noGroupBtn.textContent = 'Создать без группы';
-            noGroupBtn.onclick = async function(){
-                var name = prompt('Название компании:', 'Компания ' + currentUser.first_name);
-                if(!name) return;
-                await supabase.from('players').update({company: name, company_group_id: null, company_photo: null}).eq('vk_id', currentUser.vk_id);
-                currentUser.company = name; currentUser.company_group_id = null; currentUser.company_photo = null;
-                toast('✅ Компания «' + name + '» создана!', 'success');
-                closeCompanyModal(); location.reload();
-            };
-            list.appendChild(noGroupBtn);
             document.getElementById('modal-join-btn').style.display = 'none';
             document.getElementById('modal-leave-btn').style.display = 'none';
+            var closeBtn = document.createElement('button');
+            closeBtn.className = 'btn-back'; closeBtn.textContent = '🔙 Отмена';
+            closeBtn.onclick = function(){ closeCompanyModal(); };
+            list.appendChild(closeBtn);
         } else {
-            var name = prompt('У вас нет групп. Название компании:', 'Компания ' + currentUser.first_name);
-            if(!name) return;
-            await supabase.from('players').update({company: name, company_group_id: null, company_photo: null}).eq('vk_id', currentUser.vk_id);
-            currentUser.company = name; currentUser.company_group_id = null; currentUser.company_photo = null;
-            toast('✅ Компания «' + name + '» создана!', 'success'); location.reload();
+            var modal = document.getElementById('company-modal');
+            modal.style.display = 'flex';
+            document.getElementById('modal-company-name').textContent = '❌ Нет групп';
+            document.getElementById('modal-company-stats').textContent = 'У вас нет групп в собственности.';
+            document.getElementById('modal-company-members').innerHTML = '<p style="color:#aaa;text-align:center;">Чтобы создать компанию, нужна группа ВК.</p><button class="btn-create" onclick="window.open(\'https://vk.com/groups?tab=admin\',\'_blank\')">📱 Создать группу ВК</button><button class="btn-back" onclick="closeCompanyModal()" style="margin-top:8px;">🔙 Закрыть</button>';
+            document.getElementById('modal-join-btn').style.display = 'none';
+            document.getElementById('modal-leave-btn').style.display = 'none';
         }
     } catch(e) {
         console.log('VK API error:', e);
-        var name = prompt('Название компании:', 'Компания ' + currentUser.first_name);
-        if(!name) return;
-        await supabase.from('players').update({company: name, company_group_id: null, company_photo: null}).eq('vk_id', currentUser.vk_id);
-        currentUser.company = name; currentUser.company_group_id = null; currentUser.company_photo = null;
-        toast('✅ Компания «' + name + '» создана!', 'success'); location.reload();
+        toast('Не удалось получить группы. Убедитесь, что вы управляете хотя бы одной группой ВК.', 'error');
     }
 }
 
@@ -344,10 +313,7 @@ function renderAll(){
     document.getElementById('player-name').textContent=currentUser.first_name+' '+currentUser.last_name;
     document.getElementById('exp-value').textContent=currentUser.experience||0;
     var compEl=document.getElementById('company-display');
-    if(currentUser.company){
-        var groupLink=currentUser.company_group_id?' <a href="https://vk.com/club'+currentUser.company_group_id+'" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>':'';
-        compEl.innerHTML='🏢 <span style="cursor:pointer;" onclick="goTo(\'my-company\')">'+currentUser.company+'</span>'+groupLink;
-    }else{compEl.textContent=''}
+    if(currentUser.company){var groupLink=currentUser.company_group_id?' <a href="https://vk.com/club'+currentUser.company_group_id+'" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>':'';compEl.innerHTML='🏢 <span style="cursor:pointer;" onclick="goTo(\'my-company\')">'+currentUser.company+'</span>'+groupLink}else{compEl.textContent=''}
     document.getElementById('collect-panel').style.display=myTeamTotal?'flex':'none';
     if(myTeamTotal){document.getElementById('collect-amount').textContent=currentUser.pending_experience||0;document.getElementById('collect-btn').onclick=collectExperience}
     document.getElementById('earn-btn').onclick=openEarnModal;
