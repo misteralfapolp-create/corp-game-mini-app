@@ -208,47 +208,77 @@ async function loadMyCompanyScreen(){
     document.getElementById('my-company-leave-btn').onclick=async function(){await supabase.from('players').update({company:null,company_group_id:null,company_photo:null}).eq('vk_id',currentUser.vk_id);currentUser.company=null;currentUser.company_group_id=null;currentUser.company_photo=null;toast('Вышли из компании','info');goTo('profile');location.reload()}
 }
 
-// ================= СОЗДАНИЕ КОМПАНИИ (нативный выбор группы ВК) =================
+// ================= СОЗДАНИЕ КОМПАНИИ (исправленный метод) =================
 async function createCompany(){
     try {
-        var result = await vkBridge.send('VKWebAppGetCommunityAuthToken', {app_id: parseInt(APP_ID), scope: 'manage'});
-        if(result.groups && result.groups.length > 0){
+        // Получаем список групп через API ВК
+        var result = await vkBridge.send('VKWebAppCallAPIMethod', {
+            method: 'groups.get',
+            params: {
+                filter: 'admin',
+                extended: 1,
+                fields: 'photo_200',
+                v: '5.199'
+            }
+        });
+        
+        if(result.response && result.response.items && result.response.items.length > 0){
+            var groups = result.response.items;
             var modal = document.getElementById('company-modal');
             modal.style.display = 'flex';
             document.getElementById('modal-company-name').textContent = '🚀 Выберите группу';
-            document.getElementById('modal-company-stats').textContent = 'Выберите группу для создания компании';
+            document.getElementById('modal-company-stats').textContent = 'Найдено групп: ' + groups.length;
+            
             var list = document.getElementById('modal-company-members');
             list.innerHTML = '';
-            result.groups.forEach(function(g){
+            
+            groups.forEach(function(g){
                 var div = document.createElement('div');
-                div.className = 'player-item'; div.style.cursor = 'pointer';
-                div.innerHTML = '<img src="' + (g.photo_200 || 'https://vk.com/images/camera_200.png') + '" style="width:42px;height:42px;border-radius:50%;" onerror="this.src=\'https://vk.com/images/camera_200.png\'"><div class="info"><div class="name">' + g.name + '</div><div class="detail">vk.com/club' + g.id + '</div></div>';
+                div.className = 'player-item';
+                div.style.cursor = 'pointer';
+                div.innerHTML = 
+                    '<img src="' + (g.photo_200 || 'https://vk.com/images/camera_200.png') + '" style="width:42px;height:42px;border-radius:50%;" onerror="this.src=\'https://vk.com/images/camera_200.png\'">' +
+                    '<div class="info"><div class="name">' + g.name + '</div><div class="detail">👥 ' + (g.members_count || 0) + ' подписчиков</div></div>';
                 div.onclick = async function(){
-                    await supabase.from('players').update({company: g.name, company_group_id: g.id, company_photo: g.photo_200 || ''}).eq('vk_id', currentUser.vk_id);
-                    currentUser.company = g.name; currentUser.company_group_id = g.id; currentUser.company_photo = g.photo_200 || '';
+                    await supabase.from('players').update({
+                        company: g.name,
+                        company_group_id: g.id,
+                        company_photo: g.photo_200 || ''
+                    }).eq('vk_id', currentUser.vk_id);
+                    currentUser.company = g.name;
+                    currentUser.company_group_id = g.id;
+                    currentUser.company_photo = g.photo_200 || '';
                     toast('✅ Компания «' + g.name + '» создана!', 'success');
-                    closeCompanyModal(); location.reload();
+                    closeCompanyModal();
+                    location.reload();
                 };
                 list.appendChild(div);
             });
+            
             document.getElementById('modal-join-btn').style.display = 'none';
             document.getElementById('modal-leave-btn').style.display = 'none';
+            
             var closeBtn = document.createElement('button');
-            closeBtn.className = 'btn-back'; closeBtn.textContent = '🔙 Отмена';
+            closeBtn.className = 'btn-back';
+            closeBtn.textContent = '🔙 Отмена';
             closeBtn.onclick = function(){ closeCompanyModal(); };
             list.appendChild(closeBtn);
+            
         } else {
             var modal = document.getElementById('company-modal');
             modal.style.display = 'flex';
             document.getElementById('modal-company-name').textContent = '❌ Нет групп';
-            document.getElementById('modal-company-stats').textContent = 'У вас нет групп в собственности.';
-            document.getElementById('modal-company-members').innerHTML = '<p style="color:#aaa;text-align:center;">Чтобы создать компанию, нужна группа ВК.</p><button class="btn-create" onclick="window.open(\'https://vk.com/groups?tab=admin\',\'_blank\')">📱 Создать группу ВК</button><button class="btn-back" onclick="closeCompanyModal()" style="margin-top:8px;">🔙 Закрыть</button>';
+            document.getElementById('modal-company-stats').textContent = 'У вас нет групп в управлении.';
+            document.getElementById('modal-company-members').innerHTML = 
+                '<p style="color:#aaa;text-align:center;">Нужна группа ВК, где вы администратор.</p>' +
+                '<button class="btn-create" onclick="window.open(\'https://vk.com/groups?tab=admin\',\'_blank\')">📱 Создать группу</button>' +
+                '<button class="btn-back" onclick="closeCompanyModal()" style="margin-top:8px;">🔙 Закрыть</button>';
             document.getElementById('modal-join-btn').style.display = 'none';
             document.getElementById('modal-leave-btn').style.display = 'none';
         }
     } catch(e) {
         console.log('VK API error:', e);
-        toast('Не удалось получить группы. Убедитесь, что вы управляете хотя бы одной группой ВК.', 'error');
+        toast('Ошибка получения групп. Попробуйте позже.', 'error');
     }
 }
 
