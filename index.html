@@ -34,9 +34,15 @@
                     <div class="stat"><div class="value" id="my-income">0</div><div class="label">📈 Доход/час</div></div>
                 </div>
                 <div style="display:flex;gap:6px;margin-top:6px;">
-                    <button class="btn-earn" id="earn-btn" style="flex:1;">💰 Заработать</button>
+                    <button class="btn-invite-friend" id="invite-friend-btn" style="flex:1;">📨 Пригласить (+500)</button>
                     <button class="btn-settings" id="settings-btn" onclick="openSettings()">⚙️</button>
                 </div>
+            </div>
+
+            <!-- Задания -->
+            <div class="card" id="tasks-panel">
+                <div class="section-title">📋 Заработать</div>
+                <div id="tasks-list">Загрузка...</div>
             </div>
 
             <!-- Сбор опыта -->
@@ -111,43 +117,6 @@
             <input type="text" id="promo-input" placeholder="Введите промокод" style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#fff;font-size:14px;margin-bottom:8px;">
             <button class="btn-collect" id="promo-go-btn" style="width:100%;">🎁 Применить</button>
             <button class="btn-back" onclick="closeSettings()" style="margin-top:8px;">🔙 Закрыть</button>
-        </div>
-    </div>
-
-    <!-- Модалка «Заработать» -->
-    <div class="modal" id="earn-modal">
-        <div class="modal-content">
-            <span class="modal-close" onclick="closeEarnModal()">✕</span>
-            <h2>💰 Заработать опыт</h2>
-            
-            <div class="earn-task">
-                <div class="earn-task-icon">📱</div>
-                <div class="earn-task-info">
-                    <div class="earn-task-title">Подписаться на группу</div>
-                    <div class="earn-task-reward">+1000 опыта</div>
-                </div>
-                <div class="earn-task-actions" id="earn-group-actions"></div>
-            </div>
-            
-            <div class="earn-task">
-                <div class="earn-task-icon">🎁</div>
-                <div class="earn-task-info">
-                    <div class="earn-task-title">Ввести промокод</div>
-                    <div class="earn-task-reward">+1000 опыта</div>
-                </div>
-                <div class="earn-task-actions" id="earn-promo-actions"></div>
-            </div>
-            
-            <div class="earn-task">
-                <div class="earn-task-icon">👥</div>
-                <div class="earn-task-info">
-                    <div class="earn-task-title">Пригласить друга</div>
-                    <div class="earn-task-reward">+500 опыта</div>
-                </div>
-                <div class="earn-task-actions" id="earn-invite-actions"></div>
-            </div>
-            
-            <button class="btn-back" onclick="closeEarnModal()">🔙 Закрыть</button>
         </div>
     </div>
 
