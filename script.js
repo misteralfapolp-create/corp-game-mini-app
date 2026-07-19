@@ -114,25 +114,22 @@ async function updateAllStats(){
     await calculatePendingExperience();
 }
 
-// ================= РАСЧЁТ ОПЫТА (макс 12 часов) =================
+// ================= РАСЧЁТ ОПЫТА =================
 async function calculatePendingExperience(){
     if(!myTeam.length)return;
     var totalPerHour=0;myTeam.forEach(function(e){totalPerHour+=(e.income_per_hour||0)});
     if(currentUser.owner_id&&currentUser.owner_id!==currentUser.vk_id)totalPerHour=Math.floor(totalPerHour/2);
     var hoursPassed=(new Date()-new Date(currentUser.last_collect||new Date()))/3600000;
-    hoursPassed=Math.min(hoursPassed,12);
     var newPending=Math.floor((currentUser.pending_experience||0)+totalPerHour*hoursPassed);
-    var maxPending=totalPerHour*12;
-    newPending=Math.min(newPending,maxPending);
-    await supabase.from('players').update({pending_experience:newPending,last_collect:new Date().toISOString(),max_pending:maxPending}).eq('vk_id',currentUser.vk_id);
-    currentUser.pending_experience=newPending;currentUser.max_pending=maxPending;
+    await supabase.from('players').update({pending_experience:newPending,last_collect:new Date().toISOString()}).eq('vk_id',currentUser.vk_id);
+    currentUser.pending_experience=newPending;
 }
 
 async function collectExperience(){
     if(!currentUser.pending_experience){toast('Нечего собирать','info');return}
     var collected=currentUser.pending_experience;
-    await supabase.from('players').update({experience:(currentUser.experience||0)+collected,pending_experience:0,last_collect:new Date().toISOString(),max_pending:0}).eq('vk_id',currentUser.vk_id);
-    currentUser.experience+=collected;currentUser.pending_experience=0;currentUser.max_pending=0;
+    await supabase.from('players').update({experience:(currentUser.experience||0)+collected,pending_experience:0,last_collect:new Date().toISOString()}).eq('vk_id',currentUser.vk_id);
+    currentUser.experience+=collected;currentUser.pending_experience=0;
     toast('✅ +'+collected+' опыта!','success');renderAll();
 }
 
@@ -142,7 +139,6 @@ async function giveReferralBonus(id){var r=await supabase.from('players').select
 function loadMyTeam(reset){if(reset){myTeamOffset=0;document.getElementById('my-team-list').innerHTML=''}var list=document.getElementById('my-team-list');if(!myTeam.length){list.innerHTML='<p style="color:#aaa;text-align:center;">Нет сотрудников</p>';document.getElementById('load-more-btn').style.display='none';return}var page=myTeam.slice(myTeamOffset,myTeamOffset+TEAM_PAGE_SIZE);page.forEach(function(emp){renderEmployeeItem(emp,list,true)});myTeamOffset+=page.length;document.getElementById('load-more-btn').style.display=(myTeamOffset<myTeamTotal)?'block':'none'}
 function renderEmployeeItem(emp,container,isMine){var cost=Math.floor(emp.hire_cost||100),upgradeCost=Math.floor(cost*1.5),fireIncome=Math.floor(cost*0.8);var div=document.createElement('div');div.className='player-item';div.innerHTML='<img src="'+(emp.photo_200||'https://vk.com/images/camera_200.png')+'" onerror="this.src=\'https://vk.com/images/camera_200.png\'" onclick="openPlayerModalById('+emp.vk_id+')"><div class="info" onclick="openPlayerModalById('+emp.vk_id+')"><div class="name">'+emp.first_name+' '+emp.last_name+'<span class="lvl">'+(emp.level||1)+' ур</span></div><div class="detail">🔬 +'+(emp.income_per_hour||0)+' оп/час • 💰'+cost+'</div></div>';if(isMine)div.innerHTML+='<div class="btn-group"><button class="btn-upgrade">⬆ '+upgradeCost+'</button><button class="btn-fire">🔥 +'+fireIncome+'</button></div>';container.appendChild(div);if(isMine){div.querySelector('.btn-upgrade').onclick=async function(e){e.stopPropagation();await upgradeEmployee(emp)};div.querySelector('.btn-fire').onclick=async function(e){e.stopPropagation();await fireEmployee(emp)}}}
 async function upgradeEmployee(emp){var cost=Math.floor((emp.hire_cost||100)*1.5);if((currentUser.experience||0)<cost){toast('Недостаточно опыта!','error');return}await supabase.from('players').update({experience:Math.max(0,(currentUser.experience||0)-cost)}).eq('vk_id',currentUser.vk_id);var newCost=Math.floor((emp.hire_cost||100)*1.5);await supabase.from('players').update({level:(emp.level||1)+1,income_per_hour:(emp.income_per_hour||0)+1,hire_cost:newCost}).eq('vk_id',emp.vk_id);currentUser.experience=Math.max(0,(currentUser.experience||0)-cost);
-    // Обновляем last_collect владельца, чтобы доход не начислился задним числом
     await supabase.from('players').update({last_collect: new Date().toISOString()}).eq('vk_id', currentUser.vk_id);
     currentUser.last_collect = new Date().toISOString();
     toast('✅ Прокачано! Доход увеличится','success');await updateAllStats();loadMyTeam(true);renderAll()}
@@ -225,7 +221,6 @@ function openPlayerModal(player){
     var isInMyChain=false;
     if(currentUser.owner_id&&player.vk_id===currentUser.owner_id)isInMyChain=true;
     
-    // НАНЯТЬ
     if((!player.owner_id||player.status==='Биржа труда')&&player.vk_id!==currentUser.vk_id&&!isMyOwner&&!isInMyChain){
         var hireCost=player.hire_cost||100;
         hireBtn.style.display='block';
@@ -235,7 +230,6 @@ function openPlayerModal(player){
             await supabase.from('players').update({experience:Math.max(0,(currentUser.experience||0)-hireCost)}).eq('vk_id',currentUser.vk_id);
             await supabase.from('players').update({owner_id:currentUser.vk_id,status:'Работает',role:'Учёный',income_per_hour:1,level:1,hire_cost:hireCost}).eq('vk_id',player.vk_id);
             currentUser.experience=Math.max(0,(currentUser.experience||0)-hireCost);
-            // Обновляем last_collect владельца
             await supabase.from('players').update({last_collect: new Date().toISOString()}).eq('vk_id', currentUser.vk_id);
             currentUser.last_collect = new Date().toISOString();
             toast('✅ Нанят! Доход будет через час','success');
@@ -243,7 +237,6 @@ function openPlayerModal(player){
         };
     }
     
-    // УВОЛИТЬ
     if(isMyEmployee){
         var fireIncome=Math.floor((player.hire_cost||100)*0.8);
         fireBtn.style.display='block';
@@ -257,7 +250,6 @@ function openPlayerModal(player){
         };
     }
     
-    // Загружаем сотрудников игрока
     supabase.from('players').select('*').eq('owner_id',player.vk_id).order('experience',{ascending:false}).then(function(r){
         var list=document.getElementById('modal-player-employees');
         if(!r.data||!r.data.length){
@@ -278,7 +270,6 @@ function openPlayerModal(player){
                         await supabase.from('players').update({experience:Math.max(0,(currentUser.experience||0)-stealCost)}).eq('vk_id',currentUser.vk_id);
                         await supabase.from('players').update({owner_id:currentUser.vk_id,hire_cost:stealCost}).eq('vk_id',emp.vk_id);
                         currentUser.experience=Math.max(0,(currentUser.experience||0)-stealCost);
-                        // Обновляем last_collect владельца
                         await supabase.from('players').update({last_collect: new Date().toISOString()}).eq('vk_id', currentUser.vk_id);
                         currentUser.last_collect = new Date().toISOString();
                         toast('✅ Перекуплен! Доход будет через час','success');
@@ -335,8 +326,6 @@ function renderAll(){
     document.getElementById('collect-panel').style.display=myTeamTotal?'flex':'none';
     if(myTeamTotal){
         document.getElementById('collect-amount').textContent=currentUser.pending_experience||0;
-        var maxP=currentUser.max_pending||0;
-        if(maxP>0)document.getElementById('collect-amount').textContent+=' / '+maxP;
         document.getElementById('collect-btn').onclick=collectExperience;
     }
     document.getElementById('invite-friend-btn').onclick=copyInviteLink;
