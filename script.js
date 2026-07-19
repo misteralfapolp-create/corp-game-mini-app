@@ -110,6 +110,17 @@ async function upgradeEmployee(emp){var cost=Math.floor((emp.hire_cost||100)*1.5
 async function fireEmployee(emp){var fireIncome=Math.floor((emp.hire_cost||100)*0.8);await supabase.from('players').update({experience:(currentUser.experience||0)+fireIncome}).eq('vk_id',currentUser.vk_id);var newCost=Math.floor((emp.hire_cost||100)*1.5);await supabase.from('players').update({owner_id:null,status:'Биржа труда',role:null,income_per_hour:0,level:1,hire_cost:newCost}).eq('vk_id',emp.vk_id);currentUser.experience+=fireIncome;toast('🔥 Уволен! +'+fireIncome+' опыта','info');await updateAllStats();loadMyTeam(true);renderAll()}
 
 // ================= ЗАДАНИЯ =================
+function toggleTasks(){
+    var panel = document.getElementById('tasks-panel');
+    if(panel.style.display === 'none' || panel.style.display === ''){
+        panel.style.display = 'block';
+        renderTasks();
+        document.getElementById('earn-btn').textContent = '🔼 Скрыть';
+    } else {
+        panel.style.display = 'none';
+        document.getElementById('earn-btn').textContent = '💰 Заработать';
+    }
+}
 function doGroupTask(){window.open(GROUP_URL,'_blank');toast('📱 Откройте группу и подпишитесь','info')}
 async function checkGroupTask(){if(currentUser.task_group_done){toast('Уже выполнено!','info');return}try{var result=await vkBridge.send('VKWebAppCallAPIMethod',{method:'groups.isMember',params:{group_id:240295160,user_id:currentUser.vk_id,v:'5.199'}});if(result.response===1){await supabase.from('players').update({experience:(currentUser.experience||0)+1000,task_group_done:true}).eq('vk_id',currentUser.vk_id);currentUser.experience+=1000;currentUser.task_group_done=true;toast('✅ +1000 опыта!','success');renderAll()}else{toast('Не подписаны','error')}}catch(e){await supabase.from('players').update({experience:(currentUser.experience||0)+1000,task_group_done:true}).eq('vk_id',currentUser.vk_id);currentUser.experience+=1000;currentUser.task_group_done=true;toast('✅ +1000 опыта!','success');renderAll()}}
 function doPromoTask(){openSettings();toast('Введите промокод','info')}
@@ -207,7 +218,6 @@ function renderAll(){
     document.getElementById('collect-panel').style.display=myTeamTotal?'flex':'none';
     if(myTeamTotal){document.getElementById('collect-amount').textContent=currentUser.pending_experience||0;document.getElementById('collect-btn').onclick=collectExperience}
     document.getElementById('invite-friend-btn').onclick=copyInviteLink;
-    renderTasks();
     loadMyTeam(true);
 }
 
