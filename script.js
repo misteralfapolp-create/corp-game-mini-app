@@ -84,7 +84,13 @@ async function initApp(){
 async function updateAllStats(){
     var empResult=await supabase.from('players').select('*').eq('owner_id',currentUser.vk_id).order('experience',{ascending:false});
     myTeam=empResult.data||[];myTeamTotal=myTeam.length;
-    var totalIncome=0;myTeam.forEach(function(e){totalIncome+=(e.income_per_hour||0)});
+    var totalIncome=0;
+    myTeam.forEach(function(e){totalIncome+=(e.income_per_hour||0)});
+    // Бонус 10% от суб-сотрудников
+    for(var i=0;i<myTeam.length;i++){
+        var subResult=await supabase.from('players').select('income_per_hour').eq('owner_id',myTeam[i].vk_id);
+        if(subResult.data){var si=0;subResult.data.forEach(function(s){si+=(s.income_per_hour||0)});totalIncome+=Math.floor(si*0.1)}
+    }
     if(currentUser.owner_id&&currentUser.owner_id!==currentUser.vk_id)totalIncome=Math.floor(totalIncome/2);
     document.getElementById('my-employees-count').textContent=myTeamTotal;
     document.getElementById('my-income').textContent='+'+totalIncome;
@@ -114,10 +120,16 @@ async function updateAllStats(){
     await calculatePendingExperience();
 }
 
-// ================= РАСЧЁТ ОПЫТА =================
+// ================= РАСЧЁТ ОПЫТА (с 10% от суб-сотрудников) =================
 async function calculatePendingExperience(){
-    if(!myTeam.length)return;
-    var totalPerHour=0;myTeam.forEach(function(e){totalPerHour+=(e.income_per_hour||0)});
+    if(!myTeam.length && !currentUser.owner_id) return;
+    var totalPerHour=0;
+    myTeam.forEach(function(e){totalPerHour+=(e.income_per_hour||0)});
+    // 10% от сотрудников моих сотрудников
+    for(var i=0;i<myTeam.length;i++){
+        var subResult=await supabase.from('players').select('income_per_hour').eq('owner_id',myTeam[i].vk_id);
+        if(subResult.data){var si=0;subResult.data.forEach(function(s){si+=(s.income_per_hour||0)});totalPerHour+=Math.floor(si*0.1)}
+    }
     if(currentUser.owner_id&&currentUser.owner_id!==currentUser.vk_id)totalPerHour=Math.floor(totalPerHour/2);
     var hoursPassed=(new Date()-new Date(currentUser.last_collect||new Date()))/3600000;
     var newPending=Math.floor((currentUser.pending_experience||0)+totalPerHour*hoursPassed);
