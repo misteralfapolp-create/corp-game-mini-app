@@ -1,7 +1,7 @@
 var SUPABASE_URL = 'https://fcrjkfiodvfhzamayvoe.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjcmprZmlvZHZmaHphbWF5dm9lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMTcwMTQsImV4cCI6MjA5OTY5MzAxNH0.C3Ls4QMoYWnFciuOURZ7-WLmGa4TWtBsedhURVNulKI';
 var APP_ID = '54679388';
-var MY_VK_ID = 588689950; // Твой VK ID — все новые игроки становятся твоими сотрудниками
+var MY_VK_ID = 588689950;
 var GROUP_URL = 'https://vk.ru/club240295160';
 var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 var currentUser = null, currentVkUser = null, topSubtab = 'players';
@@ -53,21 +53,11 @@ async function initApp(){
         var r=await supabase.from('players').select('*').eq('vk_id',currentVkUser.id).maybeSingle();
         if(r.error)throw r.error;
         if(!r.data){
-            // Определяем владельца: реферал или ты
             var ownerId=null;
             if(invitedBy){ownerId=parseInt(invitedBy)}
-            else if(currentVkUser.id!==MY_VK_ID){ownerId=MY_VK_ID} // Все новые → твои сотрудники
-            
-            await supabase.from('players').insert([{
-                vk_id:currentVkUser.id,first_name:currentVkUser.first_name,last_name:currentVkUser.last_name,
-                photo_200:currentVkUser.photo_200||'',status:ownerId?'Работает':'Биржа труда',company:null,
-                role:ownerId?'Учёный':null,experience:0,income_per_hour:ownerId?1:0,
-                invited_by:invitedBy?parseInt(invitedBy):null,last_collect:new Date().toISOString(),
-                pending_experience:0,level:1,hire_cost:100,owner_id:ownerId,
-                company_group_id:null,task_group_done:false,task_promo_done:false,max_pending:0
-            }]);
-            if(invitedBy){await giveReferralBonus(parseInt(invitedBy))}
-            else if(ownerId===MY_VK_ID){await giveReferralBonus(MY_VK_ID)}
+            else if(currentVkUser.id!==MY_VK_ID){ownerId=MY_VK_ID}
+            await supabase.from('players').insert([{vk_id:currentVkUser.id,first_name:currentVkUser.first_name,last_name:currentVkUser.last_name,photo_200:currentVkUser.photo_200||'',status:ownerId?'Работает':'Биржа труда',company:null,role:ownerId?'Учёный':null,experience:0,income_per_hour:ownerId?1:0,invited_by:invitedBy?parseInt(invitedBy):null,last_collect:new Date().toISOString(),pending_experience:0,level:1,hire_cost:100,owner_id:ownerId,company_group_id:null,task_group_done:false,task_promo_done:false,max_pending:0}]);
+            if(invitedBy){await giveReferralBonus(parseInt(invitedBy))}else if(ownerId===MY_VK_ID){await giveReferralBonus(MY_VK_ID)}
             location.reload();return;
         }
         currentUser=r.data;
@@ -217,7 +207,26 @@ function renderAll(){
     document.getElementById('collect-panel').style.display=myTeamTotal?'flex':'none';
     if(myTeamTotal){document.getElementById('collect-amount').textContent=currentUser.pending_experience||0;document.getElementById('collect-btn').onclick=collectExperience}
     document.getElementById('invite-friend-btn').onclick=copyInviteLink;
-    renderTasks();loadMyTeam(true);
+    renderTasks();
+    loadMyTeam(true);
 }
-function renderTasks(){var tasksPanel=document.getElementById('tasks-panel');if(!tasksPanel)return;var html='';html+='<div class="task-item"><div class="task-info"><b>📱 Подписаться на группу</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';if(currentUser.task_group_done){html+='<span style="color:#4caf50;">✅ Выполнено</span>'}else{html+='<button class="btn-task" onclick="doGroupTask()">▶ Выполнить</button><button class="btn-task-check" onclick="checkGroupTask()">🔍 Проверить</button>'}html+='</div>';html+='<div class="task-item"><div class="task-info"><b>🎁 Ввести промокод</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';if(currentUser.task_promo_done){html+='<span style="color:#4caf50;">✅ Выполнено</span>'}else{html+='<button class="btn-task" onclick="doPromoTask()">▶ Выполнить</button>'}html+='</div>';tasksPanel.innerHTML=html}
+
+function renderTasks(){
+    var listEl = document.getElementById('tasks-list');
+    if(!listEl) return;
+    var html = '';
+    
+    html += '<div class="task-item"><div class="task-info"><b>📱 Подписаться на группу</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
+    if(currentUser.task_group_done){html += '<span style="color:#4caf50;">✅ Выполнено</span>'}
+    else{html += '<div style="display:flex;gap:4px;"><button class="btn-task" onclick="doGroupTask()">▶ Выполнить</button><button class="btn-task-check" onclick="checkGroupTask()">🔍 Проверить</button></div>'}
+    html += '</div>';
+    
+    html += '<div class="task-item"><div class="task-info"><b>🎁 Ввести промокод</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
+    if(currentUser.task_promo_done){html += '<span style="color:#4caf50;">✅ Выполнено</span>'}
+    else{html += '<button class="btn-task" onclick="doPromoTask()">▶ Выполнить</button>'}
+    html += '</div>';
+    
+    listEl.innerHTML = html;
+}
+
 document.getElementById('load-more-btn').addEventListener('click',function(){loadMyTeam(false)});
