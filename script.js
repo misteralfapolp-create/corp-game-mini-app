@@ -83,7 +83,22 @@ async function updateAllStats(){
         ava.classList.add('hired');quitBtn.style.display='block';
         var myCost=currentUser.hire_cost||100;
         quitBtn.textContent='🚪 Уволиться ('+myCost+' опыта)';
-        quitBtn.onclick=async function(){if((currentUser.experience||0)<myCost){toast('Недостаточно опыта!','error');return}var newSelfCost=Math.floor((currentUser.hire_cost||100)*1.5);await supabase.from('players').update({experience:Math.max(0,(currentUser.experience||0)-myCost),owner_id:null,status:'Биржа труда',role:null,income_per_hour:0,level:1,hire_cost:newSelfCost}).eq('vk_id',currentUser.vk_id);toast('Вы уволились!','info');location.reload()};
+        quitBtn.onclick=async function(){
+            if((currentUser.experience||0)<myCost){toast('Недостаточно опыта! Нужно '+myCost,'error');return}
+            var newSelfCost=Math.floor((currentUser.hire_cost||100)*1.5);
+            // Начисляем компенсацию владельцу (80% от стоимости сотрудника)
+            if(currentUser.owner_id && currentUser.owner_id !== currentUser.vk_id){
+                var compensation = Math.floor((currentUser.hire_cost||100)*0.8);
+                await supabase.from('players').update({experience: (currentUser.experience||0) - myCost, owner_id:null, status:'Биржа труда', role:null, income_per_hour:0, level:1, hire_cost:newSelfCost}).eq('vk_id', currentUser.vk_id);
+                var ownerResult = await supabase.from('players').select('experience').eq('vk_id', currentUser.owner_id).maybeSingle();
+                if(ownerResult.data){
+                    await supabase.from('players').update({experience: (ownerResult.data.experience||0) + compensation}).eq('vk_id', currentUser.owner_id);
+                }
+            } else {
+                await supabase.from('players').update({experience:Math.max(0,(currentUser.experience||0)-myCost),owner_id:null,status:'Биржа труда',role:null,income_per_hour:0,level:1,hire_cost:newSelfCost}).eq('vk_id',currentUser.vk_id);
+            }
+            toast('Вы уволились! Владелец получил компенсацию','info');location.reload();
+        };
         var owner=await supabase.from('players').select('first_name,last_name,vk_id').eq('vk_id',currentUser.owner_id).maybeSingle();
         if(owner.data)ownerInfo.innerHTML='🔒 Нанят: <b onclick="openPlayerModalById('+owner.data.vk_id+')" style="cursor:pointer;text-decoration:underline;">'+owner.data.first_name+' '+owner.data.last_name+'</b>';
     }else{ava.classList.remove('hired');quitBtn.style.display='none';ownerInfo.textContent=''}
@@ -205,7 +220,7 @@ function openSettings(){document.getElementById('settings-modal').style.display=
 function closeSettings(){document.getElementById('settings-modal').style.display='none'}
 async function applyPromo(){var code=document.getElementById('promo-input').value.trim().toUpperCase();if(!code){toast('Введите промокод!','error');return}var r=await supabase.from('promocodes').select('*').eq('code',code).maybeSingle();if(!r.data){toast('Промокод не найден!','error');return}var promo=r.data;if(promo.used_by&&promo.used_by.includes(currentUser.vk_id)){toast('Вы уже использовали!','error');return}if(promo.used_by&&promo.used_by.length>=promo.max_uses){toast('Промокод не действует!','error');return}var newExp=(currentUser.experience||0)+promo.reward_exp;await supabase.from('players').update({experience:newExp}).eq('vk_id',currentUser.vk_id);currentUser.experience=newExp;var usedBy=promo.used_by||[];usedBy.push(currentUser.vk_id);await supabase.from('promocodes').update({used_by:usedBy}).eq('code',code);if(!currentUser.task_promo_done){await supabase.from('players').update({experience:currentUser.experience+1000,task_promo_done:true}).eq('vk_id',currentUser.vk_id);currentUser.experience+=1000;currentUser.task_promo_done=true;toast('🎁 +'+promo.reward_exp+' + бонус 1000!','success')}else{toast('🎁 +'+promo.reward_exp+' опыта!','success')}closeSettings();renderAll()}
 
-// ================= ПРИГЛАШЕНИЕ (открывает список чатов ВК) =================
+// ================= ПРИГЛАШЕНИЕ =================
 function inviteFriend(){
     var refLink = 'https://vk.com/app' + APP_ID + '#ref_' + currentUser.vk_id;
     vkBridge.send('VKWebAppShare', {
@@ -214,7 +229,6 @@ function inviteFriend(){
     }).then(function() {
         toast('✅ Приглашение отправлено!', 'success');
     }).catch(function() {
-        // Если не получилось — копируем в буфер
         navigator.clipboard.writeText(refLink).then(function() {
             toast('🔗 Ссылка скопирована! Отправь другу', 'info');
         }).catch(function() {
