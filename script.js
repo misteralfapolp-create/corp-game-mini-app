@@ -205,8 +205,23 @@ function openSettings(){document.getElementById('settings-modal').style.display=
 function closeSettings(){document.getElementById('settings-modal').style.display='none'}
 async function applyPromo(){var code=document.getElementById('promo-input').value.trim().toUpperCase();if(!code){toast('Введите промокод!','error');return}var r=await supabase.from('promocodes').select('*').eq('code',code).maybeSingle();if(!r.data){toast('Промокод не найден!','error');return}var promo=r.data;if(promo.used_by&&promo.used_by.includes(currentUser.vk_id)){toast('Вы уже использовали!','error');return}if(promo.used_by&&promo.used_by.length>=promo.max_uses){toast('Промокод не действует!','error');return}var newExp=(currentUser.experience||0)+promo.reward_exp;await supabase.from('players').update({experience:newExp}).eq('vk_id',currentUser.vk_id);currentUser.experience=newExp;var usedBy=promo.used_by||[];usedBy.push(currentUser.vk_id);await supabase.from('promocodes').update({used_by:usedBy}).eq('code',code);if(!currentUser.task_promo_done){await supabase.from('players').update({experience:currentUser.experience+1000,task_promo_done:true}).eq('vk_id',currentUser.vk_id);currentUser.experience+=1000;currentUser.task_promo_done=true;toast('🎁 +'+promo.reward_exp+' + бонус 1000!','success')}else{toast('🎁 +'+promo.reward_exp+' опыта!','success')}closeSettings();renderAll()}
 
-// ================= РЕФЕРАЛКА =================
-function copyInviteLink(){var link='https://vk.com/app'+APP_ID+'#ref_'+currentUser.vk_id;navigator.clipboard?navigator.clipboard.writeText(link).then(function(){toast('🔗 Отправь ссылку другу!','info')}):prompt('Скопируй:',link)}
+// ================= ПРИГЛАШЕНИЕ (открывает список чатов ВК) =================
+function inviteFriend(){
+    var refLink = 'https://vk.com/app' + APP_ID + '#ref_' + currentUser.vk_id;
+    vkBridge.send('VKWebAppShare', {
+        link: refLink,
+        text: '🎮 Присоединяйся к Корпоративным Играм! Стань моим сотрудником и зарабатывай опыт!'
+    }).then(function() {
+        toast('✅ Приглашение отправлено!', 'success');
+    }).catch(function() {
+        // Если не получилось — копируем в буфер
+        navigator.clipboard.writeText(refLink).then(function() {
+            toast('🔗 Ссылка скопирована! Отправь другу', 'info');
+        }).catch(function() {
+            prompt('Скопируй ссылку и отправь другу:', refLink);
+        });
+    });
+}
 
 // ================= ОТРИСОВКА =================
 function renderAll(){
@@ -217,7 +232,7 @@ function renderAll(){
     if(currentUser.company){var groupLink=currentUser.company_group_id?' <a href="https://vk.com/club'+currentUser.company_group_id+'" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>':'';compEl.innerHTML='🏢 <span style="cursor:pointer;" onclick="goTo(\'my-company\')">'+currentUser.company+'</span>'+groupLink}else{compEl.textContent=''}
     document.getElementById('collect-panel').style.display=myTeamTotal?'flex':'none';
     if(myTeamTotal){document.getElementById('collect-amount').textContent=currentUser.pending_experience||0;document.getElementById('collect-btn').onclick=collectExperience}
-    document.getElementById('invite-friend-btn').onclick=copyInviteLink;
+    document.getElementById('invite-friend-btn').onclick = inviteFriend;
     loadMyTeam(true);
 }
 
