@@ -37,11 +37,13 @@
                     <button class="btn-invite-friend" id="invite-friend-btn" style="flex:1;">📨 Пригласить (+500)</button>
                     <button class="btn-settings" id="settings-btn" onclick="openSettings()">⚙️</button>
                 </div>
+                <!-- Кнопка Заработать -->
+                <button class="btn-earn" id="earn-btn" onclick="toggleTasks()">💰 Заработать</button>
             </div>
 
-            <!-- Задания -->
-            <div class="card" id="tasks-panel">
-                <div class="section-title">📋 Заработать</div>
+            <!-- Задания (скрыты по умолчанию) -->
+            <div class="card" id="tasks-panel" style="display:none;">
+                <div class="section-title">📋 Задания</div>
                 <div id="tasks-list">Загрузка...</div>
             </div>
 
