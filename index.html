@@ -15,7 +15,8 @@
     <div id="app">
         <div class="nav-bar" id="nav-bar">
             <div class="nav-btn" id="nav-top" onclick="goTo('top')">🏆<br>Топ</div>
-            <div class="nav-btn" id="nav-mycompany" onclick="goTo('my-company')">🏢<br>Моя компания</div>
+            <div class="nav-btn" id="nav-market" onclick="goTo('market')">💼<br>Биржа</div>
+            <div class="nav-btn" id="nav-mycompany" onclick="goTo('my-company')">🏢<br>Компания</div>
         </div>
 
         <!-- Профиль -->
@@ -37,23 +38,19 @@
                     <button class="btn-invite-friend" id="invite-friend-btn" style="flex:1;">📨 Пригласить (+500)</button>
                     <button class="btn-settings" id="settings-btn" onclick="openSettings()">⚙️</button>
                 </div>
-                <!-- Кнопка Заработать -->
                 <button class="btn-earn" id="earn-btn" onclick="toggleTasks()">💰 Заработать</button>
             </div>
 
-            <!-- Задания (скрыты по умолчанию) -->
             <div class="card" id="tasks-panel" style="display:none;">
                 <div class="section-title">📋 Задания</div>
                 <div id="tasks-list">Загрузка...</div>
             </div>
 
-            <!-- Сбор опыта -->
             <div class="card collect-card" id="collect-panel" style="display:none;">
                 <div class="collect-info"><span class="collect-amount" id="collect-amount">0</span><span class="collect-label">опыта готово</span></div>
                 <button class="btn-collect" id="collect-btn">🔄 Собрать</button>
             </div>
 
-            <!-- Сотрудники -->
             <div class="card">
                 <div class="section-title">👥 Мои сотрудники (<span id="my-team-total">0</span>)</div>
                 <div id="my-team-list"><p style="color:#aaa;text-align:center;">Загрузка...</p></div>
@@ -69,6 +66,14 @@
                     <button class="subtab" id="subtab-companies" onclick="switchTopSubtab('companies')">🏢 Компании</button>
                 </div>
                 <div id="top-content"></div>
+            </div>
+        </div>
+
+        <!-- Биржа -->
+        <div id="screen-market" class="screen">
+            <div class="card">
+                <div class="section-title">💼 Биржа труда</div>
+                <div id="market-content">Загрузка...</div>
             </div>
         </div>
 
