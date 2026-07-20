@@ -224,26 +224,24 @@ async function applyPromo(){
     if(promo.used_by&&promo.used_by.includes(currentUser.vk_id)){toast('Вы уже использовали этот промокод!','error');return}
     if(promo.used_by&&promo.used_by.length>=promo.max_uses){toast('Промокод больше не действует!','error');return}
     
-    // Начисляем опыт за промокод
     var newExp=(currentUser.experience||0)+promo.reward_exp;
     await supabase.from('players').update({experience:newExp}).eq('vk_id',currentUser.vk_id);
     currentUser.experience=newExp;
     
-    // Добавляем игрока в использовавшие
     var usedBy=promo.used_by||[];
     usedBy.push(currentUser.vk_id);
     await supabase.from('promocodes').update({used_by:usedBy}).eq('code',code);
     
-    // Бонус за задание (всегда, если введён новый промокод)
     await supabase.from('players').update({experience:currentUser.experience+1000}).eq('vk_id',currentUser.vk_id);
     currentUser.experience+=1000;
     
-    // Сбрасываем task_promo_done, чтобы задание снова было активным
     await supabase.from('players').update({task_promo_done:false}).eq('vk_id',currentUser.vk_id);
     currentUser.task_promo_done=false;
     
     toast('🎁 +'+promo.reward_exp+' + бонус 1000 за задание!','success');
-    closeSettings();renderAll();
+    closeSettings();
+    renderAll();
+    renderTasks();
 }
 
 // ================= ПРИГЛАШЕНИЕ =================
@@ -287,8 +285,7 @@ function renderTasks(){
     html += '</div>';
     
     html += '<div class="task-item"><div class="task-info"><b>🎁 Ввести промокод</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
-    if(currentUser.task_promo_done){html += '<span style="color:#4caf50;">✅ Выполнено</span>'}
-    else{html += '<button class="btn-task" onclick="doPromoTask()">▶ Выполнить</button>'}
+    html += '<button class="btn-task" onclick="doPromoTask()">▶ Выполнить</button>';
     html += '</div>';
     
     listEl.innerHTML = html;
