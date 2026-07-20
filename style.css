@@ -14,8 +14,8 @@ body{font-family:-apple-system,sans-serif;color:#fff;padding:10px 10px 20px;min-
 .stat{flex:1}.stat .value{font-size:22px;font-weight:700;color:#7cb9ff}
 .stat .label{font-size:10px;color:#aaa;text-transform:uppercase}
 .stat-main .value{font-size:28px;color:#4caf50}
-.nav-bar{display:flex;gap:6px;margin-bottom:10px}
-.nav-btn{flex:1;text-align:center;padding:8px 4px;background:rgba(255,255,255,0.08);border-radius:12px;cursor:pointer;font-size:11px;font-weight:600;color:#aaa;border:1px solid rgba(255,255,255,0.1);transition:0.2s}
+.nav-bar{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+.nav-btn{flex:1;min-width:55px;text-align:center;padding:6px 2px;background:rgba(255,255,255,0.08);border-radius:10px;cursor:pointer;font-size:10px;font-weight:600;color:#aaa;border:1px solid rgba(255,255,255,0.1);transition:0.2s}
 .nav-btn.active{background:rgba(74,118,168,0.4);color:#fff;border-color:#4a76a8}
 .subtab-bar{display:flex;gap:6px;margin-bottom:12px}
 .subtab{padding:8px 18px;background:rgba(255,255,255,0.06);border:none;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;color:#aaa}
@@ -42,6 +42,7 @@ body{font-family:-apple-system,sans-serif;color:#fff;padding:10px 10px 20px;min-
 button{border:none;cursor:pointer;font-weight:600;transition:.15s}
 button:active{transform:scale(.96)}
 .btn-hire{background:rgba(33,150,243,0.3);color:#90caf9;padding:8px;border-radius:10px;font-size:14px;width:100%;margin-top:8px}
+.btn-hire-small{background:#2196f3;color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;cursor:pointer;flex-shrink:0}
 .btn-upgrade{background:rgba(156,39,176,0.3);color:#ce93d8;padding:6px 10px;border-radius:20px;font-size:12px}
 .btn-fire{background:rgba(255,87,34,0.3);color:#ffab91;padding:6px 10px;border-radius:20px;font-size:12px}
 .btn-steal{background:rgba(244,67,54,0.3);color:#ef9a9a;padding:6px 12px;border-radius:20px;font-size:12px}
