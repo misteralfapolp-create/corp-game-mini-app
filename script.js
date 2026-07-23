@@ -132,7 +132,7 @@ function renderEmployeeItem(emp,container,isMine){var cost=Math.floor(emp.hire_c
 async function upgradeEmployee(emp){var cost=Math.floor((emp.hire_cost||100)*1.5);if((currentUser.experience||0)<cost){toast('Недостаточно опыта!','error');return}await supabase.from('players').update({experience:Math.max(0,(currentUser.experience||0)-cost)}).eq('vk_id',currentUser.vk_id);var newCost=Math.floor((emp.hire_cost||100)*1.5);await supabase.from('players').update({level:(emp.level||1)+1,income_per_hour:(emp.income_per_hour||0)+1,hire_cost:newCost}).eq('vk_id',emp.vk_id);currentUser.experience=Math.max(0,(currentUser.experience||0)-cost);await supabase.from('players').update({last_collect:new Date().toISOString()}).eq('vk_id',currentUser.vk_id);currentUser.last_collect=new Date().toISOString();toast('✅ Прокачано!','success');await updateAllStats();loadMyTeam(true);renderAll()}
 async function fireEmployee(emp){var fireIncome=Math.floor((emp.hire_cost||100)*0.8);await supabase.from('players').update({experience:(currentUser.experience||0)+fireIncome}).eq('vk_id',currentUser.vk_id);var newCost=Math.floor((emp.hire_cost||100)*1.5);await supabase.from('players').update({owner_id:null,status:'Биржа труда',role:null,income_per_hour:0,level:1,hire_cost:newCost}).eq('vk_id',emp.vk_id);currentUser.experience+=fireIncome;toast('🔥 Уволен! +'+fireIncome+' опыта','info');await updateAllStats();loadMyTeam(true);renderAll()}
 
-// ================= БИРЖА (только безработные) =================
+// ================= БИРЖА (безработные) =================
 async function loadMarketScreen(){
     var c=document.getElementById('market-content');
     c.innerHTML='Загрузка...';
@@ -145,12 +145,11 @@ async function loadMarketScreen(){
         .limit(100);
     
     if(!result.data || !result.data.length){
-        c.innerHTML = '<p style="color:#aaa;text-align:center;">Биржа пуста</p>';
+        c.innerHTML = '<p style="color:#aaa;text-align:center;">На бирже никого нет</p>';
         return;
     }
     
-    c.innerHTML = '<div class="section-title">💼 Биржа труда</div>';
-    c.innerHTML += '<p style="font-size:11px;color:#aaa;margin-bottom:10px;">Найдено ' + result.data.length + ' безработных</p>';
+    c.innerHTML = '<p style="font-size:11px;color:#aaa;margin-bottom:10px;">Найдено ' + result.data.length + ' безработных</p>';
     
     result.data.forEach(function(player){
         var hireCost = player.hire_cost || 100;
@@ -195,49 +194,45 @@ async function createCompany(){
     showInputModal('Создание компании', 'Название компании', 'Компания '+currentUser.first_name, function(name){
         if(!name) return;
         
-        // Пробуем получить список групп пользователя
+        // Запрашиваем список групп через VK Bridge
         vkBridge.send('VKWebAppGetCommunityAuthToken', {
             app_id: parseInt(APP_ID),
             scope: 'manage'
         }).then(function(result){
             if(result.groups && result.groups.length > 0){
-                // Создаём список групп для выбора
                 var groupNames = result.groups.map(function(g, i){
-                    return (i+1) + '. ' + g.name + ' (vk.com/club' + g.id + ')';
+                    return (i+1) + '. ' + g.name + ' (ID: ' + g.id + ')';
                 }).join('\n');
                 
-                showInputModal('Выберите группу (введите номер)\n0 - без группы\n\n' + groupNames, 'Номер', '0', function(choice){
+                showInputModal('Выберите группу (номер)\n0 - без группы\n\n' + groupNames, 'Номер', '0', function(choice){
                     if(choice === null) return;
                     var idx = parseInt(choice) - 1;
                     var finalGroupId = null;
                     if(idx >= 0 && idx < result.groups.length){
                         finalGroupId = result.groups[idx].id;
                     }
-                    saveCompany(name, finalGroupId);
+                    supabase.from('players').update({company:name, company_group_id:finalGroupId}).eq('vk_id',currentUser.vk_id).then(function(){
+                        currentUser.company=name; currentUser.company_group_id=finalGroupId;
+                        toast('✅ Компания «'+name+'» создана!','success'); location.reload();
+                    });
                 });
             } else {
-                // Нет групп — создаём без привязки
-                showInputModal('ID группы ВК', 'Введите ID (число) или 0', '0', function(groupId){
-                    var finalGroupId = groupId && parseInt(groupId) > 0 ? parseInt(groupId) : null;
-                    saveCompany(name, finalGroupId);
+                // Нет групп
+                supabase.from('players').update({company:name, company_group_id:null}).eq('vk_id',currentUser.vk_id).then(function(){
+                    currentUser.company=name; currentUser.company_group_id=null;
+                    toast('✅ Компания «'+name+'» создана!','success'); location.reload();
                 });
             }
         }).catch(function(){
-            // Не получилось — ручной ввод
+            // Не получилось — спрашиваем ID вручную
             showInputModal('ID группы ВК', 'Введите ID (число) или 0', '0', function(groupId){
                 var finalGroupId = groupId && parseInt(groupId) > 0 ? parseInt(groupId) : null;
-                saveCompany(name, finalGroupId);
+                supabase.from('players').update({company:name, company_group_id:finalGroupId}).eq('vk_id',currentUser.vk_id).then(function(){
+                    currentUser.company=name; currentUser.company_group_id=finalGroupId;
+                    toast('✅ Компания «'+name+'» создана!','success'); location.reload();
+                });
             });
         });
-    });
-}
-
-function saveCompany(name, groupId){
-    supabase.from('players').update({company:name, company_group_id:groupId}).eq('vk_id',currentUser.vk_id).then(function(){
-        currentUser.company = name;
-        currentUser.company_group_id = groupId;
-        toast('✅ Компания «'+name+'» создана!','success');
-        location.reload();
     });
 }
 
