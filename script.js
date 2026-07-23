@@ -135,7 +135,7 @@ async function fireEmployee(emp){var fireIncome=Math.floor((emp.hire_cost||100)*
 // ================= БИРЖА =================
 async function loadMarketScreen(){
     var c=document.getElementById('market-content');
-    c.innerHTML='Загрузка списка друзей...';
+    c.innerHTML='Загрузка...';
     
     try {
         var friendsResult = await vkBridge.send('VKWebAppCallAPIMethod', {
@@ -195,21 +195,22 @@ async function loadMarketScreen(){
     
     // Если друзья не загрузились
     c.innerHTML = '<p style="color:#aaa;text-align:center;margin:20px 0;">Чтобы видеть друзей на бирже, разрешите доступ</p>';
-    c.innerHTML += '<button class="btn-earn" onclick="requestFriendAccess()">🔑 Разрешить доступ ко всем друзьям</button>';
+    c.innerHTML += '<button class="btn-earn" onclick="requestFriendAccess()">🔑 Разрешить доступ к друзьям</button>';
     c.innerHTML += '<p style="color:#aaa;font-size:11px;text-align:center;margin-top:10px;">Все безработные:</p>';
     await loadAllJobless(c);
 }
 
 function requestFriendAccess(){
-    // Запрашиваем доступ ко ВСЕМ друзьям (multi: true)
-    vkBridge.send('VKWebAppGetFriends', { multi: true })
-        .then(function(data){
-            toast('✅ Доступ разрешён!', 'success');
-            loadMarketScreen();
-        })
-        .catch(function(e){
-            toast('Не удалось получить доступ', 'error');
-        });
+    // Вызываем friends.get — ВК сам покажет ОДНО окно с запросом доступа
+    vkBridge.send('VKWebAppCallAPIMethod', {
+        method: 'friends.get',
+        params: { count: 1, v: '5.199' }
+    }).then(function(data){
+        toast('✅ Доступ разрешён!', 'success');
+        loadMarketScreen();
+    }).catch(function(e){
+        toast('Не удалось получить доступ', 'error');
+    });
 }
 
 async function loadAllJobless(container){
