@@ -88,6 +88,19 @@
         </div>
     </div>
 
+    <!-- Модалка ввода (вместо prompt) -->
+    <div class="modal" id="input-modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="document.getElementById('input-modal').style.display='none'">✕</span>
+            <h2 id="input-modal-title">Введите значение</h2>
+            <input type="text" id="input-modal-input" placeholder="" style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#fff;font-size:14px;margin:10px 0;">
+            <div style="display:flex;gap:8px;">
+                <button class="btn-collect" id="input-modal-ok" style="flex:1;">ОК</button>
+                <button class="btn-back" id="input-modal-cancel" style="flex:1;">Отмена</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Модалка игрока -->
     <div class="modal" id="player-modal">
         <div class="modal-content">
