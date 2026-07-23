@@ -193,7 +193,6 @@ async function loadMarketScreen(){
         }
     } catch(e) {}
     
-    // Если друзья не загрузились
     c.innerHTML = '<p style="color:#aaa;text-align:center;margin:20px 0;">Чтобы видеть друзей на бирже, разрешите доступ</p>';
     c.innerHTML += '<button class="btn-earn" onclick="requestFriendAccess()">🔑 Разрешить доступ к друзьям</button>';
     c.innerHTML += '<p style="color:#aaa;font-size:11px;text-align:center;margin-top:10px;">Все безработные:</p>';
@@ -201,16 +200,22 @@ async function loadMarketScreen(){
 }
 
 function requestFriendAccess(){
-    // Вызываем friends.get — ВК сам покажет ОДНО окно с запросом доступа
-    vkBridge.send('VKWebAppCallAPIMethod', {
-        method: 'friends.get',
-        params: { count: 1, v: '5.199' }
-    }).then(function(data){
-        toast('✅ Доступ разрешён!', 'success');
-        loadMarketScreen();
-    }).catch(function(e){
-        toast('Не удалось получить доступ', 'error');
-    });
+    vkBridge.send('VKWebAppGetFriends', { multi: false })
+        .then(function(data){
+            toast('✅ Доступ разрешён!', 'success');
+            loadMarketScreen();
+        })
+        .catch(function(e){
+            vkBridge.send('VKWebAppCallAPIMethod', {
+                method: 'friends.get',
+                params: { count: 1, v: '5.199' }
+            }).then(function(data){
+                toast('✅ Доступ разрешён!', 'success');
+                loadMarketScreen();
+            }).catch(function(e2){
+                toast('Не удалось получить доступ', 'error');
+            });
+        });
 }
 
 async function loadAllJobless(container){
