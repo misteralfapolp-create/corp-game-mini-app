@@ -13,11 +13,7 @@
     <div id="toast-container"></div>
     
     <div id="app">
-        <div class="nav-bar" id="nav-bar">
-            <div class="nav-btn" id="nav-top" onclick="goTo('top')">🏆<br>Топ</div>
-            <div class="nav-btn" id="nav-market" onclick="goTo('market')">💼<br>Биржа</div>
-            <div class="nav-btn" id="nav-mycompany" onclick="goTo('my-company')">🏢<br>Компания</div>
-        </div>
+        <div class="nav-bar" id="nav-bar"></div>
 
         <!-- Профиль -->
         <div id="screen-profile" class="screen active">
@@ -62,8 +58,8 @@
         <div id="screen-top" class="screen">
             <div class="card">
                 <div class="subtab-bar">
-                    <button class="subtab active" id="subtab-players" onclick="switchTopSubtab('players')">👤 Игроки</button>
-                    <button class="subtab" id="subtab-companies" onclick="switchTopSubtab('companies')">🏢 Компании</button>
+                    <button class="subtab active" id="subtab-players">👤 Игроки</button>
+                    <button class="subtab" id="subtab-companies">🏢 Компании</button>
                 </div>
                 <div id="top-content"></div>
             </div>
