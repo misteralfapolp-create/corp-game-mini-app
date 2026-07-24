@@ -65,7 +65,7 @@ function addNavBtn(screen,label){
     bar.appendChild(btn);
 }
 
-// ================= ЗАПУСК (с отладкой) =================
+// ================= ЗАПУСК =================
 async function initApp(){
     try{
         document.getElementById('player-name').textContent = 'Шаг 1...';
@@ -121,7 +121,7 @@ async function initApp(){
         }
         
         currentUser = r.data;
-        document.getElementById('player-name').textContent = 'Готово!';
+        document.getElementById('player-name').textContent = currentUser.first_name + ' ' + currentUser.last_name;
         
         if(currentUser.owner_id === undefined){ await supabase.from('players').update({owner_id:null,last_collect:new Date().toISOString(),pending_experience:0}).eq('vk_id',currentUser.vk_id); currentUser.owner_id = null; }
         if(currentUser.company_group_id === undefined){ await supabase.from('players').update({company_group_id:null}).eq('vk_id',currentUser.vk_id); currentUser.company_group_id = null; }
@@ -313,4 +313,9 @@ function renderAll(){
     loadMyTeam(true);
 }
 function renderTasks(){var listEl=document.getElementById('tasks-list');if(!listEl)return;var html='';html+='<div class="task-item"><div class="task-info"><b>📱 Подписаться на группу</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';if(currentUser.task_group_done){html+='<span style="color:#4caf50;">✅ Выполнено</span>';}else{html+='<div style="display:flex;gap:4px;"><button class="btn-task" onclick="doGroupTask()">▶ Выполнить</button><button class="btn-task-check" onclick="checkGroupTask()">🔍 Проверить</button></div>';}html+='</div>';html+='<div class="task-item"><div class="task-info"><b>🎁 Ввести промокод</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';html+='<button class="btn-task" onclick="doPromoTask()">▶ Выполнить</button>';html+='</div>';listEl.innerHTML=html;}
+
+// Обработчики подвкладок
+document.getElementById('subtab-players').addEventListener('click', function(){ switchTopSubtab('players'); });
+document.getElementById('subtab-companies').addEventListener('click', function(){ switchTopSubtab('companies'); });
+
 document.getElementById('load-more-btn').addEventListener('click',function(){loadMyTeam(false);});
