@@ -127,7 +127,7 @@ async function fireEmployee(emp){var fireIncome=Math.floor((emp.hire_cost||100)*
 // ================= БИРЖА =================
 async function loadMarketScreen(){
     var c=document.getElementById('market-content');c.innerHTML='Загрузка...';
-    var result = await supabase.from('players').select('*').eq('status','Биржа труда').neq('vk_id',currentUser.vk_id).order('experience',{ascending:false}).limit(100);
+    var result=await supabase.from('players').select('*').eq('status','Биржа труда').neq('vk_id',currentUser.vk_id).order('experience',{ascending:false}).limit(100);
     if(!result.data||!result.data.length){c.innerHTML='<p style="color:#aaa;text-align:center;">На бирже никого нет</p>';return;}
     c.innerHTML='<p style="font-size:11px;color:#aaa;margin-bottom:10px;">Найдено '+result.data.length+' безработных</p>';
     result.data.forEach(function(player){var hireCost=player.hire_cost||100;var div=document.createElement('div');div.className='player-item';div.innerHTML='<img src="'+(player.photo_200||'https://vk.com/images/camera_200.png')+'" onerror="this.src=\'https://vk.com/images/camera_200.png\'" onclick="openPlayerModalById('+player.vk_id+')"><div class="info" onclick="openPlayerModalById('+player.vk_id+')"><div class="name">'+player.first_name+' '+player.last_name+'</div><div class="detail">⭐'+(player.experience||0)+' • 💰'+hireCost+'</div></div><button class="btn-hire-small" data-id="'+player.vk_id+'">💼 '+hireCost+'</button>';c.appendChild(div);});
