@@ -29,11 +29,9 @@ async function checkGroupTask() {
             renderAll();
         } else { toast('Не подписаны', 'error'); }
     } catch(e) {
-        await supabase.from('players').update({ experience: (currentUser.experience || 0) + 1000, task_group_done: true }).eq('vk_id', currentUser.vk_id);
-        currentUser.experience += 1000;
-        currentUser.task_group_done = true;
-        toast('✅ +1000 опыта!', 'success');
-        renderAll();
+        // ✅ УЛУЧШЕНО: показываем ошибку, а не молча начисляем опыт
+        console.error('Ошибка проверки подписки:', e);
+        toast('Ошибка проверки. Попробуйте позже.', 'error');
     }
 }
 
@@ -59,13 +57,16 @@ async function checkNotifyTask() {
     if(sent) {
         await completeNotifyTask();
     } else {
-        toast('❌ Не удалось отправить. Напишите любое слово в ЛС группы и попробуйте снова!', 'error');
+        toast('❌ Не удалось отправить. Проверьте настройки бота.', 'error');
     }
 }
 
 async function completeNotifyTask() {
     if(currentUser.task_notify_done) return;
-    await supabase.from('players').update({ experience: (currentUser.experience || 0) + 1000, task_notify_done: true }).eq('vk_id', currentUser.vk_id);
+    await supabase.from('players').update({ 
+        experience: (currentUser.experience || 0) + 1000, 
+        task_notify_done: true 
+    }).eq('vk_id', currentUser.vk_id);
     currentUser.experience += 1000;
     currentUser.task_notify_done = true;
     toast('✅ +1000 опыта за уведомления!', 'success');
@@ -74,7 +75,10 @@ async function completeNotifyTask() {
 }
 
 async function sendPersonalMessageAsync(vkId, message) {
-    if(!GROUP_TOKEN) return false;
+    if(!GROUP_TOKEN) {
+        console.warn('GROUP_TOKEN не установлен');
+        return false;
+    }
     try {
         var response = await fetch('https://api.vk.com/method/messages.send', {
             method: 'POST',
@@ -82,8 +86,12 @@ async function sendPersonalMessageAsync(vkId, message) {
             body: 'user_id=' + vkId + '&message=' + encodeURIComponent(message) + '&access_token=' + GROUP_TOKEN + '&v=5.199&random_id=' + Math.floor(Math.random() * 999999)
         });
         var data = await response.json();
+        console.log('Messages.send response:', data);
         return data && data.response;
-    } catch(e) { return false; }
+    } catch(e) {
+        console.error('Ошибка отправки сообщения:', e);
+        return false;
+    }
 }
 
 function sendPersonalMessage(vkId, message) {
