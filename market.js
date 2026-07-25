@@ -6,7 +6,7 @@ async function loadMarketScreen() {
     c.innerHTML = '<p style="font-size:11px;color:#aaa;margin-bottom:10px;">Найдено ' + result.data.length + ' безработных</p>';
     result.data.forEach(function(player) {
         renderEmployeeCard(player, c, false, true);
-        var cost = player.hire_cost || 100; // Цена из базы
+        var cost = player.hire_cost || 100; // Такая же цена как в карточке
         var btn = document.createElement('button');
         btn.className = 'btn-hire-small';
         btn.textContent = '💼 ' + cost;
