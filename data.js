@@ -2,7 +2,8 @@
 
 // Обновление статистики
 async function updateAllStats() {
-    var empResult = await supabase.from('players').select('*').eq('owner_id', currentUser.vk_id).order('experience', { ascending: false });
+    // Сортировка по уровню (цене) — по убыванию
+    var empResult = await supabase.from('players').select('*').eq('owner_id', currentUser.vk_id).order('level', { ascending: false });
     myTeam = empResult.data || [];
     myTeamTotal = myTeam.length;
     
