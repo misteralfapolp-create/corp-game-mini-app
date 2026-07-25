@@ -54,13 +54,12 @@ async function checkNotifyTask() {
     
     toast('Проверяем...', 'info');
     
-    var sent = sendPersonalMessageSync(currentUser.vk_id, '✅ Уведомления подключены!');
+    var sent = await sendPersonalMessageAsync(currentUser.vk_id, '✅ Уведомления подключены!');
     
     if(sent) {
         await completeNotifyTask();
     } else {
-        toast('📝 Награда начислена! Убедитесь, что написали сообщение группе.', 'info');
-        await completeNotifyTask();
+        toast('❌ Не удалось отправить. Напишите сообщение группе и попробуйте снова.', 'error');
     }
 }
 
@@ -74,22 +73,24 @@ async function completeNotifyTask() {
     renderTasks();
 }
 
-function sendPersonalMessageSync(vkId, message) {
+async function sendPersonalMessageAsync(vkId, message) {
     if(!GROUP_TOKEN) return false;
     try {
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', 'https://api.vk.com/method/messages.send', false);
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        xhr.send('user_id=' + vkId + '&message=' + encodeURIComponent(message) + '&access_token=' + GROUP_TOKEN + '&v=5.199&random_id=' + Math.floor(Math.random() * 999999));
-        var response = JSON.parse(xhr.responseText);
-        return response && response.response;
-    } catch(e) { return false; }
+        var response = await fetch('https://api.vk.com/method/messages.send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'user_id=' + vkId + '&message=' + encodeURIComponent(message) + '&access_token=' + GROUP_TOKEN + '&v=5.199&random_id=' + Math.floor(Math.random() * 999999)
+        });
+        var data = await response.json();
+        console.log('VK API ответ:', data);
+        return data && data.response;
+    } catch(e) {
+        console.error('Ошибка отправки:', e);
+        return false;
+    }
 }
 
 function sendPersonalMessage(vkId, message) {
     if(!GROUP_TOKEN) return;
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', 'https://api.vk.com/method/messages.send', true);
-    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-    xhr.send('user_id=' + vkId + '&message=' + encodeURIComponent(message) + '&access_token=' + GROUP_TOKEN + '&v=5.199&random_id=' + Math.floor(Math.random() * 999999));
+    sendPersonalMessageAsync(vkId, message);
 }
