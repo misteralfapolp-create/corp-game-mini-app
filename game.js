@@ -73,7 +73,8 @@ function switchTopSubtab(sub) {
 async function loadTopPlayersScreen() {
     var c = document.getElementById('top-content');
     c.innerHTML = 'Загрузка...';
-    var allResult = await supabase.from('players').select('vk_id,first_name,last_name,photo_200,experience,level,company,company_group_id,owner_id,status').order('level', { ascending: false }).limit(100);
+    // ТОП ПО БАЛАНСУ (experience)
+    var allResult = await supabase.from('players').select('vk_id,first_name,last_name,photo_200,experience,level,company,company_group_id,owner_id,status').order('experience', { ascending: false }).limit(100);
     if(allResult.error) { c.innerHTML = 'Ошибка'; return; }
     c.innerHTML = '';
     if(!allResult.data.length) { c.innerHTML = '<p style="color:#aaa;">Нет данных</p>'; return; }
@@ -154,7 +155,6 @@ async function loadMyCompanyScreen() {
     if(currentUser.company_group_id) {
         document.getElementById('my-company-name').innerHTML += ' <a href="https://vk.com/club' + currentUser.company_group_id + '" target="_blank" style="color:#4a76a8;font-size:12px;">📱 Группа</a>';
     }
-    // Сортировка по уровню (цене)
     var r = await supabase.from('players').select('*').eq('company', currentUser.company).order('level', { ascending: false });
     if(r.data) {
         document.getElementById('my-company-stats').textContent = '👥 ' + r.data.length + ' сотрудников';
