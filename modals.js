@@ -99,7 +99,10 @@ async function openCompanyModal(name) {
     var r0 = await supabase.from('players').select('company,company_group_id').eq('company', name).limit(1);
     var groupId = (r0.data && r0.data.length > 0) ? r0.data[0].company_group_id : null;
     document.getElementById('company-modal').style.display = 'flex';
-    document.getElementById('modal-company-name').innerHTML = '🏢 ' + name;
+    
+    var avatarHtml = groupId ? '<img src="https://vk.com/images/community_200.png?gid=' + groupId + '" style="width:40px;height:40px;border-radius:50%;vertical-align:middle;margin-right:10px;" onerror="this.style.display=\'none\'">' : '';
+    document.getElementById('modal-company-name').innerHTML = avatarHtml + '🏢 ' + name;
+    
     if(groupId) document.getElementById('modal-company-name').innerHTML += ' <a href="https://vk.com/club' + groupId + '" target="_blank" style="color:#4a76a8;font-size:13px;">📱</a>';
     var r = await supabase.from('players').select('*').eq('company', name);
     if(r.data) {
