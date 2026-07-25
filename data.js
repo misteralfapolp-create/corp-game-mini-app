@@ -29,7 +29,9 @@ async function updateAllStats() {
             if((currentUser.experience || 0) < myCost) { toast('Недостаточно опыта!', 'error'); return; }
             await supabase.from('players').update({
                 experience: Math.max(0, (currentUser.experience || 0) - myCost),
-                owner_id: null, status: 'Биржа труда', role: null
+                owner_id: null,
+                status: 'Биржа труда',
+                role: null
             }).eq('vk_id', currentUser.vk_id);
             toast('Вы уволились!', 'info');
             location.reload();
