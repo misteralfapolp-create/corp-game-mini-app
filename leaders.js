@@ -21,7 +21,8 @@ async function loadTopPlayersScreen() {
         var lvl = p.level || 1;
         var jobTitle = getJobTitle(lvl);
         var cost = p.hire_cost || 100;
-        var isOnMarket = p.status === 'Биржа труда' && p.vk_id !== currentUser.vk_id && !(currentUser.owner_id && currentUser.owner_id === p.vk_id);
+        // Можно нанять любого, кроме себя и своего владельца
+        var canHire = p.vk_id !== currentUser.vk_id && !(currentUser.owner_id && currentUser.owner_id === p.vk_id);
         
         var div = document.createElement('div');
         div.className = 'player-item';
@@ -42,7 +43,7 @@ async function loadTopPlayersScreen() {
         
         div.querySelector('.info').innerHTML += '</div>';
         
-        if(isOnMarket) {
+        if(canHire) {
             var hireBtn = document.createElement('button');
             hireBtn.className = 'btn-hire-small';
             hireBtn.textContent = '💼 ' + cost;
