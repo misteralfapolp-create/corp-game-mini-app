@@ -132,20 +132,25 @@ async function hirePlayer(player) {
         return; 
     }
     
+    // Списываем у нанимателя
     await supabase.from('players').update({ 
         experience: Math.max(0, (currentUser.experience || 0) - hireCost) 
     }).eq('vk_id', currentUser.vk_id);
     
+    // Начисляем старому владельцу
     if(player.owner_id && player.owner_id !== currentUser.vk_id) {
         var oldOwner = await supabase.from('players').select('experience').eq('vk_id', player.owner_id).maybeSingle();
+        console.log('Старый владелец ДО:', oldOwner.data);
         if(oldOwner.data) {
+            var newExp = (oldOwner.data.experience || 0) + hireCost;
             await supabase.from('players').update({ 
-                experience: (oldOwner.data.experience || 0) + hireCost 
+                experience: newExp 
             }).eq('vk_id', player.owner_id);
+            console.log('Старый владелец ПОСЛЕ: +' + hireCost + ', стало: ' + newExp);
         }
     }
     
-    // Не сбрасываем level и income_per_hour
+    // Меняем владельца
     await supabase.from('players').update({ 
         owner_id: currentUser.vk_id, 
         status: 'Работает', 
