@@ -30,13 +30,19 @@ function showInputModal(title, placeholder, defaultValue, callback) {
     var input = document.getElementById('input-modal-input');
     input.value = defaultValue || '';
     input.placeholder = placeholder || '';
+    input.style.display = 'block';
     modal.style.display = 'flex';
+    document.getElementById('input-modal-ok').style.display = 'block';
     document.getElementById('input-modal-ok').onclick = function() {
         modal.style.display = 'none';
+        var oldList = document.getElementById('groups-list');
+        if(oldList) oldList.remove();
         callback(input.value.trim());
     };
     document.getElementById('input-modal-cancel').onclick = function() {
         modal.style.display = 'none';
+        var oldList = document.getElementById('groups-list');
+        if(oldList) oldList.remove();
         callback(null);
     };
 }
@@ -74,24 +80,135 @@ function addNavBtn(screen, label) {
     bar.appendChild(btn);
 }
 
-// Отображение сотрудника
-function renderEmployeeItem(emp, container, isMine) {
-    var cost = Math.floor(emp.hire_cost || 100);
-    var upgradeCost = Math.floor(cost * 1.5);
-    var fireIncome = Math.floor(cost * 0.8);
+// ================= ОТРИСОВКА КАРТОЧКИ СОТРУДНИКА =================
+function renderEmployeeCard(emp, container, showActions, showCompany) {
+    var lvl = emp.level || 1;
+    var jobTitle = getJobTitle(lvl);
+    var income = lvl; // Доход = уровень
+    var cost = lvl * 50; // Стоимость прокачки
+    var sellPrice = Math.floor(lvl * 40); // Цена продажи
+    
     var div = document.createElement('div');
     div.className = 'player-item';
-    div.innerHTML = '<img src="' + (emp.photo_200 || 'https://vk.com/images/camera_200.png') + '" onerror="this.src=\'https://vk.com/images/camera_200.png\'" onclick="openPlayerModalById(' + emp.vk_id + ')">' +
-        '<div class="info" onclick="openPlayerModalById(' + emp.vk_id + ')"><div class="name">' + emp.first_name + ' ' + emp.last_name + '<span class="lvl">' + (emp.level || 1) + ' ур</span></div>' +
-        '<div class="detail">🔬 +' + (emp.income_per_hour || 0) + ' оп/час • 💰' + cost + '</div></div>';
-    if(isMine) {
-        div.innerHTML += '<div class="btn-group"><button class="btn-upgrade">⬆ ' + upgradeCost + '</button><button class="btn-fire">🔥 +' + fireIncome + '</button></div>';
+    
+    // Аватар + Имя (кликабельно → модалка)
+    var html = '<img src="' + (emp.photo_200 || 'https://vk.com/images/camera_200.png') + '" onerror="this.src=\'https://vk.com/images/camera_200.png\'" onclick="openPlayerModalById(' + emp.vk_id + ')" style="cursor:pointer;">';
+    html += '<div class="info" onclick="openPlayerModalById(' + emp.vk_id + ')" style="cursor:pointer;">';
+    html += '<div class="name">' + emp.first_name + ' ' + emp.last_name + '</div>';
+    html += '<div class="detail">' + jobTitle + ' (ур.' + lvl + ')</div>';
+    html += '<div class="detail" style="color:#4caf50;">📈 Доход: +' + income + ' оп/час</div>';
+    
+    // Компания (кликабельно)
+    if(showCompany && emp.company) {
+        html += '<div class="detail" style="color:#ff9800;cursor:pointer;" onclick="event.stopPropagation();openCompanyModal(\'' + emp.company + '\')">🏢 ' + emp.company + '</div>';
     }
+    
+    html += '</div>';
+    
+    // Кнопки действий
+    if(showActions) {
+        html += '<div class="btn-group">';
+        html += '<button class="btn-upgrade" onclick="event.stopPropagation();upgradeEmployee(' + emp.vk_id + ')">⬆ ' + cost + '</button>';
+        html += '<button class="btn-fire" onclick="event.stopPropagation();fireEmployee(' + emp.vk_id + ')">🔥 +' + sellPrice + '</button>';
+        html += '</div>';
+    }
+    
+    div.innerHTML = html;
     container.appendChild(div);
-    if(isMine) {
-        div.querySelector('.btn-upgrade').onclick = function(e){ e.stopPropagation(); upgradeEmployee(emp); };
-        div.querySelector('.btn-fire').onclick = function(e){ e.stopPropagation(); fireEmployee(emp); };
+}
+
+// ================= ОТРИСОВКА МОДАЛКИ ИГРОКА =================
+function renderPlayerModalContent(player, container) {
+    var lvl = player.level || 1;
+    var jobTitle = getJobTitle(lvl);
+    var income = lvl;
+    var cost = lvl * 50;
+    var sellPrice = Math.floor(lvl * 40);
+    
+    // Заголовок с аватаркой
+    document.getElementById('modal-player-header').innerHTML = 
+        '<img src="' + (player.photo_200 || 'https://vk.com/images/camera_200.png') + '" style="width:50px;height:50px;border-radius:50%;vertical-align:middle;margin-right:10px;cursor:pointer;" onclick="window.open(\'https://vk.com/id' + player.vk_id + '\',\'_blank\')">' +
+        '<span style="font-size:18px;font-weight:700;">' + player.first_name + ' ' + player.last_name + '</span>';
+    
+    // Информация
+    var infoHtml = '<div style="margin:10px 0;">';
+    infoHtml += '<div><b>' + jobTitle + '</b> (ур.' + lvl + ')</div>';
+    infoHtml += '<div style="color:#4caf50;">📈 Доход: +' + income + ' оп/час</div>';
+    infoHtml += '<div>💰 Стоимость: ' + cost + ' опыта</div>';
+    
+    // Компания
+    if(player.company) {
+        infoHtml += '<div style="color:#ff9800;cursor:pointer;" onclick="openCompanyModal(\'' + player.company + '\')">🏢 Компания: ' + player.company + '</div>';
     }
+    
+    // Владелец
+    if(player.owner_id && player.owner_id !== player.vk_id) {
+        infoHtml += '<div id="modal-owner-info">🔒 Загрузка...</div>';
+    }
+    
+    infoHtml += '</div>';
+    
+    // Статистика
+    document.getElementById('modal-player-stats').innerHTML = infoHtml;
+    
+    // Кнопки
+    var hireBtn = document.getElementById('modal-hire-btn');
+    var fireBtn = document.getElementById('modal-fire-btn');
+    hireBtn.style.display = 'none';
+    fireBtn.style.display = 'none';
+    
+    var isMyOwner = currentUser.owner_id && currentUser.owner_id === player.vk_id;
+    var isMyEmployee = player.owner_id === currentUser.vk_id;
+    var isMe = player.vk_id === currentUser.vk_id;
+    
+    if(!isMe && !isMyOwner) {
+        if(!player.owner_id || player.status === 'Биржа труда') {
+            hireBtn.style.display = 'block';
+            hireBtn.textContent = '💼 Нанять за ' + cost + ' опыта';
+            hireBtn.onclick = function() { hirePlayer(player); };
+        }
+    }
+    
+    if(isMyEmployee) {
+        fireBtn.style.display = 'block';
+        fireBtn.textContent = '🔥 Уволить (+' + sellPrice + ' опыта)';
+        fireBtn.onclick = function() { firePlayer(player); };
+    }
+    
+    // Загружаем владельца
+    if(player.owner_id && player.owner_id !== player.vk_id) {
+        supabase.from('players').select('first_name,last_name,vk_id').eq('vk_id', player.owner_id).maybeSingle().then(function(r) {
+            if(r.data) {
+                document.getElementById('modal-owner-info').innerHTML = '🔒 Работает на: <b style="cursor:pointer;text-decoration:underline;color:#ff9800;" onclick="openPlayerModalById(' + r.data.vk_id + ')">' + r.data.first_name + ' ' + r.data.last_name + '</b>';
+            }
+        });
+    }
+    
+    // Загружаем сотрудников
+    supabase.from('players').select('*').eq('owner_id', player.vk_id).order('experience', { ascending: false }).then(function(r) {
+        var list = document.getElementById('modal-player-employees');
+        list.innerHTML = '';
+        if(!r.data || !r.data.length) {
+            list.innerHTML = '<p style="color:#aaa;text-align:center;">Нет сотрудников</p>';
+            return;
+        }
+        list.innerHTML = '<div class="section-title" style="margin-top:10px;">👥 Сотрудники (' + r.data.length + ')</div>';
+        r.data.forEach(function(emp) {
+            renderEmployeeCard(emp, list, false, true);
+            // Добавляем кнопку перекупить
+            if(emp.owner_id !== currentUser.vk_id && emp.vk_id !== currentUser.vk_id) {
+                var stealCost = (emp.level || 1) * 75;
+                var btn = document.createElement('button');
+                btn.className = 'btn-steal';
+                btn.textContent = '💰 ' + stealCost;
+                btn.onclick = function(e) {
+                    e.stopPropagation();
+                    stealEmployee(emp, stealCost);
+                };
+                list.lastChild.appendChild(btn);
+            }
+        });
+    });
 }
 
 // Отрисовка заданий
@@ -114,7 +231,6 @@ function renderTasks() {
 
 // Отрисовка главного экрана
 function renderAll() {
-    // Обновляем навигацию при загрузке
     updateNavButtons('profile');
     
     document.getElementById('header-avatar').src = currentUser.photo_200 || (currentVkUser ? currentVkUser.photo_200 : '') || 'https://vk.com/images/camera_200.png';
@@ -123,8 +239,10 @@ function renderAll() {
     
     var compEl = document.getElementById('company-display');
     if(currentUser.company) {
-        var groupLink = currentUser.company_group_id ? ' <a href="https://vk.com/club' + currentUser.company_group_id + '" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>' : '';
-        compEl.innerHTML = '🏢 <span style="cursor:pointer;" onclick="goTo(\'my-company\')">' + currentUser.company + '</span>' + groupLink;
+        compEl.innerHTML = '🏢 <span style="cursor:pointer;" onclick="goTo(\'my-company\')">' + currentUser.company + '</span>';
+        if(currentUser.company_group_id) {
+            compEl.innerHTML += ' <a href="https://vk.com/club' + currentUser.company_group_id + '" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>';
+        }
     } else {
         compEl.textContent = '';
     }
@@ -137,4 +255,21 @@ function renderAll() {
     document.getElementById('invite-friend-btn').onclick = inviteFriend;
     renderTasks();
     loadMyTeam(true);
+}
+
+// Загрузка моей команды
+function loadMyTeam(reset) {
+    if(reset) { myTeamOffset = 0; document.getElementById('my-team-list').innerHTML = ''; }
+    var list = document.getElementById('my-team-list');
+    if(!myTeam.length) {
+        list.innerHTML = '<p style="color:#aaa;text-align:center;">Нет сотрудников</p>';
+        document.getElementById('load-more-btn').style.display = 'none';
+        return;
+    }
+    var page = myTeam.slice(myTeamOffset, myTeamOffset + TEAM_PAGE_SIZE);
+    page.forEach(function(emp) {
+        renderEmployeeCard(emp, list, true, true);
+    });
+    myTeamOffset += page.length;
+    document.getElementById('load-more-btn').style.display = (myTeamOffset < myTeamTotal) ? 'block' : 'none';
 }
