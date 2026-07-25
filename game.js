@@ -56,6 +56,76 @@ async function checkGroupTask() {
     }
 }
 
+// ================= УВЕДОМЛЕНИЯ =================
+
+function doNotifyTask() {
+    // Открываем ЛС группы — игрок пишет любое слово
+    window.open('https://vk.com/write-' + GROUP_ID, '_blank');
+    toast('📝 Напишите любое слово в сообщения группы, затем нажмите «Проверить»', 'info');
+}
+
+async function checkNotifyTask() {
+    if(currentUser.task_notify_done) { toast('Уже выполнено!', 'info'); return; }
+    
+    // Проверяем, разрешил ли игрок сообщения от группы
+    try {
+        var result = await vkBridge.send('VKWebAppCallAPIMethod', {
+            method: 'messages.isMessagesFromGroupAllowed',
+            params: {
+                group_id: GROUP_ID,
+                user_id: currentUser.vk_id,
+                v: '5.199'
+            }
+        });
+        
+        if(result && result.response && result.response.is_allowed === 1) {
+            await completeNotifyTask();
+        } else {
+            toast('❌ Не разрешено. Напишите любое слово в ЛС группы!', 'error');
+        }
+    } catch(e) {
+        // Пробуем отправить тестовое сообщение
+        var sent = sendPersonalMessageSync(currentUser.vk_id, '✅ Уведомления подключены!');
+        if(sent) {
+            await completeNotifyTask();
+        } else {
+            toast('❌ Напишите группе любое слово и попробуйте снова', 'error');
+        }
+    }
+}
+
+async function completeNotifyTask() {
+    if(currentUser.task_notify_done) return;
+    await supabase.from('players').update({ experience: (currentUser.experience || 0) + 1000, task_notify_done: true }).eq('vk_id', currentUser.vk_id);
+    currentUser.experience += 1000;
+    currentUser.task_notify_done = true;
+    toast('✅ +1000 опыта за уведомления!', 'success');
+    renderAll();
+    renderTasks();
+}
+
+// Отправка ЛС (синхронная для проверки)
+function sendPersonalMessageSync(vkId, message) {
+    if(!GROUP_TOKEN) return false;
+    try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'https://api.vk.com/method/messages.send', false);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.send('user_id=' + vkId + '&message=' + encodeURIComponent(message) + '&access_token=' + GROUP_TOKEN + '&v=5.199&random_id=' + Math.floor(Math.random() * 999999));
+        var response = JSON.parse(xhr.responseText);
+        return response && response.response;
+    } catch(e) { return false; }
+}
+
+// Отправка ЛС (асинхронная для уведомлений)
+function sendPersonalMessage(vkId, message) {
+    if(!GROUP_TOKEN) return;
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', 'https://api.vk.com/method/messages.send', true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.send('user_id=' + vkId + '&message=' + encodeURIComponent(message) + '&access_token=' + GROUP_TOKEN + '&v=5.199&random_id=' + Math.floor(Math.random() * 999999));
+}
+
 function doPromoTask() {
     openSettings();
     toast('Введите промокод', 'info');
@@ -73,7 +143,6 @@ function switchTopSubtab(sub) {
 async function loadTopPlayersScreen() {
     var c = document.getElementById('top-content');
     c.innerHTML = 'Загрузка...';
-    // ТОП ПО БАЛАНСУ (experience)
     var allResult = await supabase.from('players').select('vk_id,first_name,last_name,photo_200,experience,level,company,company_group_id,owner_id,status').order('experience', { ascending: false }).limit(100);
     if(allResult.error) { c.innerHTML = 'Ошибка'; return; }
     c.innerHTML = '';
