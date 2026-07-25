@@ -204,15 +204,21 @@ async function loadMyCompanyScreen() {
     };
 }
 
-// ================= СОЗДАНИЕ КОМПАНИИ (ВЫБОР ГРУППЫ КЛИКОМ) =================
+// ================= СОЗДАНИЕ КОМПАНИИ (через groups.get) =================
 async function createCompany() {
     try {
-        var result = await vkBridge.send('VKWebAppGetCommunityAuthToken', {
-            app_id: String(APP_ID),
-            scope: 'manage'
+        var result = await vkBridge.send('VKWebAppCallAPIMethod', {
+            method: 'groups.get',
+            params: { 
+                filter: 'admin',
+                extended: 1,
+                v: '5.199'
+            }
         });
         
-        if(result.groups && result.groups.length > 0) {
+        if(result && result.response && result.response.items && result.response.items.length > 0) {
+            var groups = result.response.items;
+            
             var modal = document.getElementById('input-modal');
             document.getElementById('input-modal-title').textContent = 'Выберите группу';
             var input = document.getElementById('input-modal-input');
@@ -222,7 +228,7 @@ async function createCompany() {
             listContainer.id = 'groups-list';
             listContainer.style.cssText = 'max-height:300px;overflow-y:auto;margin:10px 0;';
             
-            result.groups.forEach(function(g) {
+            groups.forEach(function(g) {
                 var item = document.createElement('div');
                 item.style.cssText = 'padding:12px;margin:4px 0;background:rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;font-size:14px;transition:0.2s;';
                 item.textContent = g.name;
@@ -262,11 +268,11 @@ async function createCompany() {
             document.getElementById('input-modal-ok').style.display = 'none';
             
         } else {
-            toast('У вас нет групп для управления', 'error');
+            toast('У вас нет групп для управления. Создайте группу ВК.', 'error');
         }
     } catch(e) {
         console.error(e);
-        toast('Ошибка получения групп', 'error');
+        toast('Ошибка получения групп. Разрешите доступ в настройках.', 'error');
     }
 }
 
