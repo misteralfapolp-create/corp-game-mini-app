@@ -2,16 +2,19 @@
 
 async function createCompany() {
     try {
+        console.log('1. Запрашиваем токен...');
         var tokenResult = await vkBridge.send('VKWebAppGetAuthToken', {
-            app_id: String(APP_ID),  // ✅ ИСПРАВЛЕНО: теперь строка
+            app_id: String(APP_ID),  // ✅ ИСПРАВЛЕНО: строка
             scope: 'groups'
         });
+        console.log('2. Токен получен:', tokenResult);
         
         if(!tokenResult || !tokenResult.access_token) {
             toast('Не удалось получить доступ к группам', 'error');
             return;
         }
         
+        console.log('3. Запрашиваем группы...');
         var groupsResult = await vkBridge.send('VKWebAppCallAPIMethod', {
             method: 'groups.get',
             params: {
@@ -21,6 +24,7 @@ async function createCompany() {
                 v: '5.199'
             }
         });
+        console.log('4. Группы получены:', groupsResult);
         
         if(groupsResult && groupsResult.response && groupsResult.response.items && groupsResult.response.items.length > 0) {
             var groups = groupsResult.response.items;
@@ -77,8 +81,8 @@ async function createCompany() {
             toast('У вас нет групп для управления', 'error');
         }
     } catch(e) {
-        console.error(e);
-        toast('Ошибка получения групп. Попробуйте позже.', 'error');
+        console.error('Ошибка создания компании:', e);
+        toast('Ошибка: ' + (e.message || 'неизвестная'), 'error');
     }
 }
 
