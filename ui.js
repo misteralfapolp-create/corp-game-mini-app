@@ -180,7 +180,7 @@ function renderPlayerModalContent(player) {
         });
     }
     
-    // Загружаем сотрудников (сортировка по уровню)
+    // Загружаем сотрудников
     supabase.from('players').select('*').eq('owner_id', player.vk_id).order('level', { ascending: false }).then(function(r) {
         var list = document.getElementById('modal-player-employees');
         list.innerHTML = '';
@@ -206,11 +206,13 @@ function renderPlayerModalContent(player) {
     });
 }
 
-// Отрисовка заданий
+// ================= ОТРИСОВКА ЗАДАНИЙ =================
 function renderTasks() {
     var listEl = document.getElementById('tasks-list');
     if(!listEl) return;
     var html = '';
+    
+    // Задание 1: Подписка на группу
     html += '<div class="task-item"><div class="task-info"><b>📱 Подписаться на группу</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
     if(currentUser && currentUser.task_group_done) {
         html += '<span style="color:#4caf50;">✅ Выполнено</span>';
@@ -218,9 +220,21 @@ function renderTasks() {
         html += '<div style="display:flex;gap:4px;"><button class="btn-task" onclick="doGroupTask()">▶ Выполнить</button><button class="btn-task-check" onclick="checkGroupTask()">🔍 Проверить</button></div>';
     }
     html += '</div>';
+    
+    // Задание 2: Уведомления от сообщества
+    html += '<div class="task-item"><div class="task-info"><b>🔔 Подключить уведомления</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта • Напишите любое слово в ЛС группы</span></div>';
+    if(currentUser && currentUser.task_notify_done) {
+        html += '<span style="color:#4caf50;">✅ Выполнено</span>';
+    } else {
+        html += '<div style="display:flex;gap:4px;"><button class="btn-task" onclick="doNotifyTask()">▶ Выполнить</button><button class="btn-task-check" onclick="checkNotifyTask()">🔍 Проверить</button></div>';
+    }
+    html += '</div>';
+    
+    // Задание 3: Промокод
     html += '<div class="task-item"><div class="task-info"><b>🎁 Ввести промокод</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
     html += '<button class="btn-task" onclick="doPromoTask()">▶ Выполнить</button>';
     html += '</div>';
+    
     listEl.innerHTML = html;
 }
 
