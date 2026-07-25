@@ -52,15 +52,8 @@ function doNotifyTask() {
 async function checkNotifyTask() {
     if(currentUser.task_notify_done) { toast('Уже выполнено!', 'info'); return; }
     
-    toast('Проверяем...', 'info');
-    
-    var sent = await sendPersonalMessageAsync(currentUser.vk_id, '✅ Уведомления подключены!');
-    
-    if(sent) {
-        await completeNotifyTask();
-    } else {
-        toast('❌ Не удалось отправить. Напишите сообщение группе и попробуйте снова.', 'error');
-    }
+    // Начисляем награду (без реальной отправки до модерации)
+    await completeNotifyTask();
 }
 
 async function completeNotifyTask() {
@@ -71,26 +64,4 @@ async function completeNotifyTask() {
     toast('✅ +1000 опыта за уведомления!', 'success');
     renderAll();
     renderTasks();
-}
-
-async function sendPersonalMessageAsync(vkId, message) {
-    if(!GROUP_TOKEN) return false;
-    try {
-        var response = await fetch('https://api.vk.com/method/messages.send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'user_id=' + vkId + '&message=' + encodeURIComponent(message) + '&access_token=' + GROUP_TOKEN + '&v=5.199&random_id=' + Math.floor(Math.random() * 999999)
-        });
-        var data = await response.json();
-        console.log('VK API ответ:', data);
-        return data && data.response;
-    } catch(e) {
-        console.error('Ошибка отправки:', e);
-        return false;
-    }
-}
-
-function sendPersonalMessage(vkId, message) {
-    if(!GROUP_TOKEN) return;
-    sendPersonalMessageAsync(vkId, message);
 }
