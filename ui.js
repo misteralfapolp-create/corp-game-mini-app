@@ -70,7 +70,7 @@ function addNavBtn(screen, label) {
     bar.appendChild(btn);
 }
 
-// Карточка сотрудника
+// Карточка сотрудника - ВОЗВРАЩАЕТ СОЗДАННЫЙ ЭЛЕМЕНТ
 function renderEmployeeCard(emp, container, showActions, showCompany) {
     var lvl = emp.level || 1;
     var jobTitle = getJobTitle(lvl);
@@ -106,6 +106,8 @@ function renderEmployeeCard(emp, container, showActions, showCompany) {
     
     div.innerHTML = html;
     container.appendChild(div);
+    
+    return div;  // ✅ ВОЗВРАЩАЕМ ЭЛЕМЕНТ ДЛЯ ДАЛЬНЕЙШЕГО ИСПОЛЬЗОВАНИЯ
 }
 
 // Модалка игрока
@@ -179,7 +181,7 @@ function renderPlayerModalContent(player) {
         }
         list.innerHTML = '<div class="section-title" style="margin-top:10px;">👥 Сотрудники (' + r.data.length + ')</div>';
         r.data.forEach(function(emp) {
-            renderEmployeeCard(emp, list, false, true);
+            var card = renderEmployeeCard(emp, list, false, true);
             if(emp.owner_id !== currentUser.vk_id && emp.vk_id !== currentUser.vk_id) {
                 var stealCost = Math.floor((emp.hire_cost || 100) * 1.5);
                 var btn = document.createElement('button');
@@ -189,7 +191,7 @@ function renderPlayerModalContent(player) {
                     e.stopPropagation();
                     stealEmployee(emp, stealCost);
                 };
-                list.lastChild.appendChild(btn);
+                card.appendChild(btn);
             }
         });
     });
@@ -221,32 +223,26 @@ function renderTasks() {
 }
 
 function renderAll() {
-    // Перезагружаем currentUser из БД перед отрисовкой
-    supabase.from('players').select('*').eq('vk_id', currentUser.vk_id).maybeSingle().then(function(r) {
-        if(r.data) {
-            currentUser = r.data;
-        }
-        
-        updateNavButtons('profile');
-        document.getElementById('header-avatar').src = currentUser.photo_200 || (currentVkUser ? currentVkUser.photo_200 : '') || 'https://vk.com/images/camera_200.png';
-        document.getElementById('player-name').textContent = currentUser.first_name + ' ' + currentUser.last_name;
-        document.getElementById('exp-value').textContent = currentUser.experience || 0;
-        
-        var compEl = document.getElementById('company-display');
-        if(currentUser.company) {
-            compEl.innerHTML = '🏢 <span style="cursor:pointer;" onclick="goTo(\'my-company\')">' + currentUser.company + '</span>';
-            if(currentUser.company_group_id) compEl.innerHTML += ' <a href="https://vk.com/club' + currentUser.company_group_id + '" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>';
-        } else { compEl.textContent = ''; }
-        
-        document.getElementById('collect-panel').style.display = myTeamTotal ? 'flex' : 'none';
-        if(myTeamTotal) {
-            document.getElementById('collect-amount').textContent = currentUser.pending_experience || 0;
-            document.getElementById('collect-btn').onclick = collectExperience;
-        }
-        document.getElementById('invite-friend-btn').onclick = inviteFriend;
-        renderTasks();
-        loadMyTeam(true);
-    });
+    // ✅ ИСПРАВЛЕНО: используем currentUser напрямую, без перезагрузки из БД
+    updateNavButtons('profile');
+    document.getElementById('header-avatar').src = currentUser.photo_200 || (currentVkUser ? currentVkUser.photo_200 : '') || 'https://vk.com/images/camera_200.png';
+    document.getElementById('player-name').textContent = currentUser.first_name + ' ' + currentUser.last_name;
+    document.getElementById('exp-value').textContent = currentUser.experience || 0;
+    
+    var compEl = document.getElementById('company-display');
+    if(currentUser.company) {
+        compEl.innerHTML = '🏢 <span style="cursor:pointer;" onclick="goTo(\'my-company\')">' + currentUser.company + '</span>';
+        if(currentUser.company_group_id) compEl.innerHTML += ' <a href="https://vk.com/club' + currentUser.company_group_id + '" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>';
+    } else { compEl.textContent = ''; }
+    
+    document.getElementById('collect-panel').style.display = myTeamTotal ? 'flex' : 'none';
+    if(myTeamTotal) {
+        document.getElementById('collect-amount').textContent = currentUser.pending_experience || 0;
+        document.getElementById('collect-btn').onclick = collectExperience;
+    }
+    document.getElementById('invite-friend-btn').onclick = inviteFriend;
+    renderTasks();
+    loadMyTeam(true);
 }
 
 function loadMyTeam(reset) {
