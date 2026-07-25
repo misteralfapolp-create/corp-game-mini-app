@@ -2,15 +2,12 @@
 
 async function initApp(){
     try{
-        document.getElementById('player-name').textContent = 'Шаг 1...';
+        document.getElementById('player-name').textContent = 'Загрузка...';
         
         currentVkUser = await vkBridge.send('VKWebAppGetUserInfo');
-        document.getElementById('player-name').textContent = 'Шаг 2... ' + currentVkUser.first_name;
         
         var invitedBy = getRefFromHash() || new URLSearchParams(window.location.search).get('ref');
         if(invitedBy && parseInt(invitedBy) === currentVkUser.id) invitedBy = null;
-        
-        document.getElementById('player-name').textContent = 'Шаг 3...';
         
         var r = await supabase.from('players').select('*').eq('vk_id', currentVkUser.id).maybeSingle();
         
@@ -18,8 +15,6 @@ async function initApp(){
             document.getElementById('player-name').textContent = 'Ошибка БД: ' + r.error.message;
             return;
         }
-        
-        document.getElementById('player-name').textContent = 'Шаг 4...';
         
         if(!r.data){
             var ownerId = null;
@@ -35,7 +30,7 @@ async function initApp(){
                 company: null,
                 role: ownerId ? 'Учёный' : null,
                 experience: 0,
-                income_per_hour: ownerId ? 1 : 0,
+                income_per_hour: 1,
                 invited_by: invitedBy ? parseInt(invitedBy) : null,
                 last_collect: new Date().toISOString(),
                 pending_experience: 0,
@@ -55,22 +50,25 @@ async function initApp(){
         }
         
         currentUser = r.data;
-        document.getElementById('player-name').textContent = currentUser.first_name + ' ' + currentUser.last_name;
         
-        if(currentUser.owner_id === undefined){ await supabase.from('players').update({owner_id:null,last_collect:new Date().toISOString(),pending_experience:0}).eq('vk_id',currentUser.vk_id); currentUser.owner_id = null; }
-        if(currentUser.company_group_id === undefined){ await supabase.from('players').update({company_group_id:null}).eq('vk_id',currentUser.vk_id); currentUser.company_group_id = null; }
-        if(currentUser.task_group_done === undefined){ await supabase.from('players').update({task_group_done:false,task_promo_done:false,max_pending:0}).eq('vk_id',currentUser.vk_id); currentUser.task_group_done = false; currentUser.task_promo_done = false; currentUser.max_pending = 0; }
+        // Проверяем и добавляем недостающие поля
+        if(currentUser.level === undefined){ await supabase.from('players').update({level: 1}).eq('vk_id', currentUser.vk_id); currentUser.level = 1; }
+        if(currentUser.owner_id === undefined){ await supabase.from('players').update({owner_id: null, last_collect: new Date().toISOString(), pending_experience: 0}).eq('vk_id', currentUser.vk_id); currentUser.owner_id = null; }
+        if(currentUser.company_group_id === undefined){ await supabase.from('players').update({company_group_id: null}).eq('vk_id', currentUser.vk_id); currentUser.company_group_id = null; }
+        if(currentUser.task_group_done === undefined){ await supabase.from('players').update({task_group_done: false, task_promo_done: false, max_pending: 0}).eq('vk_id', currentUser.vk_id); currentUser.task_group_done = false; currentUser.task_promo_done = false; currentUser.max_pending = 0; }
+        
+        // Обработка реферала
         if(invitedBy && parseInt(invitedBy) !== currentUser.vk_id && !currentUser.owner_id){
             var inv2 = await supabase.from('players').select('vk_id').eq('vk_id', parseInt(invitedBy)).maybeSingle();
             if(inv2.data){
-                await supabase.from('players').update({owner_id:parseInt(invitedBy),status:'Работает',role:'Учёный',income_per_hour:1}).eq('vk_id',currentUser.vk_id);
+                await supabase.from('players').update({owner_id: parseInt(invitedBy), status: 'Работает', role: 'Учёный'}).eq('vk_id', currentUser.vk_id);
                 await giveReferralBonus(parseInt(invitedBy));
                 currentUser.owner_id = parseInt(invitedBy);
                 currentUser.status = 'Работает';
                 currentUser.role = 'Учёный';
-                currentUser.income_per_hour = 1;
             }
         }
+        
         await updateAllStats();
         renderAll();
         updateNavButtons('profile');
