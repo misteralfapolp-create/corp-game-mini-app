@@ -29,7 +29,6 @@ async function checkGroupTask() {
             renderAll();
         } else { toast('Не подписаны', 'error'); }
     } catch(e) {
-        // ✅ УЛУЧШЕНО: показываем ошибку, а не молча начисляем опыт
         console.error('Ошибка проверки подписки:', e);
         toast('Ошибка проверки. Попробуйте позже.', 'error');
     }
@@ -74,27 +73,22 @@ async function completeNotifyTask() {
     renderTasks();
 }
 
+// ✅ ИСПРАВЛЕНО: используем VK Bridge вместо fetch
 async function sendPersonalMessageAsync(vkId, message) {
-    if(!GROUP_TOKEN) {
-        console.warn('GROUP_TOKEN не установлен');
-        return false;
-    }
     try {
-        var response = await fetch('https://api.vk.com/method/messages.send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'user_id=' + vkId + '&message=' + encodeURIComponent(message) + '&access_token=' + GROUP_TOKEN + '&v=5.199&random_id=' + Math.floor(Math.random() * 999999)
+        var result = await vkBridge.send('VKWebAppCallAPIMethod', {
+            method: 'messages.send',
+            params: {
+                user_id: vkId,
+                message: message,
+                random_id: Math.floor(Math.random() * 999999),
+                v: '5.199'
+            }
         });
-        var data = await response.json();
-        console.log('Messages.send response:', data);
-        return data && data.response;
+        console.log('Messages.send result:', result);
+        return result && result.response;
     } catch(e) {
         console.error('Ошибка отправки сообщения:', e);
         return false;
     }
-}
-
-function sendPersonalMessage(vkId, message) {
-    if(!GROUP_TOKEN) return;
-    sendPersonalMessageAsync(vkId, message);
 }
