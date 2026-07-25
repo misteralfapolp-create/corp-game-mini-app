@@ -1,0 +1,44 @@
+// ================= НАСТРОЙКИ =================
+var SUPABASE_URL = 'https://fcrjkfiodvfhzamayvoe.supabase.co';
+var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjcmprZmlvZHZmaHphbWF5dm9lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMTcwMTQsImV4cCI6MjA5OTY5MzAxNH0.C3Ls4QMoYWnFciuOURZ7-WLmGa4TWtBsedhURVNulKI';
+var APP_ID = '54679388';
+var MY_VK_ID = 588689950;
+var GROUP_ID = 240295160;
+var GROUP_URL = 'https://vk.ru/club' + GROUP_ID;
+var TEAM_PAGE_SIZE = 20;
+
+// Глобальные переменные
+var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+var currentUser = null;
+var currentVkUser = null;
+var topSubtab = 'players';
+var myTeam = [];
+var myTeamTotal = 0;
+var myTeamOffset = 0;
+
+// Запрет кэширования
+(function(){
+    var meta = document.createElement('meta');
+    meta.httpEquiv = 'Cache-Control';
+    meta.content = 'no-cache, no-store, must-revalidate';
+    document.head.appendChild(meta);
+    var m2 = document.createElement('meta');
+    m2.httpEquiv = 'Pragma';
+    m2.content = 'no-cache';
+    document.head.appendChild(m2);
+    var m3 = document.createElement('meta');
+    m3.httpEquiv = 'Expires';
+    m3.content = '0';
+    document.head.appendChild(m3);
+})();
+
+// Звёзды
+(function(){
+    var c = document.getElementById('stars-canvas');
+    for(var i = 0; i < 40; i++){
+        var s = document.createElement('div');
+        s.className = 'star';
+        s.style.cssText = 'left:' + Math.random()*100 + '%;top:' + Math.random()*100 + '%;width:' + Math.random()*2 + 'px;height:' + Math.random()*2 + 'px;--dur:' + (2+Math.random()*4) + 's;animation-delay:' + Math.random()*4 + 's';
+        c.appendChild(s);
+    }
+})();
