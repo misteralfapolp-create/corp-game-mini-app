@@ -107,7 +107,7 @@ function renderEmployeeCard(emp, container, showActions, showCompany) {
     div.innerHTML = html;
     container.appendChild(div);
     
-    return div;  // ✅ ВОЗВРАЩАЕМ ЭЛЕМЕНТ ДЛЯ ДАЛЬНЕЙШЕГО ИСПОЛЬЗОВАНИЯ
+    return div;
 }
 
 // Модалка игрока
@@ -223,7 +223,6 @@ function renderTasks() {
 }
 
 function renderAll() {
-    // ✅ ИСПРАВЛЕНО: используем currentUser напрямую, без перезагрузки из БД
     updateNavButtons('profile');
     document.getElementById('header-avatar').src = currentUser.photo_200 || (currentVkUser ? currentVkUser.photo_200 : '') || 'https://vk.com/images/camera_200.png';
     document.getElementById('player-name').textContent = currentUser.first_name + ' ' + currentUser.last_name;
