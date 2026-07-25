@@ -59,38 +59,21 @@ async function checkGroupTask() {
 // ================= УВЕДОМЛЕНИЯ =================
 
 function doNotifyTask() {
-    // Открываем ЛС группы — игрок пишет любое слово
-    window.open('https://vk.com/write-' + GROUP_ID, '_blank');
-    toast('📝 Напишите любое слово в сообщения группы, затем нажмите «Проверить»', 'info');
+    window.open('https://vk.com/gim' + GROUP_ID, '_blank');
+    toast('📝 Напишите любое слово в чат группы, затем нажмите «Проверить»', 'info');
 }
 
 async function checkNotifyTask() {
     if(currentUser.task_notify_done) { toast('Уже выполнено!', 'info'); return; }
     
-    // Проверяем, разрешил ли игрок сообщения от группы
-    try {
-        var result = await vkBridge.send('VKWebAppCallAPIMethod', {
-            method: 'messages.isMessagesFromGroupAllowed',
-            params: {
-                group_id: GROUP_ID,
-                user_id: currentUser.vk_id,
-                v: '5.199'
-            }
-        });
-        
-        if(result && result.response && result.response.is_allowed === 1) {
-            await completeNotifyTask();
-        } else {
-            toast('❌ Не разрешено. Напишите любое слово в ЛС группы!', 'error');
-        }
-    } catch(e) {
-        // Пробуем отправить тестовое сообщение
-        var sent = sendPersonalMessageSync(currentUser.vk_id, '✅ Уведомления подключены!');
-        if(sent) {
-            await completeNotifyTask();
-        } else {
-            toast('❌ Напишите группе любое слово и попробуйте снова', 'error');
-        }
+    toast('Проверяем...', 'info');
+    
+    var sent = sendPersonalMessageSync(currentUser.vk_id, '✅ Уведомления подключены!');
+    
+    if(sent) {
+        await completeNotifyTask();
+    } else {
+        toast('❌ Не отправлено. Напишите любое слово в ЛС группы и попробуйте снова!', 'error');
     }
 }
 
@@ -104,7 +87,6 @@ async function completeNotifyTask() {
     renderTasks();
 }
 
-// Отправка ЛС (синхронная для проверки)
 function sendPersonalMessageSync(vkId, message) {
     if(!GROUP_TOKEN) return false;
     try {
@@ -117,7 +99,6 @@ function sendPersonalMessageSync(vkId, message) {
     } catch(e) { return false; }
 }
 
-// Отправка ЛС (асинхронная для уведомлений)
 function sendPersonalMessage(vkId, message) {
     if(!GROUP_TOKEN) return;
     var xhr = new XMLHttpRequest();
