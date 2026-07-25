@@ -204,25 +204,63 @@ async function loadMyCompanyScreen() {
     };
 }
 
-// ================= СОЗДАНИЕ КОМПАНИИ =================
+// ================= СОЗДАНИЕ КОМПАНИИ (ВЫБОР ГРУППЫ КЛИКОМ) =================
 async function createCompany() {
     try {
-        var result = await vkBridge.send('VKWebAppGetCommunityAuthToken', { app_id: String(APP_ID), scope: 'manage' });
+        var result = await vkBridge.send('VKWebAppGetCommunityAuthToken', {
+            app_id: String(APP_ID),
+            scope: 'manage'
+        });
+        
         if(result.groups && result.groups.length > 0) {
-            var groupNames = result.groups.map(function(g, i){ return (i+1) + '. ' + g.name; }).join('\n');
-            showInputModal('Выберите группу\n(введите номер)\n\n' + groupNames, 'Номер группы', '1', function(choice) {
-                if(!choice) return;
-                var idx = parseInt(choice) - 1;
-                if(idx >= 0 && idx < result.groups.length) {
-                    var g = result.groups[idx];
-                    supabase.from('players').update({ company: g.name, company_group_id: g.id }).eq('vk_id', currentUser.vk_id).then(function() {
+            var modal = document.getElementById('input-modal');
+            document.getElementById('input-modal-title').textContent = 'Выберите группу';
+            var input = document.getElementById('input-modal-input');
+            input.style.display = 'none';
+            
+            var listContainer = document.createElement('div');
+            listContainer.id = 'groups-list';
+            listContainer.style.cssText = 'max-height:300px;overflow-y:auto;margin:10px 0;';
+            
+            result.groups.forEach(function(g) {
+                var item = document.createElement('div');
+                item.style.cssText = 'padding:12px;margin:4px 0;background:rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;font-size:14px;transition:0.2s;';
+                item.textContent = g.name;
+                item.onmouseover = function() { this.style.background = 'rgba(74,118,168,0.4)'; };
+                item.onmouseout = function() { this.style.background = 'rgba(255,255,255,0.08)'; };
+                item.onclick = function() {
+                    modal.style.display = 'none';
+                    var oldList = document.getElementById('groups-list');
+                    if(oldList) oldList.remove();
+                    input.style.display = 'block';
+                    
+                    supabase.from('players').update({
+                        company: g.name,
+                        company_group_id: g.id
+                    }).eq('vk_id', currentUser.vk_id).then(function() {
                         currentUser.company = g.name;
                         currentUser.company_group_id = g.id;
                         toast('✅ Компания «' + g.name + '» создана!', 'success');
                         location.reload();
                     });
-                }
+                };
+                listContainer.appendChild(item);
             });
+            
+            var buttonsContainer = input.parentNode;
+            buttonsContainer.insertBefore(listContainer, document.getElementById('input-modal-ok').parentNode);
+            
+            modal.style.display = 'flex';
+            
+            document.getElementById('input-modal-cancel').onclick = function() {
+                modal.style.display = 'none';
+                var oldList = document.getElementById('groups-list');
+                if(oldList) oldList.remove();
+                input.style.display = 'block';
+            };
+            
+            document.getElementById('input-modal-ok').style.display = 'none';
+            
         } else {
             toast('У вас нет групп для управления', 'error');
         }
