@@ -84,28 +84,28 @@ function addNavBtn(screen, label) {
 function renderEmployeeCard(emp, container, showActions, showCompany) {
     var lvl = emp.level || 1;
     var jobTitle = getJobTitle(lvl);
-    var income = lvl; // Доход = уровень
-    var cost = lvl * 50; // Стоимость прокачки
-    var sellPrice = Math.floor(lvl * 40); // Цена продажи
+    var income = lvl;
+    var cost = lvl * 50;
+    var sellPrice = Math.floor(lvl * 40);
+    var balance = emp.experience || 0;
     
     var div = document.createElement('div');
     div.className = 'player-item';
     
-    // Аватар + Имя (кликабельно → модалка)
     var html = '<img src="' + (emp.photo_200 || 'https://vk.com/images/camera_200.png') + '" onerror="this.src=\'https://vk.com/images/camera_200.png\'" onclick="openPlayerModalById(' + emp.vk_id + ')" style="cursor:pointer;">';
     html += '<div class="info" onclick="openPlayerModalById(' + emp.vk_id + ')" style="cursor:pointer;">';
     html += '<div class="name">' + emp.first_name + ' ' + emp.last_name + '</div>';
     html += '<div class="detail">' + jobTitle + ' (ур.' + lvl + ')</div>';
     html += '<div class="detail" style="color:#4caf50;">📈 Доход: +' + income + ' оп/час</div>';
+    html += '<div class="detail" style="color:#ffd700;">⭐ Баланс: ' + balance + ' опыта</div>';
+    html += '<div class="detail">💰 Цена: ' + cost + ' опыта</div>';
     
-    // Компания (кликабельно)
     if(showCompany && emp.company) {
         html += '<div class="detail" style="color:#ff9800;cursor:pointer;" onclick="event.stopPropagation();openCompanyModal(\'' + emp.company + '\')">🏢 ' + emp.company + '</div>';
     }
     
     html += '</div>';
     
-    // Кнопки действий
     if(showActions) {
         html += '<div class="btn-group">';
         html += '<button class="btn-upgrade" onclick="event.stopPropagation();upgradeEmployee(' + emp.vk_id + ')">⬆ ' + cost + '</button>';
@@ -118,40 +118,36 @@ function renderEmployeeCard(emp, container, showActions, showCompany) {
 }
 
 // ================= ОТРИСОВКА МОДАЛКИ ИГРОКА =================
-function renderPlayerModalContent(player, container) {
+function renderPlayerModalContent(player) {
     var lvl = player.level || 1;
     var jobTitle = getJobTitle(lvl);
     var income = lvl;
     var cost = lvl * 50;
     var sellPrice = Math.floor(lvl * 40);
+    var balance = player.experience || 0;
     
-    // Заголовок с аватаркой
     document.getElementById('modal-player-header').innerHTML = 
         '<img src="' + (player.photo_200 || 'https://vk.com/images/camera_200.png') + '" style="width:50px;height:50px;border-radius:50%;vertical-align:middle;margin-right:10px;cursor:pointer;" onclick="window.open(\'https://vk.com/id' + player.vk_id + '\',\'_blank\')">' +
         '<span style="font-size:18px;font-weight:700;">' + player.first_name + ' ' + player.last_name + '</span>';
     
-    // Информация
     var infoHtml = '<div style="margin:10px 0;">';
     infoHtml += '<div><b>' + jobTitle + '</b> (ур.' + lvl + ')</div>';
     infoHtml += '<div style="color:#4caf50;">📈 Доход: +' + income + ' оп/час</div>';
-    infoHtml += '<div>💰 Стоимость: ' + cost + ' опыта</div>';
+    infoHtml += '<div style="color:#ffd700;">⭐ Баланс: ' + balance + ' опыта</div>';
+    infoHtml += '<div>💰 Цена: ' + cost + ' опыта</div>';
     
-    // Компания
     if(player.company) {
         infoHtml += '<div style="color:#ff9800;cursor:pointer;" onclick="openCompanyModal(\'' + player.company + '\')">🏢 Компания: ' + player.company + '</div>';
     }
     
-    // Владелец
     if(player.owner_id && player.owner_id !== player.vk_id) {
         infoHtml += '<div id="modal-owner-info">🔒 Загрузка...</div>';
     }
     
     infoHtml += '</div>';
     
-    // Статистика
     document.getElementById('modal-player-stats').innerHTML = infoHtml;
     
-    // Кнопки
     var hireBtn = document.getElementById('modal-hire-btn');
     var fireBtn = document.getElementById('modal-fire-btn');
     hireBtn.style.display = 'none';
@@ -184,8 +180,8 @@ function renderPlayerModalContent(player, container) {
         });
     }
     
-    // Загружаем сотрудников
-    supabase.from('players').select('*').eq('owner_id', player.vk_id).order('experience', { ascending: false }).then(function(r) {
+    // Загружаем сотрудников (сортировка по убыванию уровня = цены)
+    supabase.from('players').select('*').eq('owner_id', player.vk_id).order('level', { ascending: false }).then(function(r) {
         var list = document.getElementById('modal-player-employees');
         list.innerHTML = '';
         if(!r.data || !r.data.length) {
@@ -195,7 +191,6 @@ function renderPlayerModalContent(player, container) {
         list.innerHTML = '<div class="section-title" style="margin-top:10px;">👥 Сотрудники (' + r.data.length + ')</div>';
         r.data.forEach(function(emp) {
             renderEmployeeCard(emp, list, false, true);
-            // Добавляем кнопку перекупить
             if(emp.owner_id !== currentUser.vk_id && emp.vk_id !== currentUser.vk_id) {
                 var stealCost = (emp.level || 1) * 75;
                 var btn = document.createElement('button');
