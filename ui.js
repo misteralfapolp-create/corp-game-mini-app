@@ -1,6 +1,5 @@
 // ================= UI: УВЕДОМЛЕНИЯ, МОДАЛКИ, НАВИГАЦИЯ =================
 
-// Toast-уведомление
 function toast(msg, type) {
     type = type || 'info';
     var container = document.getElementById('toast-container');
@@ -11,12 +10,10 @@ function toast(msg, type) {
     setTimeout(function(){ el.remove(); }, 2500);
 }
 
-// Открыть профиль ВК
 function openVkProfile() {
     if(currentVkUser) window.open('https://vk.com/id' + currentVkUser.id, '_blank');
 }
 
-// Модалка ввода
 function showInputModal(title, placeholder, defaultValue, callback) {
     var modal = document.getElementById('input-modal');
     if(!modal) { callback(null); return; }
@@ -41,7 +38,6 @@ function showInputModal(title, placeholder, defaultValue, callback) {
     };
 }
 
-// Навигация
 function goTo(screen) {
     document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
     document.getElementById('screen-' + screen).classList.add('active');
@@ -74,14 +70,15 @@ function addNavBtn(screen, label) {
     bar.appendChild(btn);
 }
 
-// ================= ОТРИСОВКА КАРТОЧКИ СОТРУДНИКА =================
+// Карточка сотрудника
 function renderEmployeeCard(emp, container, showActions, showCompany) {
     var lvl = emp.level || 1;
     var jobTitle = getJobTitle(lvl);
     var income = lvl;
-    var cost = (emp.hire_cost || 100);
+    var cost = emp.hire_cost || 100; // Цена из базы
     var sellPrice = Math.floor(cost * 0.8);
     var balance = emp.experience || 0;
+    var upgradeCost = (emp.level || 1) * 50; // Прокачка по уровню
     
     var div = document.createElement('div');
     div.className = 'player-item';
@@ -102,7 +99,7 @@ function renderEmployeeCard(emp, container, showActions, showCompany) {
     
     if(showActions) {
         html += '<div class="btn-group">';
-        html += '<button class="btn-upgrade" onclick="event.stopPropagation();upgradeEmployee(' + emp.vk_id + ')">⬆ ' + ((emp.level || 1) * 50) + '</button>';
+        html += '<button class="btn-upgrade" onclick="event.stopPropagation();upgradeEmployee(' + emp.vk_id + ')">⬆ ' + upgradeCost + '</button>';
         html += '<button class="btn-fire" onclick="event.stopPropagation();fireEmployee(' + emp.vk_id + ')">🔥 +' + sellPrice + '</button>';
         html += '</div>';
     }
@@ -111,12 +108,12 @@ function renderEmployeeCard(emp, container, showActions, showCompany) {
     container.appendChild(div);
 }
 
-// ================= ОТРИСОВКА МОДАЛКИ ИГРОКА =================
+// Модалка игрока
 function renderPlayerModalContent(player) {
     var lvl = player.level || 1;
     var jobTitle = getJobTitle(lvl);
     var income = lvl;
-    var cost = player.hire_cost || 100;
+    var cost = player.hire_cost || 100; // Цена из базы
     var sellPrice = Math.floor(cost * 0.8);
     var balance = player.experience || 0;
     
@@ -165,7 +162,6 @@ function renderPlayerModalContent(player) {
         fireBtn.onclick = function() { firePlayer(player); };
     }
     
-    // Загружаем владельца
     if(player.owner_id && player.owner_id !== player.vk_id) {
         supabase.from('players').select('first_name,last_name,vk_id').eq('vk_id', player.owner_id).maybeSingle().then(function(r) {
             if(r.data) {
@@ -174,7 +170,6 @@ function renderPlayerModalContent(player) {
         });
     }
     
-    // Загружаем сотрудников
     supabase.from('players').select('*').eq('owner_id', player.vk_id).order('level', { ascending: false }).then(function(r) {
         var list = document.getElementById('modal-player-employees');
         list.innerHTML = '';
@@ -200,42 +195,33 @@ function renderPlayerModalContent(player) {
     });
 }
 
-// ================= ОТРИСОВКА ЗАДАНИЙ =================
 function renderTasks() {
     var listEl = document.getElementById('tasks-list');
     if(!listEl) return;
     var html = '';
     
-    // Задание 1: Подписка на группу (скрываем если выполнено)
     if(!currentUser || !currentUser.task_group_done) {
         html += '<div class="task-item"><div class="task-info"><b>📱 Подписаться на группу</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
         html += '<div style="display:flex;gap:4px;"><button class="btn-task" onclick="doGroupTask()">▶ Выполнить</button><button class="btn-task-check" onclick="checkGroupTask()">🔍 Проверить</button></div>';
         html += '</div>';
     }
     
-    // Задание 2: Уведомления (скрываем если выполнено)
     if(!currentUser || !currentUser.task_notify_done) {
-        html += '<div class="task-item"><div class="task-info"><b>🔔 Подключить уведомления</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта • Напишите любое слово в ЛС группы</span></div>';
+        html += '<div class="task-item"><div class="task-info"><b>🔔 Подключить уведомления</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
         html += '<div style="display:flex;gap:4px;"><button class="btn-task" onclick="doNotifyTask()">▶ Выполнить</button><button class="btn-task-check" onclick="checkNotifyTask()">🔍 Проверить</button></div>';
         html += '</div>';
     }
     
-    // Задание 3: Промокод (всегда показываем)
     html += '<div class="task-item"><div class="task-info"><b>🎁 Ввести промокод</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
     html += '<button class="btn-task" onclick="doPromoTask()">▶ Выполнить</button>';
     html += '</div>';
     
-    if(html === '') {
-        html = '<p style="color:#4caf50;text-align:center;">✅ Все задания выполнены!</p>';
-    }
-    
+    if(html === '') html = '<p style="color:#4caf50;text-align:center;">✅ Все задания выполнены!</p>';
     listEl.innerHTML = html;
 }
 
-// Отрисовка главного экрана
 function renderAll() {
     updateNavButtons('profile');
-    
     document.getElementById('header-avatar').src = currentUser.photo_200 || (currentVkUser ? currentVkUser.photo_200 : '') || 'https://vk.com/images/camera_200.png';
     document.getElementById('player-name').textContent = currentUser.first_name + ' ' + currentUser.last_name;
     document.getElementById('exp-value').textContent = currentUser.experience || 0;
@@ -243,12 +229,8 @@ function renderAll() {
     var compEl = document.getElementById('company-display');
     if(currentUser.company) {
         compEl.innerHTML = '🏢 <span style="cursor:pointer;" onclick="goTo(\'my-company\')">' + currentUser.company + '</span>';
-        if(currentUser.company_group_id) {
-            compEl.innerHTML += ' <a href="https://vk.com/club' + currentUser.company_group_id + '" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>';
-        }
-    } else {
-        compEl.textContent = '';
-    }
+        if(currentUser.company_group_id) compEl.innerHTML += ' <a href="https://vk.com/club' + currentUser.company_group_id + '" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>';
+    } else { compEl.textContent = ''; }
     
     document.getElementById('collect-panel').style.display = myTeamTotal ? 'flex' : 'none';
     if(myTeamTotal) {
@@ -260,7 +242,6 @@ function renderAll() {
     loadMyTeam(true);
 }
 
-// Загрузка моей команды
 function loadMyTeam(reset) {
     if(reset) { myTeamOffset = 0; document.getElementById('my-team-list').innerHTML = ''; }
     var list = document.getElementById('my-team-list');
@@ -270,9 +251,7 @@ function loadMyTeam(reset) {
         return;
     }
     var page = myTeam.slice(myTeamOffset, myTeamOffset + TEAM_PAGE_SIZE);
-    page.forEach(function(emp) {
-        renderEmployeeCard(emp, list, true, true);
-    });
+    page.forEach(function(emp) { renderEmployeeCard(emp, list, true, true); });
     myTeamOffset += page.length;
     document.getElementById('load-more-btn').style.display = (myTeamOffset < myTeamTotal) ? 'block' : 'none';
 }
