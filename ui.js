@@ -114,6 +114,9 @@ function renderTasks() {
 
 // Отрисовка главного экрана
 function renderAll() {
+    // Обновляем навигацию при загрузке
+    updateNavButtons('profile');
+    
     document.getElementById('header-avatar').src = currentUser.photo_200 || (currentVkUser ? currentVkUser.photo_200 : '') || 'https://vk.com/images/camera_200.png';
     document.getElementById('player-name').textContent = currentUser.first_name + ' ' + currentUser.last_name;
     document.getElementById('exp-value').textContent = currentUser.experience || 0;
