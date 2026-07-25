@@ -1,3 +1,5 @@
+// ================= БИРЖА ТРУДА =================
+
 async function loadMarketScreen() {
     var c = document.getElementById('market-content');
     c.innerHTML = 'Загрузка...';
@@ -5,12 +7,13 @@ async function loadMarketScreen() {
     if(!result.data || !result.data.length) { c.innerHTML = '<p style="color:#aaa;text-align:center;">На бирже никого нет</p>'; return; }
     c.innerHTML = '<p style="font-size:11px;color:#aaa;margin-bottom:10px;">Найдено ' + result.data.length + ' безработных</p>';
     result.data.forEach(function(player) {
-        renderEmployeeCard(player, c, false, true);
-        var cost = player.hire_cost || 100; // Такая же цена как в карточке
+        // ✅ СОХРАНЯЕМ ССЫЛКУ НА КАРТОЧКУ
+        var card = renderEmployeeCard(player, c, false, true);
+        var cost = player.hire_cost || 100;
         var btn = document.createElement('button');
         btn.className = 'btn-hire-small';
         btn.textContent = '💼 ' + cost;
         btn.onclick = function(e) { e.stopPropagation(); hirePlayer(player); };
-        c.lastChild.appendChild(btn);
+        card.appendChild(btn);  // ✅ ПРИКРЕПЛЯЕМ К КАРТОЧКЕ
     });
 }
