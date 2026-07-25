@@ -59,7 +59,7 @@ async function checkGroupTask() {
 // ================= УВЕДОМЛЕНИЯ =================
 
 function doNotifyTask() {
-    window.open('https://vk.com/gim' + GROUP_ID, '_blank');
+    window.open('https://vk.com/write-' + GROUP_ID, '_blank');
     toast('📝 Напишите любое слово в чат группы, затем нажмите «Проверить»', 'info');
 }
 
