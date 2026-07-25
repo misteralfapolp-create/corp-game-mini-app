@@ -11,7 +11,7 @@ function switchTopSubtab(sub) {
 async function loadTopPlayersScreen() {
     var c = document.getElementById('top-content');
     c.innerHTML = 'Загрузка...';
-    var allResult = await supabase.from('players').select('vk_id,first_name,last_name,photo_200,experience,level,company,company_group_id,owner_id,status').order('experience', { ascending: false }).limit(100);
+    var allResult = await supabase.from('players').select('vk_id,first_name,last_name,photo_200,experience,level,company,company_group_id,owner_id,status,hire_cost').order('experience', { ascending: false }).limit(100);
     if(allResult.error) { c.innerHTML = 'Ошибка'; return; }
     c.innerHTML = '';
     if(!allResult.data.length) { c.innerHTML = '<p style="color:#aaa;">Нет данных</p>'; return; }
@@ -20,21 +20,36 @@ async function loadTopPlayersScreen() {
         var isMe = p.vk_id === currentUser.vk_id;
         var lvl = p.level || 1;
         var jobTitle = getJobTitle(lvl);
+        var cost = p.hire_cost || 100;
+        var isOnMarket = p.status === 'Биржа труда' && p.vk_id !== currentUser.vk_id && !(currentUser.owner_id && currentUser.owner_id === p.vk_id);
+        
         var div = document.createElement('div');
         div.className = 'player-item';
         div.style.background = isMe ? 'rgba(76,175,80,0.1)' : '';
         div.style.cursor = 'pointer';
         div.onclick = function(){ openPlayerModalById(p.vk_id); };
+        
         div.innerHTML = '<div class="rank ' + rc + '">' + (i+1) + '</div>' +
             '<img src="' + (p.photo_200 || 'https://vk.com/images/camera_200.png') + '" onerror="this.src=\'https://vk.com/images/camera_200.png\'" onclick="event.stopPropagation();window.open(\'https://vk.com/id' + p.vk_id + '\',\'_blank\')">' +
             '<div class="info"><div class="name">' + p.first_name + ' ' + p.last_name + (isMe ? ' ⭐' : '') + '</div>' +
             '<div class="detail">' + jobTitle + ' (ур.' + lvl + ')</div>' +
             '<div class="detail" style="color:#4caf50;">📈 +' + lvl + ' оп/час</div>' +
             '<div class="detail" style="color:#ffd700;">⭐ ' + (p.experience || 0) + ' опыта</div>';
+        
         if(p.company) {
             div.querySelector('.info').innerHTML += '<div class="detail" style="color:#ff9800;cursor:pointer;" onclick="event.stopPropagation();openCompanyModal(\'' + p.company + '\')">🏢 ' + p.company + '</div>';
         }
+        
         div.querySelector('.info').innerHTML += '</div>';
+        
+        if(isOnMarket) {
+            var hireBtn = document.createElement('button');
+            hireBtn.className = 'btn-hire-small';
+            hireBtn.textContent = '💼 ' + cost;
+            hireBtn.onclick = function(e) { e.stopPropagation(); hirePlayer(p); };
+            div.appendChild(hireBtn);
+        }
+        
         c.appendChild(div);
     });
 }
