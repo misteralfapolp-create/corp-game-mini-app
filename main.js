@@ -73,6 +73,7 @@ async function initApp(){
         }
         await updateAllStats();
         renderAll();
+        updateNavButtons('profile');
     } catch(e) {
         console.error('Ошибка:', e);
         document.getElementById('player-name').textContent = 'Ошибка: ' + (e.message || e);
