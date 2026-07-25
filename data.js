@@ -123,7 +123,7 @@ async function fireEmployee(vkId) {
     renderAll();
 }
 
-// Нанять — РАБОЧАЯ ВЕРСИЯ из старого кода
+// Нанять
 async function hirePlayer(player) {
     var hireCost = player.hire_cost || 100;
     
@@ -145,12 +145,11 @@ async function hirePlayer(player) {
         }
     }
     
+    // Не сбрасываем level и income_per_hour
     await supabase.from('players').update({ 
         owner_id: currentUser.vk_id, 
         status: 'Работает', 
         role: 'Учёный',
-        income_per_hour: 1,
-        level: 1,
         hire_cost: hireCost 
     }).eq('vk_id', player.vk_id);
     
