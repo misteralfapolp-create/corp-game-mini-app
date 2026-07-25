@@ -123,42 +123,48 @@ async function fireEmployee(vkId) {
     renderAll();
 }
 
-// Нанять — РАБОЧАЯ ВЕРСИЯ (начисляет старому владельцу)
+// Нанять
 async function hirePlayer(player) {
     var hireCost = player.hire_cost || 100;
     
+    console.log('=== НАЙМ ===');
+    console.log('Сотрудник:', player.first_name, player.vk_id);
+    console.log('Старый владелец:', player.owner_id);
+    console.log('Стоимость:', hireCost);
+    
     if((currentUser.experience || 0) < hireCost) { 
-        toast('Недостаточно опыта! Нужно ' + hireCost, 'error'); 
+        toast('Недостаточно опыта!', 'error'); 
         return; 
     }
     
-    await supabase.from('players').update({ 
-        experience: Math.max(0, (currentUser.experience || 0) - hireCost) 
-    }).eq('vk_id', currentUser.vk_id);
+    // Списываем
+    var myNewExp = Math.max(0, (currentUser.experience || 0) - hireCost);
+    await supabase.from('players').update({ experience: myNewExp }).eq('vk_id', currentUser.vk_id);
+    console.log('У нанимателя списано:', hireCost, 'стало:', myNewExp);
     
+    // Начисляем старому
     if(player.owner_id && player.owner_id !== currentUser.vk_id) {
         var oldOwner = await supabase.from('players').select('experience').eq('vk_id', player.owner_id).maybeSingle();
         if(oldOwner.data) {
-            await supabase.from('players').update({ 
-                experience: (oldOwner.data.experience || 0) + hireCost 
-            }).eq('vk_id', player.owner_id);
+            var oldNewExp = (oldOwner.data.experience || 0) + hireCost;
+            await supabase.from('players').update({ experience: oldNewExp }).eq('vk_id', player.owner_id);
+            console.log('Старому владельцу начислено:', hireCost, 'стало:', oldNewExp);
         }
     }
     
+    // Меняем владельца
     await supabase.from('players').update({ 
         owner_id: currentUser.vk_id, 
         status: 'Работает', 
         role: 'Учёный' 
     }).eq('vk_id', player.vk_id);
     
-    currentUser.experience = Math.max(0, (currentUser.experience || 0) - hireCost);
-    await supabase.from('players').update({ 
-        last_collect: new Date().toISOString() 
-    }).eq('vk_id', currentUser.vk_id);
-    currentUser.last_collect = new Date().toISOString();
+    currentUser.experience = myNewExp;
+    await supabase.from('players').update({ last_collect: new Date().toISOString() }).eq('vk_id', currentUser.vk_id);
+    
+    console.log('=== КОНЕЦ НАЙМА ===');
     
     toast('✅ Нанят!', 'success');
-    
     closePlayerModal();
     await updateAllStats();
     loadMyTeam(true);
