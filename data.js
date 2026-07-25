@@ -112,6 +112,11 @@ async function fireEmployee(vkId) {
     currentUser.experience += sellPrice;
     toast('🔥 Уволен! +' + sellPrice + ' опыта', 'info');
     sendPersonalMessage(vkId, '🔥 ' + currentUser.first_name + ' уволил вас! Теперь вы на бирже труда. Стоимость: ' + newCost + ' опыта.');
+    
+    var empResult2 = await supabase.from('players').select('*').eq('owner_id', currentUser.vk_id).order('level', { ascending: false });
+    myTeam = empResult2.data || [];
+    myTeamTotal = myTeam.length;
+    
     await updateAllStats();
     loadMyTeam(true);
     renderAll();
@@ -125,6 +130,7 @@ async function hirePlayer(player) {
     if((currentUser.experience || 0) < hirePrice) { toast('Недостаточно опыта! Нужно ' + hirePrice, 'error'); return; }
     
     await supabase.from('players').update({ experience: Math.max(0, (currentUser.experience || 0) - hirePrice) }).eq('vk_id', currentUser.vk_id);
+    currentUser.experience = Math.max(0, (currentUser.experience || 0) - hirePrice);
     
     if(player.owner_id && player.owner_id !== currentUser.vk_id) {
         var bonus = Math.floor(currentCost * 0.5);
@@ -138,12 +144,18 @@ async function hirePlayer(player) {
     var newCost = Math.floor(currentCost * 1.5);
     await supabase.from('players').update({ owner_id: currentUser.vk_id, status: 'Работает', role: 'Учёный', hire_cost: newCost }).eq('vk_id', player.vk_id);
     
-    currentUser.experience = Math.max(0, (currentUser.experience || 0) - hirePrice);
     await supabase.from('players').update({ last_collect: new Date().toISOString() }).eq('vk_id', currentUser.vk_id);
     currentUser.last_collect = new Date().toISOString();
-    toast('✅ Нанят! Стоимость выросла до ' + newCost, 'success');
+    
+    toast('✅ Нанят! Стоимость: ' + newCost, 'success');
     sendPersonalMessage(player.vk_id, '💼 ' + currentUser.first_name + ' нанял вас! Стоимость: ' + newCost + ' опыта.');
+    
     closePlayerModal();
+    
+    var empResult = await supabase.from('players').select('*').eq('owner_id', currentUser.vk_id).order('level', { ascending: false });
+    myTeam = empResult.data || [];
+    myTeamTotal = myTeam.length;
+    
     await updateAllStats();
     loadMyTeam(true);
     renderAll();
@@ -160,7 +172,13 @@ async function firePlayer(player) {
     currentUser.experience += sellPrice;
     toast('🔥 Уволен! +' + sellPrice + ' опыта', 'info');
     sendPersonalMessage(player.vk_id, '🔥 ' + currentUser.first_name + ' уволил вас! Стоимость: ' + newCost + ' опыта.');
+    
     closePlayerModal();
+    
+    var empResult = await supabase.from('players').select('*').eq('owner_id', currentUser.vk_id).order('level', { ascending: false });
+    myTeam = empResult.data || [];
+    myTeamTotal = myTeam.length;
+    
     await updateAllStats();
     loadMyTeam(true);
     renderAll();
@@ -185,9 +203,15 @@ async function stealEmployee(emp, stealCost) {
     currentUser.experience = Math.max(0, (currentUser.experience || 0) - stealCost);
     await supabase.from('players').update({ last_collect: new Date().toISOString() }).eq('vk_id', currentUser.vk_id);
     currentUser.last_collect = new Date().toISOString();
-    toast('✅ Перекуплен! Стоимость выросла до ' + newCost, 'success');
+    toast('✅ Перекуплен! Стоимость: ' + newCost, 'success');
     sendPersonalMessage(emp.vk_id, '💰 ' + currentUser.first_name + ' перекупил вас! Стоимость: ' + newCost + ' опыта.');
+    
     closePlayerModal();
+    
+    var empResult = await supabase.from('players').select('*').eq('owner_id', currentUser.vk_id).order('level', { ascending: false });
+    myTeam = empResult.data || [];
+    myTeamTotal = myTeam.length;
+    
     await updateAllStats();
     loadMyTeam(true);
     renderAll();
