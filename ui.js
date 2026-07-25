@@ -75,10 +75,10 @@ function renderEmployeeCard(emp, container, showActions, showCompany) {
     var lvl = emp.level || 1;
     var jobTitle = getJobTitle(lvl);
     var income = lvl;
-    var cost = emp.hire_cost || 100; // Цена из базы
+    var cost = emp.hire_cost || 100;
     var sellPrice = Math.floor(cost * 0.8);
     var balance = emp.experience || 0;
-    var upgradeCost = (emp.level || 1) * 50; // Прокачка по уровню
+    var upgradeCost = (emp.level || 1) * 50;
     
     var div = document.createElement('div');
     div.className = 'player-item';
@@ -113,7 +113,7 @@ function renderPlayerModalContent(player) {
     var lvl = player.level || 1;
     var jobTitle = getJobTitle(lvl);
     var income = lvl;
-    var cost = player.hire_cost || 100; // Цена из базы
+    var cost = player.hire_cost || 100;
     var sellPrice = Math.floor(cost * 0.8);
     var balance = player.experience || 0;
     
@@ -221,25 +221,32 @@ function renderTasks() {
 }
 
 function renderAll() {
-    updateNavButtons('profile');
-    document.getElementById('header-avatar').src = currentUser.photo_200 || (currentVkUser ? currentVkUser.photo_200 : '') || 'https://vk.com/images/camera_200.png';
-    document.getElementById('player-name').textContent = currentUser.first_name + ' ' + currentUser.last_name;
-    document.getElementById('exp-value').textContent = currentUser.experience || 0;
-    
-    var compEl = document.getElementById('company-display');
-    if(currentUser.company) {
-        compEl.innerHTML = '🏢 <span style="cursor:pointer;" onclick="goTo(\'my-company\')">' + currentUser.company + '</span>';
-        if(currentUser.company_group_id) compEl.innerHTML += ' <a href="https://vk.com/club' + currentUser.company_group_id + '" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>';
-    } else { compEl.textContent = ''; }
-    
-    document.getElementById('collect-panel').style.display = myTeamTotal ? 'flex' : 'none';
-    if(myTeamTotal) {
-        document.getElementById('collect-amount').textContent = currentUser.pending_experience || 0;
-        document.getElementById('collect-btn').onclick = collectExperience;
-    }
-    document.getElementById('invite-friend-btn').onclick = inviteFriend;
-    renderTasks();
-    loadMyTeam(true);
+    // Перезагружаем currentUser из БД перед отрисовкой
+    supabase.from('players').select('*').eq('vk_id', currentUser.vk_id).maybeSingle().then(function(r) {
+        if(r.data) {
+            currentUser = r.data;
+        }
+        
+        updateNavButtons('profile');
+        document.getElementById('header-avatar').src = currentUser.photo_200 || (currentVkUser ? currentVkUser.photo_200 : '') || 'https://vk.com/images/camera_200.png';
+        document.getElementById('player-name').textContent = currentUser.first_name + ' ' + currentUser.last_name;
+        document.getElementById('exp-value').textContent = currentUser.experience || 0;
+        
+        var compEl = document.getElementById('company-display');
+        if(currentUser.company) {
+            compEl.innerHTML = '🏢 <span style="cursor:pointer;" onclick="goTo(\'my-company\')">' + currentUser.company + '</span>';
+            if(currentUser.company_group_id) compEl.innerHTML += ' <a href="https://vk.com/club' + currentUser.company_group_id + '" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>';
+        } else { compEl.textContent = ''; }
+        
+        document.getElementById('collect-panel').style.display = myTeamTotal ? 'flex' : 'none';
+        if(myTeamTotal) {
+            document.getElementById('collect-amount').textContent = currentUser.pending_experience || 0;
+            document.getElementById('collect-btn').onclick = collectExperience;
+        }
+        document.getElementById('invite-friend-btn').onclick = inviteFriend;
+        renderTasks();
+        loadMyTeam(true);
+    });
 }
 
 function loadMyTeam(reset) {
