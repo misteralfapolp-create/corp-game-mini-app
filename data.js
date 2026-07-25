@@ -123,7 +123,7 @@ async function fireEmployee(vkId) {
     renderAll();
 }
 
-// Нанять — старый владелец получает ПОЛНУЮ стоимость
+// Нанять — РАБОЧАЯ ВЕРСИЯ из старого кода
 async function hirePlayer(player) {
     var hireCost = player.hire_cost || 100;
     
@@ -132,32 +132,37 @@ async function hirePlayer(player) {
         return; 
     }
     
-    // Списываем у нанимателя
-    await supabase.from('players').update({ experience: Math.max(0, (currentUser.experience || 0) - hireCost) }).eq('vk_id', currentUser.vk_id);
+    await supabase.from('players').update({ 
+        experience: Math.max(0, (currentUser.experience || 0) - hireCost) 
+    }).eq('vk_id', currentUser.vk_id);
     
-    // Начисляем старому владельцу ПОЛНУЮ стоимость
     if(player.owner_id && player.owner_id !== currentUser.vk_id) {
         var oldOwner = await supabase.from('players').select('experience').eq('vk_id', player.owner_id).maybeSingle();
         if(oldOwner.data) {
-            await supabase.from('players').update({ experience: (oldOwner.data.experience || 0) + hireCost }).eq('vk_id', player.owner_id);
+            await supabase.from('players').update({ 
+                experience: (oldOwner.data.experience || 0) + hireCost 
+            }).eq('vk_id', player.owner_id);
         }
     }
     
-    // Меняем владельца
-    await supabase.from('players').update({ owner_id: currentUser.vk_id, status: 'Работает', role: 'Учёный' }).eq('vk_id', player.vk_id);
+    await supabase.from('players').update({ 
+        owner_id: currentUser.vk_id, 
+        status: 'Работает', 
+        role: 'Учёный',
+        income_per_hour: 1,
+        level: 1,
+        hire_cost: hireCost 
+    }).eq('vk_id', player.vk_id);
     
     currentUser.experience = Math.max(0, (currentUser.experience || 0) - hireCost);
-    await supabase.from('players').update({ last_collect: new Date().toISOString() }).eq('vk_id', currentUser.vk_id);
+    await supabase.from('players').update({ 
+        last_collect: new Date().toISOString() 
+    }).eq('vk_id', currentUser.vk_id);
     currentUser.last_collect = new Date().toISOString();
     
     toast('✅ Нанят!', 'success');
     
     closePlayerModal();
-    
-    var empResult = await supabase.from('players').select('*').eq('owner_id', currentUser.vk_id).order('level', { ascending: false });
-    myTeam = empResult.data || [];
-    myTeamTotal = myTeam.length;
-    
     await updateAllStats();
     loadMyTeam(true);
     renderAll();
