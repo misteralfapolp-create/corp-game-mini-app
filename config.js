@@ -45,6 +45,12 @@ function getJobTitle(level) {
     return JOB_TITLES[lvl - 1];
 }
 
+// Извлечь ref из хеша
+function getRefFromHash() {
+    var m = window.location.hash.match(/ref_(\d+)/);
+    return m ? m[1] : null;
+}
+
 // Запрет кэширования
 (function(){
     var meta = document.createElement('meta');
