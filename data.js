@@ -123,7 +123,7 @@ async function fireEmployee(vkId) {
     renderAll();
 }
 
-// Нанять
+// Нанять — РАБОЧАЯ ВЕРСИЯ (начисляет старому владельцу)
 async function hirePlayer(player) {
     var hireCost = player.hire_cost || 100;
     
@@ -132,30 +132,23 @@ async function hirePlayer(player) {
         return; 
     }
     
-    // Списываем у нанимателя
     await supabase.from('players').update({ 
         experience: Math.max(0, (currentUser.experience || 0) - hireCost) 
     }).eq('vk_id', currentUser.vk_id);
     
-    // Начисляем старому владельцу
     if(player.owner_id && player.owner_id !== currentUser.vk_id) {
         var oldOwner = await supabase.from('players').select('experience').eq('vk_id', player.owner_id).maybeSingle();
-        console.log('Старый владелец ДО:', oldOwner.data);
         if(oldOwner.data) {
-            var newExp = (oldOwner.data.experience || 0) + hireCost;
             await supabase.from('players').update({ 
-                experience: newExp 
+                experience: (oldOwner.data.experience || 0) + hireCost 
             }).eq('vk_id', player.owner_id);
-            console.log('Старый владелец ПОСЛЕ: +' + hireCost + ', стало: ' + newExp);
         }
     }
     
-    // Меняем владельца
     await supabase.from('players').update({ 
         owner_id: currentUser.vk_id, 
         status: 'Работает', 
-        role: 'Учёный',
-        hire_cost: hireCost 
+        role: 'Учёный' 
     }).eq('vk_id', player.vk_id);
     
     currentUser.experience = Math.max(0, (currentUser.experience || 0) - hireCost);
