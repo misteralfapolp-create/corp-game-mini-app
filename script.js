@@ -69,7 +69,6 @@ function addNavBtn(screen,label){
 async function initApp(){
     try{
         document.getElementById('player-name').textContent = 'Шаг 1...';
-        
         currentVkUser = await vkBridge.send('VKWebAppGetUserInfo');
         document.getElementById('player-name').textContent = 'Шаг 2... ' + currentVkUser.first_name;
         
@@ -77,7 +76,6 @@ async function initApp(){
         if(invitedBy && parseInt(invitedBy) === currentVkUser.id) invitedBy = null;
         
         document.getElementById('player-name').textContent = 'Шаг 3...';
-        
         var r = await supabase.from('players').select('*').eq('vk_id', currentVkUser.id).maybeSingle();
         
         if(r.error) {
