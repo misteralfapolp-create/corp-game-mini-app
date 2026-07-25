@@ -51,12 +51,16 @@ function doNotifyTask() {
 
 async function checkNotifyTask() {
     if(currentUser.task_notify_done) { toast('Уже выполнено!', 'info'); return; }
+    
     toast('Проверяем...', 'info');
+    
     var sent = sendPersonalMessageSync(currentUser.vk_id, '✅ Уведомления подключены!');
+    
     if(sent) {
         await completeNotifyTask();
     } else {
-        toast('❌ Не отправлено. Напишите любое слово в ЛС группы и попробуйте снова!', 'error');
+        toast('📝 Награда начислена! Убедитесь, что написали сообщение группе.', 'info');
+        await completeNotifyTask();
     }
 }
 
