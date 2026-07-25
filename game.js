@@ -204,20 +204,26 @@ async function loadMyCompanyScreen() {
     };
 }
 
-// ================= СОЗДАНИЕ КОМПАНИИ (через groups.get) =================
+// ================= СОЗДАНИЕ КОМПАНИИ (через VKWebAppGetAuthToken) =================
 async function createCompany() {
     try {
-        var result = await vkBridge.send('VKWebAppCallAPIMethod', {
-            method: 'groups.get',
-            params: { 
-                filter: 'admin',
-                extended: 1,
-                v: '5.199'
-            }
+        // Шаг 1: Запрашиваем доступ к группам — ВК покажет окно разрешения
+        var tokenResult = await vkBridge.send('VKWebAppGetAuthToken', {
+            app_id: parseInt(APP_ID),
+            scope: 'groups'
         });
         
-        if(result && result.response && result.response.items && result.response.items.length > 0) {
-            var groups = result.response.items;
+        if(!tokenResult || !tokenResult.access_token) {
+            toast('Не удалось получить доступ к группам', 'error');
+            return;
+        }
+        
+        // Шаг 2: Получаем список групп через API с токеном
+        var response = await fetch('https://api.vk.com/method/groups.get?filter=admin&extended=1&v=5.199&access_token=' + tokenResult.access_token);
+        var data = await response.json();
+        
+        if(data && data.response && data.response.items && data.response.items.length > 0) {
+            var groups = data.response.items;
             
             var modal = document.getElementById('input-modal');
             document.getElementById('input-modal-title').textContent = 'Выберите группу';
@@ -268,11 +274,11 @@ async function createCompany() {
             document.getElementById('input-modal-ok').style.display = 'none';
             
         } else {
-            toast('У вас нет групп для управления. Создайте группу ВК.', 'error');
+            toast('У вас нет групп для управления', 'error');
         }
     } catch(e) {
         console.error(e);
-        toast('Ошибка получения групп. Разрешите доступ в настройках.', 'error');
+        toast('Ошибка получения групп. Попробуйте позже.', 'error');
     }
 }
 
