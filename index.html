@@ -1,5 +1,146 @@
-<script src="config.js"></script>
-<script src="ui.js"></script>
-<script src="data.js"></script>
-<script src="game.js"></script>
-<script src="main.js"></script>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Корпоративные Игры</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="stars-canvas"></div>
+    <div id="toast-container"></div>
+    
+    <div id="app">
+        <div class="nav-bar" id="nav-bar"></div>
+
+        <!-- Профиль -->
+        <div id="screen-profile" class="screen active">
+            <div class="card profile-card">
+                <div class="header">
+                    <img id="header-avatar" class="header-avatar" src="" alt="Аватар" onclick="openVkProfile()">
+                    <h2 id="player-name">Загрузка...</h2>
+                    <button class="btn-quit-job" id="quit-job-btn" style="display:none;">🚪 Уволиться</button>
+                    <div id="owner-info"></div>
+                    <div class="company-name-display" id="company-display"></div>
+                </div>
+                <div class="stats">
+                    <div class="stat stat-main"><div class="value" id="exp-value">0</div><div class="label">⭐ Опыт</div></div>
+                    <div class="stat"><div class="value" id="my-employees-count">0</div><div class="label">👥 Сотрудники</div></div>
+                    <div class="stat"><div class="value" id="my-income">0</div><div class="label">📈 Доход/час</div></div>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:6px;">
+                    <button class="btn-invite-friend" id="invite-friend-btn" style="flex:1;">📨 Пригласить (+500)</button>
+                    <button class="btn-settings" id="settings-btn" onclick="openSettings()">⚙️</button>
+                </div>
+                <button class="btn-earn" id="earn-btn" onclick="toggleTasks()">💰 Заработать</button>
+            </div>
+
+            <div class="card" id="tasks-panel" style="display:none;">
+                <div class="section-title">📋 Задания</div>
+                <div id="tasks-list">Загрузка...</div>
+            </div>
+
+            <div class="card collect-card" id="collect-panel" style="display:none;">
+                <div class="collect-info"><span class="collect-amount" id="collect-amount">0</span><span class="collect-label">опыта готово</span></div>
+                <button class="btn-collect" id="collect-btn">🔄 Собрать</button>
+            </div>
+
+            <div class="card">
+                <div class="section-title">👥 Мои сотрудники (<span id="my-team-total">0</span>)</div>
+                <div id="my-team-list"><p style="color:#aaa;text-align:center;">Загрузка...</p></div>
+                <button class="btn-load-more" id="load-more-btn" style="display:none;">📥 Загрузить ещё</button>
+            </div>
+        </div>
+
+        <!-- Топ -->
+        <div id="screen-top" class="screen">
+            <div class="card">
+                <div class="subtab-bar">
+                    <button class="subtab active" id="subtab-players">👤 Игроки</button>
+                    <button class="subtab" id="subtab-companies">🏢 Компании</button>
+                </div>
+                <div id="top-content"></div>
+            </div>
+        </div>
+
+        <!-- Биржа -->
+        <div id="screen-market" class="screen">
+            <div class="card">
+                <div class="section-title">💼 Биржа труда</div>
+                <div id="market-content">Загрузка...</div>
+            </div>
+        </div>
+
+        <!-- Моя компания -->
+        <div id="screen-my-company" class="screen">
+            <div class="card">
+                <div class="section-title">🏢 <span id="my-company-name"></span></div>
+                <p id="my-company-stats"></p>
+                <div id="my-company-members"></div>
+                <button class="btn-leave" id="my-company-leave-btn" style="display:none;">🚪 Выйти из компании (бесплатно)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка ввода -->
+    <div class="modal" id="input-modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="document.getElementById('input-modal').style.display='none'">✕</span>
+            <h2 id="input-modal-title">Введите значение</h2>
+            <input type="text" id="input-modal-input" placeholder="" style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#fff;font-size:14px;margin:10px 0;">
+            <div style="display:flex;gap:8px;">
+                <button class="btn-collect" id="input-modal-ok" style="flex:1;">ОК</button>
+                <button class="btn-back" id="input-modal-cancel" style="flex:1;">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка игрока -->
+    <div class="modal" id="player-modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closePlayerModal()">✕</span>
+            <div id="modal-player-header"></div>
+            <div id="modal-player-owner" style="margin:6px 0;"></div>
+            <p id="modal-player-stats"></p>
+            <button class="btn-hire" id="modal-hire-btn" style="display:none;">💼 Нанять</button>
+            <button class="btn-leave" id="modal-fire-btn" style="display:none;">🔥 Уволить</button>
+            <div id="modal-player-employees"></div>
+            <button class="btn-back" onclick="closePlayerModal()">🔙 Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Модалка компании -->
+    <div class="modal" id="company-modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeCompanyModal()">✕</span>
+            <h2 id="modal-company-name"></h2>
+            <p id="modal-company-stats"></p>
+            <div id="modal-company-members"></div>
+            <button class="btn-join" id="modal-join-btn" style="display:none;">✅ Вступить (бесплатно)</button>
+            <button class="btn-leave" id="modal-leave-btn" style="display:none;">🚪 Выйти из компании (бесплатно)</button>
+            <button class="btn-back" onclick="closeCompanyModal()">🔙 Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Настройки -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeSettings()">✕</span>
+            <h2>⚙️ Настройки</h2>
+            <p style="margin:10px 0;color:#aaa;">Промокод можно ввести только 1 раз</p>
+            <input type="text" id="promo-input" placeholder="Введите промокод" style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#fff;font-size:14px;margin-bottom:8px;">
+            <button class="btn-collect" id="promo-go-btn" style="width:100%;">🎁 Применить</button>
+            <button class="btn-back" onclick="closeSettings()" style="margin-top:8px;">🔙 Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Подключаем модули ПО ПОРЯДКУ -->
+    <script src="config.js"></script>
+    <script src="ui.js"></script>
+    <script src="data.js"></script>
+    <script src="game.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
