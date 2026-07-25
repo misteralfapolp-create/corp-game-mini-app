@@ -204,7 +204,7 @@ async function loadMyCompanyScreen() {
     };
 }
 
-// ================= СОЗДАНИЕ КОМПАНИИ (через VKWebAppGetAuthToken) =================
+// ================= СОЗДАНИЕ КОМПАНИИ (VKWebAppGetAuthToken + VKWebAppCallAPIMethod) =================
 async function createCompany() {
     try {
         // Шаг 1: Запрашиваем доступ к группам — ВК покажет окно разрешения
@@ -218,12 +218,19 @@ async function createCompany() {
             return;
         }
         
-        // Шаг 2: Получаем список групп через API с токеном
-        var response = await fetch('https://api.vk.com/method/groups.get?filter=admin&extended=1&v=5.199&access_token=' + tokenResult.access_token);
-        var data = await response.json();
+        // Шаг 2: Получаем список групп через VK API
+        var groupsResult = await vkBridge.send('VKWebAppCallAPIMethod', {
+            method: 'groups.get',
+            params: {
+                filter: 'admin',
+                extended: 1,
+                access_token: tokenResult.access_token,
+                v: '5.199'
+            }
+        });
         
-        if(data && data.response && data.response.items && data.response.items.length > 0) {
-            var groups = data.response.items;
+        if(groupsResult && groupsResult.response && groupsResult.response.items && groupsResult.response.items.length > 0) {
+            var groups = groupsResult.response.items;
             
             var modal = document.getElementById('input-modal');
             document.getElementById('input-modal-title').textContent = 'Выберите группу';
