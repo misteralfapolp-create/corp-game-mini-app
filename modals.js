@@ -3,7 +3,7 @@
 async function createCompany() {
     try {
         var tokenResult = await vkBridge.send('VKWebAppGetAuthToken', {
-            app_id: parseInt(APP_ID),
+            app_id: String(APP_ID),  // ✅ ИСПРАВЛЕНО: теперь строка
             scope: 'groups'
         });
         
