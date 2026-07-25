@@ -180,7 +180,7 @@ function renderPlayerModalContent(player) {
         });
     }
     
-    // Загружаем сотрудников (сортировка по убыванию уровня = цены)
+    // Загружаем сотрудников (сортировка по уровню)
     supabase.from('players').select('*').eq('owner_id', player.vk_id).order('level', { ascending: false }).then(function(r) {
         var list = document.getElementById('modal-player-employees');
         list.innerHTML = '';
