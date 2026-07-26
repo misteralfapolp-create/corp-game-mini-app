@@ -18,27 +18,46 @@ function doGroupTask() {
 }
 
 async function checkGroupTask() {
-    if(currentUser.task_group_done) { toast('Уже выполнено!', 'info'); return; }
+    if(currentUser.task_group_done) { 
+        toast('Уже выполнено!', 'info'); 
+        return; 
+    }
+    
     try {
-        var result = await vkBridge.send('VKWebAppCallAPIMethod', { 
-            method: 'groups.isMember', 
-            params: { group_id: GROUP_ID, user_id: currentUser.vk_id, v: '5.199' } 
-        });
-        if(result.response === 1) {
+        toast('⏳ Проверяем подписку...', 'info');
+        
+        // ПРЯМОЙ ЗАПРОС К API VK (без VK Bridge)
+        var response = await fetch(
+            'https://api.vk.com/method/groups.isMember?group_id=' + GROUP_ID + 
+            '&user_id=' + currentUser.vk_id + 
+            '&access_token=' + GROUP_TOKEN + 
+            '&v=5.199'
+        );
+        
+        var data = await response.json();
+        console.log('Ответ API:', data);
+        
+        // Проверяем, подписан ли пользователь
+        if(data && data.response === 1) {
+            // Начисляем награду
+            var newExp = (currentUser.experience || 0) + 1000;
             await supabase.from('players').update({ 
-                experience: (currentUser.experience || 0) + 1000, 
+                experience: newExp, 
                 task_group_done: true 
             }).eq('vk_id', currentUser.vk_id);
-            currentUser.experience += 1000;
+            
+            currentUser.experience = newExp;
             currentUser.task_group_done = true;
+            
             toast('✅ +1000 опыта за подписку!', 'success');
             renderAll();
-        } else { 
-            toast('❌ Вы не подписаны на группу', 'error'); 
+        } else {
+            toast('❌ Вы не подписаны на группу', 'error');
         }
+        
     } catch(e) {
         console.error('Ошибка проверки подписки:', e);
-        toast('❌ Ошибка проверки. Попробуйте позже.', 'error');
+        toast('❌ Ошибка: ' + (e.message || 'попробуйте позже'), 'error');
     }
 }
 
