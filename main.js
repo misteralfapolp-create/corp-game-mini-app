@@ -39,7 +39,7 @@ async function initApp(){
                 company_group_id: null,
                 task_group_done: false,
                 task_promo_done: false,
-                task_notify_done: false,
+                // task_notify_done: false, // Временно убрано
                 max_pending: 0
             }]);
             
@@ -56,10 +56,12 @@ async function initApp(){
         if(currentUser.owner_id === undefined){ await supabase.from('players').update({owner_id: null, last_collect: new Date().toISOString(), pending_experience: 0}).eq('vk_id', currentUser.vk_id); currentUser.owner_id = null; }
         if(currentUser.company_group_id === undefined){ await supabase.from('players').update({company_group_id: null}).eq('vk_id', currentUser.vk_id); currentUser.company_group_id = null; }
         if(currentUser.task_group_done === undefined){ await supabase.from('players').update({task_group_done: false, task_promo_done: false, max_pending: 0}).eq('vk_id', currentUser.vk_id); currentUser.task_group_done = false; currentUser.task_promo_done = false; currentUser.max_pending = 0; }
-        if(currentUser.task_notify_done === undefined) {
-            await supabase.from('players').update({ task_notify_done: false }).eq('vk_id', currentUser.vk_id);
-            currentUser.task_notify_done = false;
-        }
+        
+        // Временно убрано: проверка task_notify_done
+        // if(currentUser.task_notify_done === undefined) {
+        //     await supabase.from('players').update({ task_notify_done: false }).eq('vk_id', currentUser.vk_id);
+        //     currentUser.task_notify_done = false;
+        // }
         
         // Обработка реферала
         if(invitedBy && parseInt(invitedBy) !== currentUser.vk_id && !currentUser.owner_id){
