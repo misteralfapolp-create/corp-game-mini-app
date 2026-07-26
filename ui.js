@@ -197,30 +197,40 @@ function renderPlayerModalContent(player) {
     });
 }
 
+// ================= ЗАДАНИЯ =================
+
 function renderTasks() {
     var listEl = document.getElementById('tasks-list');
     if(!listEl) return;
     var html = '';
     
+    // Задание: Подписка на группу
     if(!currentUser || !currentUser.task_group_done) {
         html += '<div class="task-item"><div class="task-info"><b>📱 Подписаться на группу</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
         html += '<div style="display:flex;gap:4px;"><button class="btn-task" onclick="doGroupTask()">▶ Выполнить</button><button class="btn-task-check" onclick="checkGroupTask()">🔍 Проверить</button></div>';
         html += '</div>';
     }
     
+    // Задание: Промокод
+    html += '<div class="task-item"><div class="task-info"><b>🎁 Ввести промокод</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
+    html += '<button class="btn-task" onclick="doPromoTask()">▶ Выполнить</button>';
+    html += '</div>';
+    
+    /*
+    // ================= ЗАДАНИЕ: УВЕДОМЛЕНИЯ (ЗАКОММЕНТИРОВАНО) =================
+    // Временно убрано для модерации. Вернуть после одобрения.
     if(!currentUser || !currentUser.task_notify_done) {
         html += '<div class="task-item"><div class="task-info"><b>🔔 Подключить уведомления</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
         html += '<div style="display:flex;gap:4px;"><button class="btn-task" onclick="doNotifyTask()">▶ Выполнить</button><button class="btn-task-check" onclick="checkNotifyTask()">🔍 Проверить</button></div>';
         html += '</div>';
     }
-    
-    html += '<div class="task-item"><div class="task-info"><b>🎁 Ввести промокод</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
-    html += '<button class="btn-task" onclick="doPromoTask()">▶ Выполнить</button>';
-    html += '</div>';
+    */
     
     if(html === '') html = '<p style="color:#4caf50;text-align:center;">✅ Все задания выполнены!</p>';
     listEl.innerHTML = html;
 }
+
+// ================= ОТРИСОВКА ВСЕГО =================
 
 function renderAll() {
     updateNavButtons('profile');
@@ -243,6 +253,8 @@ function renderAll() {
     renderTasks();
     loadMyTeam(true);
 }
+
+// ================= ЗАГРУЗКА МОИХ СОТРУДНИКОВ =================
 
 function loadMyTeam(reset) {
     if(reset) { myTeamOffset = 0; document.getElementById('my-team-list').innerHTML = ''; }
