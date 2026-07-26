@@ -7,6 +7,9 @@ var GROUP_ID = 240295160;
 var GROUP_URL = 'https://vk.ru/club' + GROUP_ID;
 var TEAM_PAGE_SIZE = 20;
 
+// ================= ТОКЕН ГРУППЫ (ЗАКОММЕНТИРОВАН) =================
+// var GROUP_TOKEN = 'vk1.a._X1e4fN42aOmjRD8TqAfrd-r8MrNBwt1fA1s8klGu05Nkgk1A_hkfOeK3ymr1onB2vSZGv0dA6-8O3ax_eHcbf6m31i0UJIJWtm3lmvmRgm8K8nZ80a7xYnJZEIUqpAjddtV5GzbNDaxmmVK1qOZ94uBWxXpftV6zinOF9Rs-V-Vds4hp0mSFIGnKxKEI15rhOd-CLLznlmRthmA6dBZWw';
+
 // Глобальные переменные
 var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 var currentUser = null;
