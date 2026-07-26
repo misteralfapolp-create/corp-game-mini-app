@@ -4,7 +4,7 @@ async function createCompany() {
     try {
         console.log('1. Запрашиваем токен...');
         var tokenResult = await vkBridge.send('VKWebAppGetAuthToken', {
-            app_id: String(APP_ID),  // ✅ ИСПРАВЛЕНО: строка
+            app_id: String(APP_ID),
             scope: 'groups'
         });
         console.log('2. Токен получен:', tokenResult);
@@ -96,7 +96,9 @@ async function openPlayerModalById(vkId) {
     }
 }
 
-function closePlayerModal() { document.getElementById('player-modal').style.display = 'none'; }
+function closePlayerModal() { 
+    document.getElementById('player-modal').style.display = 'none'; 
+}
 
 // ================= МОДАЛКА КОМПАНИИ =================
 async function openCompanyModal(name) {
@@ -107,7 +109,10 @@ async function openCompanyModal(name) {
     var avatarHtml = groupId ? '<img src="https://vk.com/images/community_200.png?gid=' + groupId + '" style="width:40px;height:40px;border-radius:50%;vertical-align:middle;margin-right:10px;" onerror="this.style.display=\'none\'">' : '';
     document.getElementById('modal-company-name').innerHTML = avatarHtml + '🏢 ' + name;
     
-    if(groupId) document.getElementById('modal-company-name').innerHTML += ' <a href="https://vk.com/club' + groupId + '" target="_blank" style="color:#4a76a8;font-size:13px;">📱</a>';
+    if(groupId) {
+        document.getElementById('modal-company-name').innerHTML += ' <a href="https://vk.com/club' + groupId + '" target="_blank" style="color:#4a76a8;font-size:13px;">📱</a>';
+    }
+    
     var r = await supabase.from('players').select('*').eq('company', name);
     if(r.data) {
         document.getElementById('modal-company-stats').textContent = '👥 ' + r.data.length + ' сотрудников';
@@ -126,10 +131,12 @@ async function openCompanyModal(name) {
                 '<div class="detail" style="color:#ffd700;">⭐ ' + (p.experience || 0) + ' опыта</div></div>';
             list.appendChild(div);
         });
+        
         var jb = document.getElementById('modal-join-btn');
         var lb = document.getElementById('modal-leave-btn');
         jb.style.display = 'none';
         lb.style.display = 'none';
+        
         if(currentUser.company === name) {
             lb.style.display = 'block';
             lb.textContent = '🚪 Выйти из компании (бесплатно)';
@@ -154,7 +161,9 @@ async function openCompanyModal(name) {
     }
 }
 
-function closeCompanyModal() { document.getElementById('company-modal').style.display = 'none'; }
+function closeCompanyModal() { 
+    document.getElementById('company-modal').style.display = 'none'; 
+}
 
 // ================= НАСТРОЙКИ =================
 function openSettings() {
@@ -163,24 +172,37 @@ function openSettings() {
     document.getElementById('promo-go-btn').onclick = applyPromo;
 }
 
-function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
+function closeSettings() { 
+    document.getElementById('settings-modal').style.display = 'none'; 
+}
 
 async function applyPromo() {
     var code = document.getElementById('promo-input').value.trim().toUpperCase();
     if(!code) { toast('Введите промокод!', 'error'); return; }
+    
     var r = await supabase.from('promocodes').select('*').eq('code', code).maybeSingle();
     if(!r.data) { toast('Промокод не найден!', 'error'); return; }
+    
     var promo = r.data;
-    if(promo.used_by && promo.used_by.includes(currentUser.vk_id)) { toast('Вы уже использовали!', 'error'); return; }
-    if(promo.used_by && promo.used_by.length >= promo.max_uses) { toast('Промокод не действует!', 'error'); return; }
+    if(promo.used_by && promo.used_by.includes(currentUser.vk_id)) { 
+        toast('Вы уже использовали!', 'error'); 
+        return; 
+    }
+    if(promo.used_by && promo.used_by.length >= promo.max_uses) { 
+        toast('Промокод не действует!', 'error'); 
+        return; 
+    }
+    
     var newExp = (currentUser.experience || 0) + promo.reward_exp + 1000;
     await supabase.from('players').update({ experience: newExp }).eq('vk_id', currentUser.vk_id);
     currentUser.experience = newExp;
+    
     var usedBy = promo.used_by || [];
     usedBy.push(currentUser.vk_id);
     await supabase.from('promocodes').update({ used_by: usedBy }).eq('code', code);
     await supabase.from('players').update({ task_promo_done: true }).eq('vk_id', currentUser.vk_id);
     currentUser.task_promo_done = true;
+    
     toast('🎁 +' + (promo.reward_exp + 1000) + ' опыта!', 'success');
     closeSettings();
     renderAll();
@@ -190,11 +212,32 @@ async function applyPromo() {
 // ================= ПРИГЛАШЕНИЕ =================
 function inviteFriend() {
     var refLink = 'https://vk.com/app' + APP_ID + '#ref_' + currentUser.vk_id;
-    vkBridge.send('VKWebAppShare', { link: refLink, text: '🎮 Присоединяйся к Корпоративным Играм! Стань моим сотрудником!' })
-        .then(function(){ toast('✅ Отправлено!', 'success'); })
-        .catch(function() {
-            navigator.clipboard.writeText(refLink)
-                .then(function(){ toast('🔗 Скопировано!', 'info'); })
-                .catch(function(){ toast('Не удалось отправить', 'error'); });
-        });
+    vkBridge.send('VKWebAppShare', { 
+        link: refLink, 
+        text: '🎮 Присоединяйся к Корпоративным Играм! Стань моим сотрудником!' 
+    })
+    .then(function(){ 
+        toast('✅ Отправлено!', 'success'); 
+    })
+    .catch(function() {
+        navigator.clipboard.writeText(refLink)
+            .then(function(){ 
+                toast('🔗 Скопировано!', 'info'); 
+            })
+            .catch(function(){ 
+                toast('Не удалось отправить', 'error'); 
+            });
+    });
+}
+
+// ================= УВОЛЬНЕНИЕ ИЗ МОДАЛКИ (ДОПОЛНИТЕЛЬНО) =================
+// Основная функция firePlayer находится в data.js
+// Эта функция вызывается из модалки при нажатии "Уволить"
+
+// Дополнительная функция для обновления модалки после увольнения
+async function refreshPlayerModal(vkId) {
+    var r = await supabase.from('players').select('*').eq('vk_id', vkId).maybeSingle();
+    if(r.data) {
+        renderPlayerModalContent(r.data);
+    }
 }
