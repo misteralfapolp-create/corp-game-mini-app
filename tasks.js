@@ -47,7 +47,9 @@ function doPromoTask() {
     toast('🎁 Введите промокод', 'info');
 }
 
-// ================= УВЕДОМЛЕНИЯ =================
+/*
+// ================= УВЕДОМЛЕНИЯ (ЗАКОММЕНТИРОВАНО) =================
+// Временно убрано для модерации. Вернуть после одобрения.
 
 function doNotifyTask() {
     window.open('https://vk.com/write-' + GROUP_ID, '_blank');
@@ -63,7 +65,6 @@ async function checkNotifyTask() {
     toast('⏳ Проверяем...', 'info');
     
     try {
-        // Пытаемся отправить сообщение от имени сообщества
         var sent = await sendPersonalMessageAsync(
             currentUser.vk_id, 
             '🔔 Уведомления успешно подключены!'
@@ -113,7 +114,6 @@ async function sendPersonalMessageAsync(vkId, message) {
         
         console.log('✅ Ответ от VK API:', result);
         
-        // Проверяем, что сообщение отправлено
         if(result && result.response) {
             return true;
         } else {
@@ -122,17 +122,12 @@ async function sendPersonalMessageAsync(vkId, message) {
         }
     } catch(e) {
         console.error('❌ Ошибка отправки сообщения:', e);
-        
-        // Показываем детали ошибки
         if(e.message) {
             toast('❌ Ошибка: ' + e.message, 'error');
         }
-        
         return false;
     }
 }
-
-// ================= АВТОМАТИЧЕСКИЕ УВЕДОМЛЕНИЯ =================
 
 // Отправка уведомления при найме сотрудника
 async function notifyAboutHire(employeeName, ownerName) {
@@ -145,3 +140,4 @@ async function notifyAboutFire(employeeName) {
     var message = '🔔 Сотрудник ' + employeeName + ' был уволен.';
     await sendPersonalMessageAsync(currentUser.vk_id, message);
 }
+*/
