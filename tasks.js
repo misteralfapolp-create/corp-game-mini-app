@@ -81,7 +81,6 @@ async function doRewardedAd() {
         return;
     }
     
-    // Проверяем кулдаун
     var lastAdTime = localStorage.getItem('last_ad_time_' + currentUser.vk_id);
     if(lastAdTime) {
         var timeDiff = (Date.now() - parseInt(lastAdTime)) / 1000;
