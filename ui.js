@@ -244,69 +244,94 @@ function renderTasks() {
 
 // ================= ЕЖЕДНЕВНАЯ НАГРАДА =================
 
-// ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ
 function onDailyRewardClick() {
-    var status = getDailyRewardStatus();
+    console.log('🟢 onDailyRewardClick вызвана!');
     
-    // ЕСЛИ УЖЕ ПОЛУЧЕНО — НИЧЕГО НЕ ДЕЛАЕМ
-    if(!status.canClaim) {
-        toast('✅ Сегодня уже получено! Завтра будет день ' + status.day + ' 🎁', 'info');
+    if(!currentUser) {
+        toast('❌ Пользователь не загружен!', 'error');
         return;
     }
     
-    var reward = DAILY_REWARD_BASE + (status.day - 1) * DAILY_REWARD_STEP;
+    console.log('🟢 currentUser:', currentUser.vk_id);
     
-    var modal = document.getElementById('input-modal');
-    document.getElementById('input-modal-title').textContent = '🎁 Ежедневная награда';
-    var input = document.getElementById('input-modal-input');
-    input.style.display = 'none';
-    document.getElementById('input-modal-ok').style.display = 'none';
-    
-    var confirmDiv = document.createElement('div');
-    confirmDiv.id = 'daily-confirm-btns';
-    confirmDiv.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin:10px 0;text-align:center;';
-    confirmDiv.innerHTML = 
-        '<div style="font-size:24px;margin:10px 0;">' + status.emoji + '</div>' +
-        '<div style="font-size:18px;font-weight:700;">День ' + status.day + '</div>' +
-        '<div style="font-size:14px;color:#ffd700;">+' + reward + ' опыта</div>' +
-        '<div style="font-size:12px;color:#aaa;">Следующая награда: +' + (reward + DAILY_REWARD_STEP) + ' опыта</div>';
-    
-    var btnOk = document.createElement('button');
-    btnOk.className = 'btn-collect';
-    btnOk.textContent = '🎁 Забрать';
-    btnOk.style.width = '100%';
-    btnOk.onclick = function() {
-        modal.style.display = 'none';
-        claimDailyReward();
-    };
-    confirmDiv.appendChild(btnOk);
-    
-    var btnCancel = document.createElement('button');
-    btnCancel.className = 'btn-back';
-    btnCancel.textContent = '🔙 Отмена';
-    btnCancel.style.width = '100%';
-    btnCancel.onclick = function() {
-        modal.style.display = 'none';
-        var old = document.getElementById('daily-confirm-btns');
-        if(old) old.remove();
-        input.style.display = 'block';
-        document.getElementById('input-modal-ok').style.display = 'block';
-    };
-    confirmDiv.appendChild(btnCancel);
-    
-    var container = document.getElementById('input-modal-ok').parentNode;
-    container.insertBefore(confirmDiv, document.getElementById('input-modal-ok').parentNode);
-    
-    modal.style.display = 'flex';
-    
-    var oldClose = document.querySelector('.modal-close');
-    oldClose.onclick = function() {
-        modal.style.display = 'none';
-        var old = document.getElementById('daily-confirm-btns');
-        if(old) old.remove();
-        input.style.display = 'block';
-        document.getElementById('input-modal-ok').style.display = 'block';
-    };
+    try {
+        var status = getDailyRewardStatus();
+        console.log('🟢 Статус награды:', status);
+        
+        if(!status.canClaim) {
+            toast('✅ Сегодня уже получено! Завтра будет день ' + status.day + ' 🎁', 'info');
+            return;
+        }
+        
+        var reward = DAILY_REWARD_BASE + (status.day - 1) * DAILY_REWARD_STEP;
+        console.log('🟢 Награда за день ' + status.day + ': ' + reward);
+        
+        var modal = document.getElementById('input-modal');
+        if(!modal) {
+            toast('❌ Модалка не найдена!', 'error');
+            return;
+        }
+        
+        document.getElementById('input-modal-title').textContent = '🎁 Ежедневная награда';
+        var input = document.getElementById('input-modal-input');
+        input.style.display = 'none';
+        document.getElementById('input-modal-ok').style.display = 'none';
+        
+        var oldDiv = document.getElementById('daily-confirm-btns');
+        if(oldDiv) oldDiv.remove();
+        
+        var confirmDiv = document.createElement('div');
+        confirmDiv.id = 'daily-confirm-btns';
+        confirmDiv.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin:10px 0;text-align:center;';
+        confirmDiv.innerHTML = 
+            '<div style="font-size:24px;margin:10px 0;">' + status.emoji + '</div>' +
+            '<div style="font-size:18px;font-weight:700;">День ' + status.day + '</div>' +
+            '<div style="font-size:14px;color:#ffd700;">+' + reward + ' опыта</div>' +
+            '<div style="font-size:12px;color:#aaa;">Следующая награда: +' + (reward + DAILY_REWARD_STEP) + ' опыта</div>';
+        
+        var btnOk = document.createElement('button');
+        btnOk.className = 'btn-collect';
+        btnOk.textContent = '🎁 Забрать';
+        btnOk.style.width = '100%';
+        btnOk.onclick = function() {
+            modal.style.display = 'none';
+            claimDailyReward();
+        };
+        confirmDiv.appendChild(btnOk);
+        
+        var btnCancel = document.createElement('button');
+        btnCancel.className = 'btn-back';
+        btnCancel.textContent = '🔙 Отмена';
+        btnCancel.style.width = '100%';
+        btnCancel.onclick = function() {
+            modal.style.display = 'none';
+            var old = document.getElementById('daily-confirm-btns');
+            if(old) old.remove();
+            input.style.display = 'block';
+            document.getElementById('input-modal-ok').style.display = 'block';
+        };
+        confirmDiv.appendChild(btnCancel);
+        
+        var container = document.getElementById('input-modal-ok').parentNode;
+        container.insertBefore(confirmDiv, document.getElementById('input-modal-ok').parentNode);
+        
+        modal.style.display = 'flex';
+        
+        var oldClose = document.querySelector('.modal-close');
+        oldClose.onclick = function() {
+            modal.style.display = 'none';
+            var old = document.getElementById('daily-confirm-btns');
+            if(old) old.remove();
+            input.style.display = 'block';
+            document.getElementById('input-modal-ok').style.display = 'block';
+        };
+        
+        console.log('🟢 Модалка показана!');
+        
+    } catch(e) {
+        console.error('❌ Ошибка в onDailyRewardClick:', e);
+        toast('❌ Ошибка: ' + e.message, 'error');
+    }
 }
 
 function renderAll() {
@@ -315,20 +340,23 @@ function renderAll() {
     document.getElementById('player-name').textContent = currentUser.first_name + ' ' + currentUser.last_name;
     document.getElementById('exp-value').textContent = currentUser.experience || 0;
     
-    // Обновляем кнопку ежедневной награды
     var dailyBtn = document.getElementById('daily-reward-btn');
     if(dailyBtn) {
-        var status = getDailyRewardStatus();
-        if(status && status.canClaim) {
-            dailyBtn.textContent = '🎁';
-            dailyBtn.style.background = 'rgba(255,215,0,0.3)';
-            dailyBtn.style.borderColor = '#ffd700';
-            dailyBtn.style.animation = 'pulse-gold 1s infinite';
-        } else {
-            dailyBtn.textContent = '✅';
-            dailyBtn.style.background = 'rgba(76,175,80,0.2)';
-            dailyBtn.style.borderColor = '#4caf50';
-            dailyBtn.style.animation = 'none';
+        try {
+            var status = getDailyRewardStatus();
+            if(status && status.canClaim) {
+                dailyBtn.textContent = '🎁';
+                dailyBtn.style.background = 'rgba(255,215,0,0.3)';
+                dailyBtn.style.borderColor = '#ffd700';
+                dailyBtn.style.animation = 'pulse-gold 1s infinite';
+            } else {
+                dailyBtn.textContent = '✅';
+                dailyBtn.style.background = 'rgba(76,175,80,0.2)';
+                dailyBtn.style.borderColor = '#4caf50';
+                dailyBtn.style.animation = 'none';
+            }
+        } catch(e) {
+            console.error('Ошибка обновления кнопки:', e);
         }
     }
     
