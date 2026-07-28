@@ -42,7 +42,7 @@ function doPromoTask() {
     toast('Введите промокод', 'info');
 }
 
-// ================= РЕКЛАМНОЕ ЗАДАНИЕ =================
+// ================= РЕКЛАМНОЕ ЗАДАНИЕ (ТЕСТОВЫЙ РЕЖИМ) =================
 
 function getAdLimitKey() {
     var today = new Date().toDateString();
@@ -90,11 +90,16 @@ async function doRewardedAd() {
     }
     
     try {
+        // ✅ ТЕСТОВЫЙ РЕЖИМ: is_test: true
         var result = await vkBridge.send('VKWebAppShowNativeAds', {
-            ad_format: 'rewarded'
+            ad_format: 'rewarded',
+            is_test: true
         });
         
-        if(result && result.result) {
+        console.log('Результат рекламы:', result);
+        
+        // В тестовом режиме result может быть { result: true } или { success: true }
+        if(result && (result.result === true || result.success === true)) {
             // Начисляем бонус
             var bonus = REWARDED_AD_BONUS;
             await supabase.from('players').update({ 
@@ -108,15 +113,47 @@ async function doRewardedAd() {
             localStorage.setItem('last_ad_time_' + currentUser.vk_id, String(Date.now()));
             
             var remainingAfter = getRemainingAds();
-            toast('✅ +' + bonus + ' опыта! Осталось ' + remainingAfter + ' просмотров на сегодня', 'success');
+            toast('✅ +' + bonus + ' опыта! (тест) Осталось ' + remainingAfter + ' просмотров', 'success');
             renderAll();
             renderTasks();
         } else {
-            toast('Реклама не загружена', 'error');
+            // Если тестовая реклама не показалась, но мы в тестовом режиме
+            // Начисляем бонус в любом случае для тестирования
+            console.log('Тестовая реклама не показалась, но начисляем бонус для теста');
+            var bonus = REWARDED_AD_BONUS;
+            await supabase.from('players').update({ 
+                experience: (currentUser.experience || 0) + bonus 
+            }).eq('vk_id', currentUser.vk_id);
+            currentUser.experience += bonus;
+            
+            var newCount = getAdWatchCount() + 1;
+            setAdWatchCount(newCount);
+            localStorage.setItem('last_ad_time_' + currentUser.vk_id, String(Date.now()));
+            
+            var remainingAfter = getRemainingAds();
+            toast('🎬 [ТЕСТ] +' + bonus + ' опыта! Осталось ' + remainingAfter + ' просмотров', 'success');
+            renderAll();
+            renderTasks();
         }
     } catch(e) {
         console.error('Ошибка показа рекламы:', e);
-        toast('Реклама не загружена', 'error');
+        
+        // В ТЕСТОВОМ РЕЖИМЕ — начисляем бонус даже при ошибке
+        // Чтобы ты мог протестировать всю механику
+        var bonus = REWARDED_AD_BONUS;
+        await supabase.from('players').update({ 
+            experience: (currentUser.experience || 0) + bonus 
+        }).eq('vk_id', currentUser.vk_id);
+        currentUser.experience += bonus;
+        
+        var newCount = getAdWatchCount() + 1;
+        setAdWatchCount(newCount);
+        localStorage.setItem('last_ad_time_' + currentUser.vk_id, String(Date.now()));
+        
+        var remainingAfter = getRemainingAds();
+        toast('🎬 [ТЕСТ] +' + bonus + ' опыта! Осталось ' + remainingAfter + ' просмотров', 'success');
+        renderAll();
+        renderTasks();
     }
 }
 
