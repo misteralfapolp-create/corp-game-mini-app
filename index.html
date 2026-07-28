@@ -30,12 +30,13 @@
                     <div class="stat"><div class="value" id="my-employees-count">0</div><div class="label">👥 Сотрудники</div></div>
                     <div class="stat"><div class="value" id="my-income">0</div><div class="label">📈 Доход/час</div></div>
                 </div>
-                <div style="display:flex;gap:6px;margin-top:6px;">
+                <!-- ✅ КНОПКИ С ОТСТУПОМ -->
+                <div style="display:flex;gap:6px;margin-top:16px;padding-top:4px;">
                     <button class="btn-invite-friend" id="invite-friend-btn" style="flex:1;">📨 Пригласить (+500)</button>
                     <button class="btn-daily" id="daily-reward-btn" onclick="onDailyRewardClick()" style="padding:10px 14px;background:rgba(255,215,0,0.2);border:1px solid #ffd700;border-radius:10px;font-size:18px;cursor:pointer;transition:0.2s;min-width:50px;">🎁</button>
                     <button class="btn-settings" id="settings-btn" onclick="openSettings()">⚙️</button>
                 </div>
-                <button class="btn-earn" id="earn-btn" onclick="toggleTasks()">💰 Заработать</button>
+                <button class="btn-earn" id="earn-btn" onclick="toggleTasks()" style="margin-top:12px;">💰 Заработать</button>
             </div>
 
             <div class="card" id="tasks-panel" style="display:none;">
