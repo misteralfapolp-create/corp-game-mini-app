@@ -244,17 +244,17 @@ function renderTasks() {
 
 // ================= ЕЖЕДНЕВНАЯ НАГРАДА =================
 
+// ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ
 function onDailyRewardClick() {
     var status = getDailyRewardStatus();
-    var btn = document.getElementById('daily-reward-btn');
     
+    // ЕСЛИ УЖЕ ПОЛУЧЕНО — НИЧЕГО НЕ ДЕЛАЕМ
     if(!status.canClaim) {
-        toast('✅ Сегодня уже получено! Завтра будет день ' + (status.day) + ' 🎁', 'info');
+        toast('✅ Сегодня уже получено! Завтра будет день ' + status.day + ' 🎁', 'info');
         return;
     }
     
     var reward = DAILY_REWARD_BASE + (status.day - 1) * DAILY_REWARD_STEP;
-    toast('🎁 Забрать ' + reward + ' опыта? День ' + status.day, 'info');
     
     var modal = document.getElementById('input-modal');
     document.getElementById('input-modal-title').textContent = '🎁 Ежедневная награда';
@@ -287,6 +287,10 @@ function onDailyRewardClick() {
     btnCancel.style.width = '100%';
     btnCancel.onclick = function() {
         modal.style.display = 'none';
+        var old = document.getElementById('daily-confirm-btns');
+        if(old) old.remove();
+        input.style.display = 'block';
+        document.getElementById('input-modal-ok').style.display = 'block';
     };
     confirmDiv.appendChild(btnCancel);
     
