@@ -219,17 +219,10 @@ function renderTasks() {
     }
     html += '</div>';
     
-    // ЗАДАНИЕ: ПОДПИСКА
+    // ЗАДАНИЕ: ПОДПИСКА НА ГРУППУ
     if(!currentUser || !currentUser.task_group_done) {
         html += '<div class="task-item"><div class="task-info"><b>📱 Подписаться на группу</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
         html += '<div style="display:flex;gap:4px;"><button class="btn-task" onclick="doGroupTask()">▶ Выполнить</button><button class="btn-task-check" onclick="checkGroupTask()">🔍 Проверить</button></div>';
-        html += '</div>';
-    }
-    
-    // ЗАДАНИЕ: УВЕДОМЛЕНИЯ
-    if(!currentUser || !currentUser.task_notify_done) {
-        html += '<div class="task-item"><div class="task-info"><b>🔔 Подключить уведомления</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
-        html += '<div style="display:flex;gap:4px;"><button class="btn-task" onclick="doNotifyTask()">▶ Выполнить</button><button class="btn-task-check" onclick="checkNotifyTask()">🔍 Проверить</button></div>';
         html += '</div>';
     }
     
