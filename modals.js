@@ -229,15 +229,3 @@ function inviteFriend() {
             });
     });
 }
-
-// ================= УВОЛЬНЕНИЕ ИЗ МОДАЛКИ (ДОПОЛНИТЕЛЬНО) =================
-// Основная функция firePlayer находится в data.js
-// Эта функция вызывается из модалки при нажатии "Уволить"
-
-// Дополнительная функция для обновления модалки после увольнения
-async function refreshPlayerModal(vkId) {
-    var r = await supabase.from('players').select('*').eq('vk_id', vkId).maybeSingle();
-    if(r.data) {
-        renderPlayerModalContent(r.data);
-    }
-}
