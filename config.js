@@ -11,7 +11,7 @@ var TEAM_PAGE_SIZE = 20;
 var REWARDED_AD_LIMIT = 50;        // Максимум просмотров рекламы в день
 var REWARDED_AD_BONUS = 500;       // Бонус за просмотр
 var COLLECT_MULTIPLIER = 1.5;      // Множитель при сборе за рекламу
-var AD_COOLDOWN_SECONDS = 300;     // 5 минут между показами рекламы
+var AD_COOLDOWN_SECONDS = 60;      // ✅ 1 минута между показами рекламы
 
 // Глобальные переменные
 var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
