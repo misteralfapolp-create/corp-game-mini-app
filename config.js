@@ -11,7 +11,27 @@ var TEAM_PAGE_SIZE = 20;
 var REWARDED_AD_LIMIT = 50;        // Максимум просмотров рекламы в день
 var REWARDED_AD_BONUS = 500;       // Бонус за просмотр
 var COLLECT_MULTIPLIER = 1.5;      // Множитель при сборе за рекламу
-var AD_COOLDOWN_SECONDS = 60;      // ✅ 1 минута между показами рекламы
+var AD_COOLDOWN_SECONDS = 60;      // 1 минута между показами рекламы
+
+// ================= НАСТРОЙКИ ЕЖЕДНЕВНЫХ НАГРАД =================
+var DAILY_REWARD_DAYS = 7;          // Максимум дней для награды
+var DAILY_REWARD_BASE = 100;        // Базовое количество опыта (день 1)
+var DAILY_REWARD_STEP = 100;        // Прирост за каждый день (день 2 = 200, 3 = 300...)
+var DAILY_RESET_ON_MISS = true;     // Сброс при пропуске дня
+
+// Смайлики для рандомной награды (30 штук)
+var RANDOM_EMOJIS = [
+    '💖', '💞', '🗿', '💪', '🤑', '😶‍🌫️',
+    '🔥', '⭐', '🌟', '✨', '🎯', '🏆',
+    '👑', '💎', '🌈', '🦄', '🚀', '🎉',
+    '🎊', '💫', '🌺', '🌸', '🎈', '🎁',
+    '🍀', '💥', '⚡', '🌀', '🌙', '☀️'
+];
+
+// Функция получения случайного смайлика
+function getRandomEmoji() {
+    return RANDOM_EMOJIS[Math.floor(Math.random() * RANDOM_EMOJIS.length)];
+}
 
 // Глобальные переменные
 var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
