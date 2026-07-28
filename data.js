@@ -349,7 +349,10 @@ function getDailyRewardData() {
     if(data) {
         try {
             return JSON.parse(data);
-        } catch(e) { return null; }
+        } catch(e) { 
+            console.error('Ошибка парсинга daily reward:', e);
+            return null; 
+        }
     }
     return null;
 }
@@ -361,6 +364,7 @@ function setDailyRewardData(day, lastClaim, emoji) {
         lastClaim: lastClaim,
         emoji: emoji
     }));
+    console.log('🟢 Daily reward сохранён:', { day, lastClaim, emoji });
 }
 
 function resetDailyReward() {
@@ -370,14 +374,24 @@ function resetDailyReward() {
 }
 
 function getDailyRewardStatus() {
+    console.log('🟢 getDailyRewardStatus вызвана');
+    
+    if(!currentUser) {
+        console.error('❌ currentUser не загружен!');
+        return { day: 1, emoji: '🎁', canClaim: false, isTodayClaimed: false };
+    }
+    
     var data = getDailyRewardData();
     var today = new Date().toDateString();
     var lastClaimDate = data ? new Date(data.lastClaim).toDateString() : null;
     var isTodayClaimed = lastClaimDate === today;
     
+    console.log('🟢 Данные:', { data, today, lastClaimDate, isTodayClaimed });
+    
     if(!data) {
         var emoji = getRandomEmoji();
         setDailyRewardData(1, null, emoji);
+        console.log('🟢 Создана новая запись для пользователя');
         return { day: 1, emoji: emoji, canClaim: true, isTodayClaimed: false };
     }
     
@@ -385,7 +399,9 @@ function getDailyRewardStatus() {
         var lastDate = new Date(data.lastClaim);
         var now = new Date();
         var diffDays = Math.floor((now - lastDate) / (1000 * 60 * 60 * 24));
+        console.log('🟢 Дней с последнего клейма:', diffDays);
         if(diffDays > 1) {
+            console.log('🟢 Пропущен день — сброс!');
             return resetDailyReward();
         }
     }
@@ -394,14 +410,18 @@ function getDailyRewardStatus() {
     var emoji = data.emoji || getRandomEmoji();
     
     if(day > DAILY_REWARD_DAYS) {
+        console.log('🟢 День ' + day + ' > ' + DAILY_REWARD_DAYS + ' — сброс!');
         return resetDailyReward();
     }
     
-    return { day: day, emoji: emoji, canClaim: !isTodayClaimed, isTodayClaimed: isTodayClaimed };
+    var result = { day: day, emoji: emoji, canClaim: !isTodayClaimed, isTodayClaimed: isTodayClaimed };
+    console.log('🟢 Результат getDailyRewardStatus:', result);
+    return result;
 }
 
-// ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ
 async function claimDailyReward() {
+    console.log('🟢 claimDailyReward вызвана');
+    
     var status = getDailyRewardStatus();
     if(!status.canClaim) {
         toast('✅ Вы уже получили награду сегодня!', 'info');
@@ -411,6 +431,8 @@ async function claimDailyReward() {
     var reward = DAILY_REWARD_BASE + (status.day - 1) * DAILY_REWARD_STEP;
     var newEmoji = getRandomEmoji();
     
+    console.log('🟢 Начисляем награду:', reward);
+    
     var newExp = (currentUser.experience || 0) + reward;
     
     await supabase.from('players').update({
@@ -418,6 +440,7 @@ async function claimDailyReward() {
     }).eq('vk_id', currentUser.vk_id);
     
     currentUser.experience = newExp;
+    console.log('🟢 Новый опыт:', currentUser.experience);
     
     var nextDay = status.day + 1;
     if(nextDay > DAILY_REWARD_DAYS) {
