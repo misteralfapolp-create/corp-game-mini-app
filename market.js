@@ -1,5 +1,3 @@
-// ================= БИРЖА ТРУДА =================
-
 async function loadMarketScreen() {
     var c = document.getElementById('market-content');
     c.innerHTML = 'Загрузка...';
