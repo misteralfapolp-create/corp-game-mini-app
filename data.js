@@ -85,8 +85,6 @@ async function collectExperience() {
     if(!currentUser.pending_experience) { toast('Нечего собирать', 'info'); return; }
     
     var collected = currentUser.pending_experience;
-    
-    // Показываем выбор: собрать как есть или x1.5 за рекламу
     showCollectChoice(collected);
 }
 
@@ -170,7 +168,6 @@ async function showRewardedAdForCollect(amount) {
             doCollect(amount, true);
         } else {
             toast('Реклама не загружена', 'error');
-            // Возвращаем выбор
             showCollectChoice(amount);
         }
     } catch(e) {
@@ -338,4 +335,100 @@ async function stealEmployee(emp, stealCost) {
     await updateAllStats();
     loadMyTeam(true);
     renderAll();
+}
+
+// ================= ЕЖЕДНЕВНЫЕ НАГРАДЫ =================
+
+function getDailyRewardKey() {
+    return 'daily_reward_' + currentUser.vk_id;
+}
+
+function getDailyRewardData() {
+    var key = getDailyRewardKey();
+    var data = localStorage.getItem(key);
+    if(data) {
+        try {
+            return JSON.parse(data);
+        } catch(e) { return null; }
+    }
+    return null;
+}
+
+function setDailyRewardData(day, lastClaim, emoji) {
+    var key = getDailyRewardKey();
+    localStorage.setItem(key, JSON.stringify({
+        day: day,
+        lastClaim: lastClaim,
+        emoji: emoji
+    }));
+}
+
+function resetDailyReward() {
+    var emoji = getRandomEmoji();
+    setDailyRewardData(1, Date.now(), emoji);
+    return { day: 1, emoji: emoji };
+}
+
+function getDailyRewardStatus() {
+    var data = getDailyRewardData();
+    var today = new Date().toDateString();
+    var lastClaimDate = data ? new Date(data.lastClaim).toDateString() : null;
+    var isTodayClaimed = lastClaimDate === today;
+    
+    if(!data) {
+        var emoji = getRandomEmoji();
+        setDailyRewardData(1, null, emoji);
+        return { day: 1, emoji: emoji, canClaim: true, isTodayClaimed: false };
+    }
+    
+    if(DAILY_RESET_ON_MISS && data.lastClaim) {
+        var lastDate = new Date(data.lastClaim);
+        var now = new Date();
+        var diffDays = Math.floor((now - lastDate) / (1000 * 60 * 60 * 24));
+        if(diffDays > 1) {
+            return resetDailyReward();
+        }
+    }
+    
+    var day = data.day || 1;
+    var emoji = data.emoji || getRandomEmoji();
+    
+    if(day > DAILY_REWARD_DAYS) {
+        return resetDailyReward();
+    }
+    
+    return { day: day, emoji: emoji, canClaim: !isTodayClaimed, isTodayClaimed: isTodayClaimed };
+}
+
+async function claimDailyReward() {
+    var status = getDailyRewardStatus();
+    if(!status.canClaim) {
+        toast('✅ Вы уже получили награду сегодня!', 'info');
+        return;
+    }
+    
+    var reward = DAILY_REWARD_BASE + (status.day - 1) * DAILY_REWARD_STEP;
+    var newEmoji = getRandomEmoji();
+    
+    await supabase.from('players').update({
+        experience: (currentUser.experience || 0) + reward
+    }).eq('vk_id', currentUser.vk_id);
+    currentUser.experience += reward;
+    
+    var nextDay = status.day + 1;
+    if(nextDay > DAILY_REWARD_DAYS) {
+        nextDay = 1;
+    }
+    setDailyRewardData(nextDay, Date.now(), newEmoji);
+    
+    toast('🎁 День ' + status.day + '! +' + reward + ' опыта! ' + newEmoji, 'success');
+    renderAll();
+}
+
+function getDaySuffix(day) {
+    if(day >= 11 && day <= 13) return '-й';
+    var last = day % 10;
+    if(last === 1) return '-й';
+    if(last >= 2 && last <= 4) return '-й';
+    return '-й';
 }
