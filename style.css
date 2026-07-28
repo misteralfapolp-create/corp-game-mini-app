@@ -4,7 +4,7 @@ body{font-family:-apple-system,sans-serif;color:#fff;padding:10px 10px 20px;min-
 .star{position:absolute;background:#fff;border-radius:50%;animation:twinkle var(--dur) ease-in-out infinite;opacity:0}
 @keyframes twinkle{0%,100%{opacity:0}50%{opacity:1}}
 .card{background:rgba(255,255,255,0.08);backdrop-filter:blur(10px);border-radius:14px;padding:14px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.12)}
-.profile-card{text-align:center;padding-top:20px;} /* ✅ ДОБАВЛЕН ОТСТУП СВЕРХУ */
+.profile-card{text-align:center}
 .header-avatar{width:70px;height:70px;border-radius:50%;margin-bottom:6px;border:3px solid #4a76a8;cursor:pointer;transition:0.3s}
 .header-avatar.hired{border-color:#f44336;box-shadow:0 0 20px rgba(244,67,54,0.5);animation:pulse-red 2s infinite}
 @keyframes pulse-red{0%,100%{box-shadow:0 0 10px rgba(244,67,54,0.3)}50%{box-shadow:0 0 25px rgba(244,67,54,0.7)}}
@@ -14,9 +14,12 @@ body{font-family:-apple-system,sans-serif;color:#fff;padding:10px 10px 20px;min-
 .stat{flex:1}.stat .value{font-size:22px;font-weight:700;color:#7cb9ff}
 .stat .label{font-size:10px;color:#aaa;text-transform:uppercase}
 .stat-main .value{font-size:28px;color:#4caf50}
-.nav-bar{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
-.nav-btn{flex:1;min-width:55px;text-align:center;padding:6px 2px;background:rgba(255,255,255,0.08);border-radius:10px;cursor:pointer;font-size:10px;font-weight:600;color:#aaa;border:1px solid rgba(255,255,255,0.1);transition:0.2s}
+
+/* ===== УВЕЛИЧЕННЫЕ КНОПКИ НАВИГАЦИИ (ТОП, БИРЖА, КОМПАНИЯ) ===== */
+.nav-bar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.nav-btn{flex:1;min-width:70px;text-align:center;padding:12px 4px;background:rgba(255,255,255,0.08);border-radius:12px;cursor:pointer;font-size:13px;font-weight:600;color:#aaa;border:1px solid rgba(255,255,255,0.1);transition:0.2s}
 .nav-btn.active{background:rgba(74,118,168,0.4);color:#fff;border-color:#4a76a8}
+
 .subtab-bar{display:flex;gap:6px;margin-bottom:12px}
 .subtab{padding:8px 18px;background:rgba(255,255,255,0.06);border:none;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;color:#aaa}
 .subtab.active{background:rgba(255,152,0,0.3);color:#ff9800}
@@ -66,24 +69,3 @@ button:active{transform:scale(.96)}
 .toast.success{background:rgba(76,175,80,0.9)}.toast.error{background:rgba(244,67,54,0.9)}.toast.info{background:rgba(33,150,243,0.9)}
 @keyframes slideDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeOut{to{opacity:0}}
-
-/* ================= ДОПОЛНИТЕЛЬНЫЕ СТИЛИ ================= */
-
-/* Анимация для кнопки ежедневной награды */
-@keyframes pulse-gold {
-    0%, 100% { box-shadow: 0 0 5px rgba(255,215,0,0.3); }
-    50% { box-shadow: 0 0 20px rgba(255,215,0,0.7); }
-}
-
-.btn-daily {
-    transition: all 0.3s ease;
-}
-
-.btn-daily:active {
-    transform: scale(0.92);
-}
-
-/* ✅ ДОБАВЛЕН ОТСТУП ДЛЯ БЛОКА С КНОПКАМИ */
-.profile-card .header + div {
-    margin-top: 12px;
-}
