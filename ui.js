@@ -70,7 +70,7 @@ function addNavBtn(screen, label) {
     bar.appendChild(btn);
 }
 
-// Карточка сотрудника - ВОЗВРАЩАЕТ СОЗДАННЫЙ ЭЛЕМЕНТ
+// Карточка сотрудника
 function renderEmployeeCard(emp, container, showActions, showCompany) {
     var lvl = emp.level || 1;
     var jobTitle = getJobTitle(lvl);
@@ -197,40 +197,50 @@ function renderPlayerModalContent(player) {
     });
 }
 
-// ================= ЗАДАНИЯ =================
-
 function renderTasks() {
     var listEl = document.getElementById('tasks-list');
     if(!listEl) return;
     var html = '';
     
-    // Задание: Подписка на группу
+    // ЗАДАНИЕ: ПОСМОТРЕТЬ РЕКЛАМУ
+    var remaining = getRemainingAds ? getRemainingAds() : 0;
+    var adText = '🎬 Посмотреть рекламу (+' + REWARDED_AD_BONUS + ' опыта)';
+    if(remaining <= 0) {
+        adText += ' ❌ (лимит)';
+    } else {
+        adText += ' (осталось ' + remaining + ' раз)';
+    }
+    
+    html += '<div class="task-item"><div class="task-info"><b>' + adText + '</b><br><span style="font-size:11px;color:#aaa;">Максимум ' + REWARDED_AD_LIMIT + ' раз в день • 5 мин кулдаун</span></div>';
+    if(remaining > 0) {
+        html += '<button class="btn-task" onclick="doRewardedAd()" style="background:linear-gradient(135deg,#ff9800,#f57c00);color:#fff;">▶ Смотреть</button>';
+    } else {
+        html += '<span style="color:#f44336;">❌ Лимит</span>';
+    }
+    html += '</div>';
+    
+    // ЗАДАНИЕ: ПОДПИСКА
     if(!currentUser || !currentUser.task_group_done) {
         html += '<div class="task-item"><div class="task-info"><b>📱 Подписаться на группу</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
         html += '<div style="display:flex;gap:4px;"><button class="btn-task" onclick="doGroupTask()">▶ Выполнить</button><button class="btn-task-check" onclick="checkGroupTask()">🔍 Проверить</button></div>';
         html += '</div>';
     }
     
-    // Задание: Промокод
-    html += '<div class="task-item"><div class="task-info"><b>🎁 Ввести промокод</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
-    html += '<button class="btn-task" onclick="doPromoTask()">▶ Выполнить</button>';
-    html += '</div>';
-    
-    /*
-    // ================= ЗАДАНИЕ: УВЕДОМЛЕНИЯ (ЗАКОММЕНТИРОВАНО) =================
-    // Временно убрано для модерации. Вернуть после одобрения.
+    // ЗАДАНИЕ: УВЕДОМЛЕНИЯ
     if(!currentUser || !currentUser.task_notify_done) {
         html += '<div class="task-item"><div class="task-info"><b>🔔 Подключить уведомления</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
         html += '<div style="display:flex;gap:4px;"><button class="btn-task" onclick="doNotifyTask()">▶ Выполнить</button><button class="btn-task-check" onclick="checkNotifyTask()">🔍 Проверить</button></div>';
         html += '</div>';
     }
-    */
+    
+    // ЗАДАНИЕ: ПРОМОКОД
+    html += '<div class="task-item"><div class="task-info"><b>🎁 Ввести промокод</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
+    html += '<button class="btn-task" onclick="doPromoTask()">▶ Выполнить</button>';
+    html += '</div>';
     
     if(html === '') html = '<p style="color:#4caf50;text-align:center;">✅ Все задания выполнены!</p>';
     listEl.innerHTML = html;
 }
-
-// ================= ОТРИСОВКА ВСЕГО =================
 
 function renderAll() {
     updateNavButtons('profile');
@@ -253,8 +263,6 @@ function renderAll() {
     renderTasks();
     loadMyTeam(true);
 }
-
-// ================= ЗАГРУЗКА МОИХ СОТРУДНИКОВ =================
 
 function loadMyTeam(reset) {
     if(reset) { myTeamOffset = 0; document.getElementById('my-team-list').innerHTML = ''; }
