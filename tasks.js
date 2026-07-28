@@ -1,5 +1,8 @@
 // ================= ЗАДАНИЯ =================
 
+// 🧪 ТЕСТОВЫЙ РЕЖИМ — убрать после модерации рекламы
+var IS_TEST_MODE = true;
+
 var adWatchCount = 0;
 var adWatchDate = '';
 
@@ -78,7 +81,7 @@ async function doRewardedAd() {
         return;
     }
     
-    // Проверяем кулдаун между показами (5 минут)
+    // Проверяем кулдаун
     var lastAdTime = localStorage.getItem('last_ad_time_' + currentUser.vk_id);
     if(lastAdTime) {
         var timeDiff = (Date.now() - parseInt(lastAdTime)) / 1000;
@@ -89,20 +92,39 @@ async function doRewardedAd() {
         }
     }
     
+    // ========== ТЕСТОВЫЙ РЕЖИМ ==========
+    if(IS_TEST_MODE) {
+        var bonus = REWARDED_AD_BONUS;
+        await supabase.from('players').update({ 
+            experience: (currentUser.experience || 0) + bonus 
+        }).eq('vk_id', currentUser.vk_id);
+        currentUser.experience += bonus;
+        
+        var newCount = getAdWatchCount() + 1;
+        setAdWatchCount(newCount);
+        localStorage.setItem('last_ad_time_' + currentUser.vk_id, String(Date.now()));
+        
+        var remainingAfter = getRemainingAds();
+        toast('🧪 [ТЕСТ] +' + bonus + ' опыта! Осталось ' + remainingAfter + ' просмотров на сегодня', 'success');
+        renderAll();
+        renderTasks();
+        return;
+    }
+    // ====================================
+    
+    // РЕАЛЬНЫЙ ПОКАЗ РЕКЛАМЫ (после модерации)
     try {
         var result = await vkBridge.send('VKWebAppShowNativeAds', {
             ad_format: 'rewarded'
         });
         
         if(result && result.result) {
-            // Начисляем бонус
             var bonus = REWARDED_AD_BONUS;
             await supabase.from('players').update({ 
                 experience: (currentUser.experience || 0) + bonus 
             }).eq('vk_id', currentUser.vk_id);
             currentUser.experience += bonus;
             
-            // Обновляем счётчик
             var newCount = getAdWatchCount() + 1;
             setAdWatchCount(newCount);
             localStorage.setItem('last_ad_time_' + currentUser.vk_id, String(Date.now()));
