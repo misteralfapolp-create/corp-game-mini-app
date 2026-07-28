@@ -400,6 +400,7 @@ function getDailyRewardStatus() {
     return { day: day, emoji: emoji, canClaim: !isTodayClaimed, isTodayClaimed: isTodayClaimed };
 }
 
+// ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ
 async function claimDailyReward() {
     var status = getDailyRewardStatus();
     if(!status.canClaim) {
@@ -410,10 +411,13 @@ async function claimDailyReward() {
     var reward = DAILY_REWARD_BASE + (status.day - 1) * DAILY_REWARD_STEP;
     var newEmoji = getRandomEmoji();
     
+    var newExp = (currentUser.experience || 0) + reward;
+    
     await supabase.from('players').update({
-        experience: (currentUser.experience || 0) + reward
+        experience: newExp
     }).eq('vk_id', currentUser.vk_id);
-    currentUser.experience += reward;
+    
+    currentUser.experience = newExp;
     
     var nextDay = status.day + 1;
     if(nextDay > DAILY_REWARD_DAYS) {
@@ -422,6 +426,8 @@ async function claimDailyReward() {
     setDailyRewardData(nextDay, Date.now(), newEmoji);
     
     toast('🎁 День ' + status.day + '! +' + reward + ' опыта! ' + newEmoji, 'success');
+    
+    await updateAllStats();
     renderAll();
 }
 
