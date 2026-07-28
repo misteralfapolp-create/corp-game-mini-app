@@ -76,8 +76,7 @@ async function loadTopCompaniesScreen() {
         div.style.background = isMine ? 'rgba(76,175,80,0.1)' : '';
         div.style.cursor = 'pointer';
         var groupIcon = co.groupId ? ' 📱' : '';
-        // Аватарка компании
-        var avatarHtml = co.groupId ? '<img src="https://vk.com/images/community_200.png?gid=' + co.groupId + '" style="width:36px;height:36px;border-radius:50%;margin-right:8px;flex-shrink:0;border:1px solid rgba(80,100,130,0.15);" onerror="this.style.display=\'none\'">' : '<div style="width:36px;height:36px;border-radius:50%;margin-right:8px;flex-shrink:0;background:rgba(60,80,100,0.3);display:flex;align-items:center;justify-content:center;font-size:14px;">🏢</div>';
+        var avatarHtml = co.groupId ? '<img src="https://vk.com/images/community_200.png?gid=' + co.groupId + '" style="width:36px;height:36px;border-radius:50%;margin-right:8px;flex-shrink:0;" onerror="this.style.display=\'none\'">' : '';
         div.innerHTML = '<div style="font-weight:700;width:25px;">' + (i+1) + '.</div>' + avatarHtml + '<div class="info"><div class="name">' + co.name + groupIcon + (isMine ? ' ⭐' : '') + '</div><div class="detail">👥 ' + co.count + ' уч. • ⭐' + co.totalExp + ' опыта</div></div>';
         div.onclick = function(){ if(co.groupId) window.open('https://vk.com/club' + co.groupId, '_blank'); openCompanyModal(co.name); };
         c.appendChild(div);
