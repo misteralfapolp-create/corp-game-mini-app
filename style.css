@@ -6,11 +6,11 @@
 
 body {
     font-family: -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
-    color: #1a2332;
+    color: #e8ecf1;
     padding: 12px 12px 20px;
     min-height: 100vh;
     overflow-x: hidden;
-    background: #f0f2f5;
+    background: #0d1117;
 }
 
 /* ===== ФОН ===== */
@@ -21,7 +21,7 @@ body {
     width: 100%;
     height: 100%;
     z-index: -1;
-    background: linear-gradient(180deg, #e8ecf1 0%, #d5dbe3 50%, #c8cfd9 100%);
+    background: #0d1117;
 }
 .star {
     display: none;
@@ -29,12 +29,12 @@ body {
 
 /* ===== КАРТОЧКИ ===== */
 .card {
-    background: #ffffff;
+    background: #161b22;
     border-radius: 12px;
     padding: 16px 18px;
     margin-bottom: 12px;
-    border: 1px solid #dce1e8;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    border: 1px solid #30363d;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 /* ===== ПРОФИЛЬ ===== */
@@ -48,37 +48,41 @@ body {
     height: 72px;
     border-radius: 50%;
     margin-bottom: 4px;
-    border: 3px solid #2c3e50;
+    border: 3px solid #58a6ff;
     cursor: pointer;
     transition: 0.2s;
     object-fit: cover;
 }
 .header-avatar.hired {
-    border-color: #c0392b;
-    box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.25);
-    animation: none;
+    border-color: #f85149;
+    box-shadow: 0 0 0 3px rgba(248, 81, 73, 0.25);
+    animation: pulse-red 2s infinite;
 }
 @keyframes pulse-red {
-    0%, 100% { box-shadow: 0 0 0 3px rgba(192,57,43,0.2); }
-    50% { box-shadow: 0 0 0 6px rgba(192,57,43,0.35); }
-}
-.header-avatar.hired {
-    animation: pulse-red 2s infinite;
+    0%, 100% { box-shadow: 0 0 0 3px rgba(248,81,73,0.2); }
+    50% { box-shadow: 0 0 0 8px rgba(248,81,73,0.3); }
 }
 
 .header h2 {
     font-size: 18px;
     font-weight: 700;
-    color: #1a2332;
+    color: #f0f6fc;
     margin-top: 2px;
 }
 
 .company-name-display {
-    color: #2980b9;
+    color: #58a6ff;
     font-weight: 600;
     font-size: 13px;
     cursor: pointer;
     margin-top: 2px;
+}
+.company-name-display span {
+    color: #58a6ff;
+}
+.company-name-display a {
+    color: #58a6ff;
+    text-decoration: none;
 }
 
 /* ===== СТАТИСТИКА ===== */
@@ -91,26 +95,28 @@ body {
 .stat {
     flex: 1;
     padding: 6px 0;
-    background: #f7f9fc;
+    background: #0d1117;
     border-radius: 8px;
+    border: 1px solid #21262d;
 }
 .stat .value {
     font-size: 22px;
     font-weight: 700;
-    color: #2c3e50;
+    color: #f0f6fc;
 }
 .stat .label {
     font-size: 10px;
-    color: #7f8c8d;
+    color: #8b949e;
     text-transform: uppercase;
     letter-spacing: 0.3px;
 }
 .stat-main .value {
     font-size: 28px;
-    color: #27ae60;
+    color: #3fb950;
 }
 .stat-main {
-    background: #eafaf1;
+    background: #0d2818;
+    border-color: #238636;
 }
 
 /* ===== НАВИГАЦИЯ ===== */
@@ -125,24 +131,24 @@ body {
     min-width: 60px;
     text-align: center;
     padding: 12px 4px;
-    background: #ffffff;
+    background: #161b22;
     border-radius: 10px;
     cursor: pointer;
     font-size: 13px;
     font-weight: 600;
-    color: #5d6d7e;
-    border: 1px solid #dce1e8;
+    color: #8b949e;
+    border: 1px solid #30363d;
     transition: 0.2s;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 .nav-btn.active {
-    background: #2c3e50;
+    background: #238636;
     color: #fff;
-    border-color: #2c3e50;
-    box-shadow: 0 2px 8px rgba(44, 62, 80, 0.25);
+    border-color: #238636;
+    box-shadow: 0 2px 12px rgba(35, 134, 54, 0.3);
 }
 .nav-btn:hover {
-    border-color: #b0bcc9;
+    border-color: #58a6ff;
+    color: #f0f6fc;
 }
 
 /* ===== САБТАБЫ ===== */
@@ -153,27 +159,31 @@ body {
 }
 .subtab {
     padding: 7px 16px;
-    background: #f7f9fc;
-    border: 1px solid #dce1e8;
+    background: #0d1117;
+    border: 1px solid #30363d;
     border-radius: 20px;
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    color: #5d6d7e;
+    color: #8b949e;
     transition: 0.2s;
 }
 .subtab.active {
-    background: #2c3e50;
+    background: #238636;
     color: #fff;
-    border-color: #2c3e50;
+    border-color: #238636;
+}
+.subtab:hover {
+    border-color: #58a6ff;
+    color: #f0f6fc;
 }
 
 /* ===== КНОПКИ ===== */
 .btn-invite-friend {
     padding: 12px;
-    background: #ebf5fb;
-    color: #2471a3;
-    border: 1.5px dashed #5dade2;
+    background: #0d2818;
+    color: #3fb950;
+    border: 1.5px dashed #238636;
     border-radius: 10px;
     font-weight: 600;
     font-size: 14px;
@@ -181,29 +191,31 @@ body {
     transition: 0.2s;
 }
 .btn-invite-friend:hover {
-    background: #d6eaf8;
+    background: #0d3520;
+    border-color: #2ea043;
 }
 
 .btn-settings {
     padding: 12px 16px;
-    background: #f7f9fc;
-    color: #5d6d7e;
-    border: 1px solid #dce1e8;
+    background: #161b22;
+    color: #8b949e;
+    border: 1px solid #30363d;
     border-radius: 10px;
     font-size: 20px;
     cursor: pointer;
     transition: 0.2s;
 }
 .btn-settings:hover {
-    background: #eef1f5;
+    background: #21262d;
+    color: #f0f6fc;
 }
 
 .btn-quit-job {
     width: 100%;
     padding: 8px;
-    background: #fdedec;
-    color: #c0392b;
-    border: 1px solid #e74c3c;
+    background: #2d0f0f;
+    color: #f85149;
+    border: 1px solid #da3633;
     border-radius: 8px;
     font-weight: 600;
     font-size: 13px;
@@ -211,13 +223,13 @@ body {
     margin-top: 6px;
 }
 .btn-quit-job:hover {
-    background: #fadbd8;
+    background: #3d1717;
 }
 
 .btn-earn {
     width: 100%;
     padding: 13px;
-    background: #2c3e50;
+    background: #238636;
     color: #ffffff;
     border: none;
     border-radius: 10px;
@@ -226,15 +238,16 @@ body {
     cursor: pointer;
     margin-top: 10px;
     transition: 0.2s;
-    box-shadow: 0 2px 8px rgba(44, 62, 80, 0.2);
+    box-shadow: 0 2px 12px rgba(35, 134, 54, 0.25);
 }
 .btn-earn:hover {
-    background: #1a2a3a;
+    background: #2ea043;
+    box-shadow: 0 2px 20px rgba(35, 134, 54, 0.35);
 }
 
 .btn-collect {
     padding: 10px 20px;
-    background: #27ae60;
+    background: #238636;
     color: #fff;
     border: none;
     border-radius: 8px;
@@ -244,7 +257,7 @@ body {
     transition: 0.2s;
 }
 .btn-collect:hover {
-    background: #1e8449;
+    background: #2ea043;
 }
 
 /* ===== СБОР ДОХОДА ===== */
@@ -252,17 +265,17 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: #eafaf1;
-    border-color: #82e0aa;
+    background: #0d2818;
+    border-color: #238636;
 }
 .collect-amount {
     font-size: 26px;
     font-weight: 700;
-    color: #1e8449;
+    color: #3fb950;
 }
 .collect-label {
     font-size: 13px;
-    color: #27ae60;
+    color: #3fb950;
     margin-left: 4px;
 }
 
@@ -271,7 +284,7 @@ body {
     font-size: 15px;
     font-weight: 700;
     margin-bottom: 10px;
-    color: #2c3e50;
+    color: #f0f6fc;
 }
 
 /* ===== ЭЛЕМЕНТЫ СПИСКА ===== */
@@ -279,7 +292,7 @@ body {
     display: flex;
     align-items: center;
     padding: 10px 0;
-    border-bottom: 1px solid #eef1f5;
+    border-bottom: 1px solid #21262d;
     gap: 10px;
 }
 .player-item:last-child {
@@ -291,7 +304,7 @@ body {
     border-radius: 50%;
     flex-shrink: 0;
     cursor: pointer;
-    border: 1px solid #dce1e8;
+    border: 1px solid #30363d;
 }
 .player-item .info {
     flex: 1;
@@ -301,11 +314,11 @@ body {
 .player-item .name {
     font-weight: 600;
     font-size: 14px;
-    color: #1a2332;
+    color: #f0f6fc;
 }
 .player-item .detail {
     font-size: 11px;
-    color: #7f8c8d;
+    color: #8b949e;
 }
 
 .rank {
@@ -313,16 +326,16 @@ body {
     font-weight: 700;
     width: 28px;
     text-align: center;
-    color: #7f8c8d;
+    color: #8b949e;
     flex-shrink: 0;
 }
-.rank-1 { color: #f39c12; font-size: 22px; }
-.rank-2 { color: #bdc3c7; font-size: 20px; }
-.rank-3 { color: #d35400; font-size: 18px; }
+.rank-1 { color: #f0883e; font-size: 22px; }
+.rank-2 { color: #b1bac4; font-size: 20px; }
+.rank-3 { color: #d29922; font-size: 18px; }
 
 .lvl {
-    background: #e8daef;
-    color: #6c3483;
+    background: #2d1b4e;
+    color: #bc8cff;
     border-radius: 10px;
     padding: 2px 8px;
     font-size: 10px;
@@ -350,20 +363,21 @@ button:active {
 }
 
 .btn-hire {
-    background: #d4e6f1;
-    color: #1a5276;
+    background: #0d2818;
+    color: #3fb950;
     padding: 8px;
     border-radius: 8px;
     font-size: 14px;
     width: 100%;
     margin-top: 8px;
+    border: 1px solid #238636;
 }
 .btn-hire:hover {
-    background: #a9cce3;
+    background: #0d3520;
 }
 
 .btn-hire-small {
-    background: #2c3e50;
+    background: #238636;
     color: #fff;
     padding: 5px 14px;
     border-radius: 16px;
@@ -372,7 +386,7 @@ button:active {
     flex-shrink: 0;
 }
 .btn-hire-small:hover {
-    background: #1a2a3a;
+    background: #2ea043;
 }
 .btn-hire-small:disabled {
     opacity: 0.4;
@@ -380,65 +394,67 @@ button:active {
 }
 
 .btn-upgrade {
-    background: #e8daef;
-    color: #6c3483;
+    background: #2d1b4e;
+    color: #bc8cff;
     padding: 5px 10px;
     border-radius: 16px;
     font-size: 11px;
 }
 .btn-upgrade:hover {
-    background: #d2b4de;
+    background: #3d2a5e;
 }
 
 .btn-fire {
-    background: #fdedec;
-    color: #c0392b;
+    background: #2d0f0f;
+    color: #f85149;
     padding: 5px 10px;
     border-radius: 16px;
     font-size: 11px;
 }
 .btn-fire:hover {
-    background: #fadbd8;
+    background: #3d1717;
 }
 
 .btn-steal {
-    background: #fdebd0;
-    color: #a04000;
+    background: #2d1b00;
+    color: #d29922;
     padding: 5px 12px;
     border-radius: 16px;
     font-size: 11px;
 }
 .btn-steal:hover {
-    background: #fad7a0;
+    background: #3d2a00;
 }
 
 .btn-leave {
-    background: #fdedec;
-    color: #c0392b;
+    background: #2d0f0f;
+    color: #f85149;
     padding: 8px 16px;
     border-radius: 8px;
     font-size: 13px;
     width: 100%;
+    border: 1px solid #da3633;
 }
 .btn-leave:hover {
-    background: #fadbd8;
+    background: #3d1717;
 }
 
 .btn-join {
-    background: #d5f5e3;
-    color: #1a7a42;
+    background: #0d2818;
+    color: #3fb950;
     padding: 8px 16px;
     border-radius: 8px;
     font-size: 13px;
     width: 100%;
+    border: 1px solid #238636;
 }
 .btn-join:hover {
-    background: #a9dfbf;
+    background: #0d3520;
 }
 
 .btn-back {
-    background: #eef1f5;
-    color: #5d6d7e;
+    background: #21262d;
+    color: #8b949e;
     padding: 10px;
     border-radius: 8px;
     width: 100%;
@@ -446,34 +462,37 @@ button:active {
     font-size: 13px;
 }
 .btn-back:hover {
-    background: #dde1e6;
+    background: #30363d;
+    color: #f0f6fc;
 }
 
 .btn-load-more {
-    background: #f7f9fc;
-    color: #5d6d7e;
+    background: #161b22;
+    color: #8b949e;
     padding: 10px;
     border-radius: 8px;
     width: 100%;
     font-size: 13px;
-    border: 1px solid #dce1e8;
+    border: 1px solid #30363d;
 }
 .btn-load-more:hover {
-    background: #eef1f5;
+    background: #21262d;
+    color: #f0f6fc;
 }
 
 .btn-create {
-    background: #d4e6f1;
-    color: #1a5276;
+    background: #0d2818;
+    color: #3fb950;
     padding: 10px;
     border-radius: 8px;
     width: 100%;
     margin-top: 8px;
     font-size: 14px;
     font-weight: 600;
+    border: 1px solid #238636;
 }
 .btn-create:hover {
-    background: #a9cce3;
+    background: #0d3520;
 }
 
 button:disabled {
@@ -488,7 +507,7 @@ button:disabled {
     align-items: center;
     justify-content: space-between;
     padding: 10px 0;
-    border-bottom: 1px solid #eef1f5;
+    border-bottom: 1px solid #21262d;
     gap: 8px;
 }
 .task-item:last-child {
@@ -498,34 +517,40 @@ button:disabled {
     flex: 1;
 }
 .task-info b {
-    color: #1a2332;
+    color: #f0f6fc;
     font-size: 14px;
+}
+.task-info span {
+    color: #8b949e;
+    font-size: 11px;
 }
 
 .btn-task {
-    background: #d4e6f1;
-    color: #1a5276;
+    background: #0d2818;
+    color: #3fb950;
     padding: 5px 14px;
     border-radius: 6px;
     font-size: 12px;
     cursor: pointer;
     font-weight: 600;
+    border: 1px solid #238636;
 }
 .btn-task:hover {
-    background: #a9cce3;
+    background: #0d3520;
 }
 
 .btn-task-check {
-    background: #d5f5e3;
-    color: #1a7a42;
+    background: #0d2818;
+    color: #3fb950;
     padding: 5px 12px;
     border-radius: 6px;
     font-size: 12px;
     cursor: pointer;
     margin-left: 4px;
+    border: 1px solid #238636;
 }
 .btn-task-check:hover {
-    background: #a9dfbf;
+    background: #0d3520;
 }
 
 /* ===== ЭКРАНЫ ===== */
@@ -544,41 +569,41 @@ button:disabled {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.7);
     z-index: 1000;
     justify-content: center;
     align-items: center;
-    backdrop-filter: blur(2px);
+    backdrop-filter: blur(4px);
 }
 .modal-content {
-    background: #ffffff;
+    background: #161b22;
     border-radius: 14px;
     padding: 22px 20px;
     width: 92%;
     max-height: 85%;
     overflow-y: auto;
-    color: #1a2332;
-    border: 1px solid #dce1e8;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    color: #e8ecf1;
+    border: 1px solid #30363d;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
 }
 .modal-close {
     float: right;
     font-size: 22px;
     cursor: pointer;
-    color: #7f8c8d;
+    color: #8b949e;
     transition: 0.2s;
 }
 .modal-close:hover {
-    color: #2c3e50;
+    color: #f0f6fc;
 }
 
 .modal-content h2 {
-    color: #1a2332;
+    color: #f0f6fc;
     font-size: 18px;
     margin-bottom: 4px;
 }
 .modal-content p {
-    color: #5d6d7e;
+    color: #8b949e;
     font-size: 14px;
 }
 
@@ -594,8 +619,8 @@ button:disabled {
     gap: 8px;
 }
 .toast {
-    background: #2c3e50;
-    color: #fff;
+    background: #161b22;
+    color: #f0f6fc;
     padding: 10px 22px;
     border-radius: 25px;
     font-size: 13px;
@@ -603,16 +628,23 @@ button:disabled {
     text-align: center;
     animation: slideDown 0.3s ease-out, fadeOut 0.3s 3.5s forwards;
     white-space: nowrap;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    border: 1px solid #30363d;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 .toast.success {
-    background: #27ae60;
+    background: #0d2818;
+    border-color: #238636;
+    color: #3fb950;
 }
 .toast.error {
-    background: #e74c3c;
+    background: #2d0f0f;
+    border-color: #da3633;
+    color: #f85149;
 }
 .toast.info {
-    background: #2980b9;
+    background: #0d1f2d;
+    border-color: #1f6f8b;
+    color: #58a6ff;
 }
 
 @keyframes slideDown {
@@ -628,35 +660,37 @@ button:disabled {
     width: 4px;
 }
 ::-webkit-scrollbar-track {
-    background: #f0f2f5;
+    background: #0d1117;
     border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb {
-    background: #bdc3c7;
+    background: #30363d;
     border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #95a5a6;
+    background: #484f58;
 }
 
 /* ===== ДОПОЛНИТЕЛЬНО ===== */
 #owner-info {
     font-size: 13px;
-    color: #c0392b;
+    color: #f85149;
     margin: 4px 0;
     padding: 4px 12px;
-    background: #fdedec;
+    background: #2d0f0f;
     border-radius: 8px;
     display: inline-block;
+    border: 1px solid #da3633;
 }
 #owner-info b {
-    color: #2471a3;
+    color: #58a6ff;
     cursor: pointer;
 }
 
 .btn-task[style*="orange"] {
-    background: #2c3e50 !important;
+    background: #238636 !important;
     color: #fff !important;
+    border: none !important;
 }
 
 /* ===== АДАПТИВ ===== */
