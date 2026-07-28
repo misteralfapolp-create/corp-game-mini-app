@@ -90,7 +90,6 @@ async function doRewardedAd() {
     }
     
     try {
-        // ✅ ТЕСТОВЫЙ РЕЖИМ: is_test: true
         var result = await vkBridge.send('VKWebAppShowNativeAds', {
             ad_format: 'rewarded',
             is_test: true
@@ -98,16 +97,13 @@ async function doRewardedAd() {
         
         console.log('Результат рекламы:', result);
         
-        // В тестовом режиме result может быть { result: true } или { success: true }
         if(result && (result.result === true || result.success === true)) {
-            // Начисляем бонус
             var bonus = REWARDED_AD_BONUS;
             await supabase.from('players').update({ 
                 experience: (currentUser.experience || 0) + bonus 
             }).eq('vk_id', currentUser.vk_id);
             currentUser.experience += bonus;
             
-            // Обновляем счётчик
             var newCount = getAdWatchCount() + 1;
             setAdWatchCount(newCount);
             localStorage.setItem('last_ad_time_' + currentUser.vk_id, String(Date.now()));
@@ -117,9 +113,7 @@ async function doRewardedAd() {
             renderAll();
             renderTasks();
         } else {
-            // Если тестовая реклама не показалась, но мы в тестовом режиме
-            // Начисляем бонус в любом случае для тестирования
-            console.log('Тестовая реклама не показалась, но начисляем бонус для теста');
+            // Тестовая заглушка
             var bonus = REWARDED_AD_BONUS;
             await supabase.from('players').update({ 
                 experience: (currentUser.experience || 0) + bonus 
@@ -138,8 +132,7 @@ async function doRewardedAd() {
     } catch(e) {
         console.error('Ошибка показа рекламы:', e);
         
-        // В ТЕСТОВОМ РЕЖИМЕ — начисляем бонус даже при ошибке
-        // Чтобы ты мог протестировать всю механику
+        // В тестовом режиме начисляем бонус даже при ошибке
         var bonus = REWARDED_AD_BONUS;
         await supabase.from('players').update({ 
             experience: (currentUser.experience || 0) + bonus 
@@ -154,58 +147,5 @@ async function doRewardedAd() {
         toast('🎬 [ТЕСТ] +' + bonus + ' опыта! Осталось ' + remainingAfter + ' просмотров', 'success');
         renderAll();
         renderTasks();
-    }
-}
-
-// ================= УВЕДОМЛЕНИЯ =================
-
-function doNotifyTask() {
-    window.open('https://vk.com/write-' + GROUP_ID, '_blank');
-    toast('📝 Напишите любое слово в чат группы, затем нажмите «Проверить»', 'info');
-}
-
-async function checkNotifyTask() {
-    if(currentUser.task_notify_done) { toast('Уже выполнено!', 'info'); return; }
-    
-    toast('Проверяем...', 'info');
-    
-    var sent = await sendPersonalMessageAsync(currentUser.vk_id, '✅ Уведомления подключены!');
-    
-    if(sent) {
-        await completeNotifyTask();
-    } else {
-        toast('❌ Не удалось отправить. Проверьте настройки бота.', 'error');
-    }
-}
-
-async function completeNotifyTask() {
-    if(currentUser.task_notify_done) return;
-    await supabase.from('players').update({ 
-        experience: (currentUser.experience || 0) + 1000, 
-        task_notify_done: true 
-    }).eq('vk_id', currentUser.vk_id);
-    currentUser.experience += 1000;
-    currentUser.task_notify_done = true;
-    toast('✅ +1000 опыта за уведомления!', 'success');
-    renderAll();
-    renderTasks();
-}
-
-async function sendPersonalMessageAsync(vkId, message) {
-    try {
-        var result = await vkBridge.send('VKWebAppCallAPIMethod', {
-            method: 'messages.send',
-            params: {
-                user_id: vkId,
-                message: message,
-                random_id: Math.floor(Math.random() * 999999),
-                v: '5.199'
-            }
-        });
-        console.log('Messages.send result:', result);
-        return result && result.response;
-    } catch(e) {
-        console.error('Ошибка отправки сообщения:', e);
-        return false;
     }
 }
