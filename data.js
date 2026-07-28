@@ -74,6 +74,7 @@ async function calculatePendingExperience() {
     currentUser.pending_experience = newPending;
 }
 
+// ================= СБОР ОПЫТА С РЕКЛАМОЙ =================
 async function collectExperience() {
     var now = Date.now();
     if(now - lastCollectTime < COLLECT_COOLDOWN) {
@@ -82,13 +83,101 @@ async function collectExperience() {
         return;
     }
     if(!currentUser.pending_experience) { toast('Нечего собирать', 'info'); return; }
+    
     var collected = currentUser.pending_experience;
-    lastCollectTime = now;
-    await supabase.from('players').update({ experience: (currentUser.experience || 0) + collected, pending_experience: 0, last_collect: new Date().toISOString() }).eq('vk_id', currentUser.vk_id);
+    
+    // Показываем выбор: собрать как есть или x1.5 за рекламу
+    showCollectChoice(collected);
+}
+
+function showCollectChoice(amount) {
+    var modal = document.getElementById('input-modal');
+    document.getElementById('input-modal-title').textContent = '💰 Собрать ' + amount + ' опыта';
+    
+    var input = document.getElementById('input-modal-input');
+    input.style.display = 'none';
+    
+    var buttonsContainer = input.parentNode;
+    var oldBtns = document.getElementById('collect-choice-btns');
+    if(oldBtns) oldBtns.remove();
+    
+    var choiceDiv = document.createElement('div');
+    choiceDiv.id = 'collect-choice-btns';
+    choiceDiv.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin:10px 0;';
+    
+    var btnNormal = document.createElement('button');
+    btnNormal.className = 'btn-collect';
+    btnNormal.textContent = '✅ Собрать ' + amount + ' опыта';
+    btnNormal.style.width = '100%';
+    btnNormal.onclick = function() {
+        modal.style.display = 'none';
+        doCollect(amount, false);
+    };
+    choiceDiv.appendChild(btnNormal);
+    
+    var btnMultiplier = document.createElement('button');
+    btnMultiplier.className = 'btn-collect';
+    btnMultiplier.style.background = 'linear-gradient(135deg,#ff9800,#f57c00)';
+    btnMultiplier.textContent = '🎬 x1.5 (' + Math.floor(amount * 1.5) + ' опыта) за рекламу';
+    btnMultiplier.style.width = '100%';
+    btnMultiplier.onclick = function() {
+        modal.style.display = 'none';
+        showRewardedAdForCollect(amount);
+    };
+    choiceDiv.appendChild(btnMultiplier);
+    
+    buttonsContainer.insertBefore(choiceDiv, document.getElementById('input-modal-ok').parentNode);
+    
+    document.getElementById('input-modal-ok').style.display = 'none';
+    document.getElementById('input-modal-cancel').textContent = '❌ Отмена';
+    document.getElementById('input-modal-cancel').onclick = function() {
+        modal.style.display = 'none';
+        var old = document.getElementById('collect-choice-btns');
+        if(old) old.remove();
+        input.style.display = 'block';
+        document.getElementById('input-modal-ok').style.display = 'block';
+        document.getElementById('input-modal-cancel').textContent = 'Отмена';
+    };
+    
+    modal.style.display = 'flex';
+}
+
+async function doCollect(amount, isMultiplied) {
+    var collected = isMultiplied ? Math.floor(amount * 1.5) : amount;
+    lastCollectTime = Date.now();
+    
+    await supabase.from('players').update({ 
+        experience: (currentUser.experience || 0) + collected, 
+        pending_experience: 0, 
+        last_collect: new Date().toISOString() 
+    }).eq('vk_id', currentUser.vk_id);
+    
     currentUser.experience += collected;
     currentUser.pending_experience = 0;
-    toast('✅ +' + collected + ' опыта!', 'success');
+    
+    var msg = isMultiplied ? '🔥 x1.5! ' : '';
+    toast('✅ ' + msg + '+' + collected + ' опыта!', 'success');
     renderAll();
+}
+
+async function showRewardedAdForCollect(amount) {
+    try {
+        var result = await vkBridge.send('VKWebAppShowNativeAds', {
+            ad_format: 'rewarded'
+        });
+        
+        if(result && result.result) {
+            doCollect(amount, true);
+        } else {
+            toast('Реклама не загружена', 'error');
+            // Возвращаем выбор
+            showCollectChoice(amount);
+        }
+    } catch(e) {
+        console.error('Ошибка показа рекламы:', e);
+        toast('Реклама не загружена', 'error');
+        showCollectChoice(amount);
+    }
 }
 
 async function giveReferralBonus(id) {
@@ -119,20 +208,18 @@ async function upgradeEmployee(vkId) {
     renderAll();
 }
 
-// Увольнение сотрудника (исправлено)
+// Увольнение сотрудника
 async function fireEmployee(vkId) {
     var empResult = await supabase.from('players').select('*').eq('vk_id', vkId).maybeSingle();
     if(!empResult.data) return;
     var emp = empResult.data;
     var sellPrice = Math.floor((emp.hire_cost || 100) * 0.8);
     
-    // Начисляем опыт владельцу
     await supabase.from('players').update({ 
         experience: (currentUser.experience || 0) + sellPrice 
     }).eq('vk_id', currentUser.vk_id);
     currentUser.experience += sellPrice;
     
-    // Увольняем сотрудника полностью
     await supabase.from('players').update({ 
         owner_id: null, 
         status: 'Биржа труда', 
@@ -143,7 +230,6 @@ async function fireEmployee(vkId) {
     
     toast('🔥 Уволен! +' + sellPrice + ' опыта', 'info');
     
-    // Обновляем список команды
     var empResult2 = await supabase.from('players').select('*').eq('owner_id', currentUser.vk_id).order('level', { ascending: false });
     myTeam = empResult2.data || [];
     myTeamTotal = myTeam.length;
@@ -167,12 +253,10 @@ async function hirePlayer(player) {
         return; 
     }
     
-    // Списываем
     var myNewExp = Math.max(0, (currentUser.experience || 0) - hireCost);
     await supabase.from('players').update({ experience: myNewExp }).eq('vk_id', currentUser.vk_id);
     console.log('У нанимателя списано:', hireCost, 'стало:', myNewExp);
     
-    // Начисляем старому
     if(player.owner_id && player.owner_id !== currentUser.vk_id) {
         var oldOwner = await supabase.from('players').select('experience').eq('vk_id', player.owner_id).maybeSingle();
         if(oldOwner.data) {
@@ -182,7 +266,6 @@ async function hirePlayer(player) {
         }
     }
     
-    // Меняем владельца
     await supabase.from('players').update({ 
         owner_id: currentUser.vk_id, 
         status: 'Работает', 
@@ -201,7 +284,7 @@ async function hirePlayer(player) {
     renderAll();
 }
 
-// Уволить из модалки (исправлено)
+// Уволить из модалки
 async function firePlayer(player) {
     var sellPrice = Math.floor((player.hire_cost || 100) * 0.8);
     
