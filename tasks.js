@@ -1,5 +1,8 @@
 // ================= ЗАДАНИЯ =================
 
+var adWatchCount = 0;
+var adWatchDate = '';
+
 function toggleTasks() {
     var panel = document.getElementById('tasks-panel');
     if(panel.style.display === 'none' || panel.style.display === '') {
@@ -18,109 +21,141 @@ function doGroupTask() {
 }
 
 async function checkGroupTask() {
-    if(currentUser.task_group_done) { 
-        toast('Уже выполнено!', 'info'); 
-        return; 
-    }
-    
+    if(currentUser.task_group_done) { toast('Уже выполнено!', 'info'); return; }
     try {
-        toast('⏳ Проверяем подписку...', 'info');
-        
-        // ПРЯМОЙ ЗАПРОС К API VK (без VK Bridge)
-        var response = await fetch(
-            'https://api.vk.com/method/groups.isMember?group_id=' + GROUP_ID + 
-            '&user_id=' + currentUser.vk_id + 
-            '&access_token=' + GROUP_TOKEN + 
-            '&v=5.199'
-        );
-        
-        var data = await response.json();
-        console.log('Ответ API:', data);
-        
-        // Проверяем, подписан ли пользователь
-        if(data && data.response === 1) {
-            // Начисляем награду
-            var newExp = (currentUser.experience || 0) + 1000;
-            await supabase.from('players').update({ 
-                experience: newExp, 
-                task_group_done: true 
-            }).eq('vk_id', currentUser.vk_id);
-            
-            currentUser.experience = newExp;
+        var result = await vkBridge.send('VKWebAppCallAPIMethod', { method: 'groups.isMember', params: { group_id: GROUP_ID, user_id: currentUser.vk_id, v: '5.199' } });
+        if(result.response === 1) {
+            await supabase.from('players').update({ experience: (currentUser.experience || 0) + 1000, task_group_done: true }).eq('vk_id', currentUser.vk_id);
+            currentUser.experience += 1000;
             currentUser.task_group_done = true;
-            
-            toast('✅ +1000 опыта за подписку!', 'success');
+            toast('✅ +1000 опыта!', 'success');
             renderAll();
-        } else {
-            toast('❌ Вы не подписаны на группу', 'error');
-        }
-        
+        } else { toast('Не подписаны', 'error'); }
     } catch(e) {
         console.error('Ошибка проверки подписки:', e);
-        toast('❌ Ошибка: ' + (e.message || 'попробуйте позже'), 'error');
+        toast('Ошибка проверки. Попробуйте позже.', 'error');
     }
 }
 
 function doPromoTask() {
     openSettings();
-    toast('🎁 Введите промокод', 'info');
+    toast('Введите промокод', 'info');
 }
 
-/*
-// ================= УВЕДОМЛЕНИЯ (ЗАКОММЕНТИРОВАНО) =================
-// Временно убрано для модерации. Вернуть после одобрения.
+// ================= РЕКЛАМНОЕ ЗАДАНИЕ =================
+
+function getAdLimitKey() {
+    var today = new Date().toDateString();
+    return 'ad_watch_' + currentUser.vk_id + '_' + today;
+}
+
+function getAdWatchCount() {
+    var key = getAdLimitKey();
+    var data = localStorage.getItem(key);
+    if(data) {
+        try {
+            var parsed = JSON.parse(data);
+            return parsed.count || 0;
+        } catch(e) { return 0; }
+    }
+    return 0;
+}
+
+function setAdWatchCount(count) {
+    var key = getAdLimitKey();
+    localStorage.setItem(key, JSON.stringify({ count: count }));
+}
+
+function getRemainingAds() {
+    var watched = getAdWatchCount();
+    return Math.max(0, REWARDED_AD_LIMIT - watched);
+}
+
+async function doRewardedAd() {
+    var remaining = getRemainingAds();
+    if(remaining <= 0) {
+        toast('⚠️ Вы посмотрели максимум рекламы на сегодня (' + REWARDED_AD_LIMIT + ')', 'error');
+        return;
+    }
+    
+    // Проверяем кулдаун между показами (5 минут)
+    var lastAdTime = localStorage.getItem('last_ad_time_' + currentUser.vk_id);
+    if(lastAdTime) {
+        var timeDiff = (Date.now() - parseInt(lastAdTime)) / 1000;
+        if(timeDiff < AD_COOLDOWN_SECONDS) {
+            var wait = Math.ceil(AD_COOLDOWN_SECONDS - timeDiff);
+            toast('⏳ Подождите ' + wait + ' сек. до следующей рекламы', 'info');
+            return;
+        }
+    }
+    
+    try {
+        var result = await vkBridge.send('VKWebAppShowNativeAds', {
+            ad_format: 'rewarded'
+        });
+        
+        if(result && result.result) {
+            // Начисляем бонус
+            var bonus = REWARDED_AD_BONUS;
+            await supabase.from('players').update({ 
+                experience: (currentUser.experience || 0) + bonus 
+            }).eq('vk_id', currentUser.vk_id);
+            currentUser.experience += bonus;
+            
+            // Обновляем счётчик
+            var newCount = getAdWatchCount() + 1;
+            setAdWatchCount(newCount);
+            localStorage.setItem('last_ad_time_' + currentUser.vk_id, String(Date.now()));
+            
+            var remainingAfter = getRemainingAds();
+            toast('✅ +' + bonus + ' опыта! Осталось ' + remainingAfter + ' просмотров на сегодня', 'success');
+            renderAll();
+            renderTasks();
+        } else {
+            toast('Реклама не загружена', 'error');
+        }
+    } catch(e) {
+        console.error('Ошибка показа рекламы:', e);
+        toast('Реклама не загружена', 'error');
+    }
+}
+
+// ================= УВЕДОМЛЕНИЯ =================
 
 function doNotifyTask() {
     window.open('https://vk.com/write-' + GROUP_ID, '_blank');
-    toast('📝 Напишите любое слово в чат сообщества, затем нажмите «Проверить»', 'info');
+    toast('📝 Напишите любое слово в чат группы, затем нажмите «Проверить»', 'info');
 }
 
 async function checkNotifyTask() {
-    if(currentUser.task_notify_done) { 
-        toast('✅ Уведомления уже подключены!', 'info'); 
-        return; 
-    }
+    if(currentUser.task_notify_done) { toast('Уже выполнено!', 'info'); return; }
     
-    toast('⏳ Проверяем...', 'info');
+    toast('Проверяем...', 'info');
     
-    try {
-        var sent = await sendPersonalMessageAsync(
-            currentUser.vk_id, 
-            '🔔 Уведомления успешно подключены!'
-        );
-        
-        if(sent) {
-            await completeNotifyTask();
-        } else {
-            toast('❌ Не удалось отправить сообщение. Напишите любое слово в чат сообщества и попробуйте снова!', 'error');
-        }
-    } catch(e) {
-        console.error('Ошибка проверки уведомлений:', e);
-        toast('❌ Ошибка: ' + (e.message || 'неизвестная'), 'error');
+    var sent = await sendPersonalMessageAsync(currentUser.vk_id, '✅ Уведомления подключены!');
+    
+    if(sent) {
+        await completeNotifyTask();
+    } else {
+        toast('❌ Не удалось отправить. Проверьте настройки бота.', 'error');
     }
 }
 
 async function completeNotifyTask() {
     if(currentUser.task_notify_done) return;
-    
     await supabase.from('players').update({ 
         experience: (currentUser.experience || 0) + 1000, 
         task_notify_done: true 
     }).eq('vk_id', currentUser.vk_id);
-    
     currentUser.experience += 1000;
     currentUser.task_notify_done = true;
-    
     toast('✅ +1000 опыта за уведомления!', 'success');
     renderAll();
     renderTasks();
 }
 
-// Отправка сообщения через VK Bridge
 async function sendPersonalMessageAsync(vkId, message) {
     try {
-        console.log('📤 Отправка сообщения пользователю', vkId);
-        
         var result = await vkBridge.send('VKWebAppCallAPIMethod', {
             method: 'messages.send',
             params: {
@@ -130,33 +165,10 @@ async function sendPersonalMessageAsync(vkId, message) {
                 v: '5.199'
             }
         });
-        
-        console.log('✅ Ответ от VK API:', result);
-        
-        if(result && result.response) {
-            return true;
-        } else {
-            console.warn('⚠️ Неожиданный ответ:', result);
-            return false;
-        }
+        console.log('Messages.send result:', result);
+        return result && result.response;
     } catch(e) {
-        console.error('❌ Ошибка отправки сообщения:', e);
-        if(e.message) {
-            toast('❌ Ошибка: ' + e.message, 'error');
-        }
+        console.error('Ошибка отправки сообщения:', e);
         return false;
     }
 }
-
-// Отправка уведомления при найме сотрудника
-async function notifyAboutHire(employeeName, ownerName) {
-    var message = '🔔 Вас наняли! ' + employeeName + ' теперь работает на ' + ownerName + '.';
-    await sendPersonalMessageAsync(currentUser.vk_id, message);
-}
-
-// Отправка уведомления при увольнении
-async function notifyAboutFire(employeeName) {
-    var message = '🔔 Сотрудник ' + employeeName + ' был уволен.';
-    await sendPersonalMessageAsync(currentUser.vk_id, message);
-}
-*/
