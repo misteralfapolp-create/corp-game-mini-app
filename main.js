@@ -3,38 +3,33 @@
 async function initApp() {
     try {
         console.log('🚀 APP STARTED');
-        console.log('1. Проверка VK Bridge:', typeof vkBridge !== 'undefined' ? 'OK ✅' : 'NOT LOADED ❌');
-        console.log('2. Проверка Supabase:', typeof supabase !== 'undefined' ? 'OK ✅' : 'NOT LOADED ❌');
         
         document.getElementById('player-name').textContent = 'Загрузка...';
         
-        console.log('3. Получаем данные пользователя VK...');
+        // 1. Получаем пользователя VK
         currentVkUser = await vkBridge.send('VKWebAppGetUserInfo');
-        console.log('4. Пользователь VK загружен:', currentVkUser.id, currentVkUser.first_name);
+        console.log('✅ Пользователь VK:', currentVkUser.id);
         
         var invitedBy = getRefFromHash() || new URLSearchParams(window.location.search).get('ref');
         if (invitedBy && parseInt(invitedBy) === currentVkUser.id) invitedBy = null;
-        console.log('5. Реферал:', invitedBy || 'нет');
         
-        console.log('6. Запрос к Supabase...');
+        // 2. Загружаем данные пользователя из Supabase
         var r = await supabase.from('players').select('*').eq('vk_id', currentVkUser.id).maybeSingle();
-        console.log('7. Результат Supabase:', r);
         
         if (r.error) {
             console.error('❌ Ошибка БД:', r.error);
-            document.getElementById('player-name').textContent = 'Ошибка БД: ' + r.error.message;
+            document.getElementById('player-name').textContent = 'Ошибка БД';
             return;
         }
         
+        // 3. Если пользователь не найден — создаём
         if (!r.data) {
-            console.log('8. Создаём нового пользователя...');
             var ownerId = null;
             if (invitedBy) { 
                 ownerId = parseInt(invitedBy); 
             } else if (currentVkUser.id !== MY_VK_ID) { 
                 ownerId = MY_VK_ID; 
             }
-            console.log('9. ownerId:', ownerId);
             
             var insertResult = await supabase.from('players').insert([{
                 vk_id: currentVkUser.id,
@@ -60,17 +55,13 @@ async function initApp() {
             
             if (insertResult.error) {
                 console.error('❌ Ошибка создания:', insertResult.error);
-                document.getElementById('player-name').textContent = 'Ошибка создания: ' + insertResult.error.message;
+                document.getElementById('player-name').textContent = 'Ошибка создания';
                 return;
             }
             
-            console.log('10. Пользователь создан!');
-            
             if (invitedBy) { 
-                console.log('11. Начисляем бонус рефералу:', invitedBy);
                 await giveReferralBonus(parseInt(invitedBy)); 
             } else if (ownerId === MY_VK_ID) { 
-                console.log('12. Начисляем бонус владельцу:', MY_VK_ID);
                 await giveReferralBonus(MY_VK_ID); 
             }
             
@@ -79,43 +70,35 @@ async function initApp() {
         }
         
         currentUser = r.data;
-        console.log('13. Пользователь загружен:', currentUser.first_name, currentUser.last_name, 'ID:', currentUser.vk_id);
+        console.log('✅ Пользователь загружен:', currentUser.first_name);
         
-        // Проверяем и добавляем недостающие поля
-        if (currentUser.level === undefined) {
-            await supabase.from('players').update({level: 1}).eq('vk_id', currentUser.vk_id);
-            currentUser.level = 1;
+        // 4. ОПТИМИЗАЦИЯ: все обновления полей одним запросом
+        var updates = {};
+        var needUpdate = false;
+        
+        if (currentUser.level === undefined) { updates.level = 1; needUpdate = true; }
+        if (currentUser.owner_id === undefined) { 
+            updates.owner_id = null; 
+            updates.last_collect = new Date().toISOString(); 
+            updates.pending_experience = 0;
+            needUpdate = true; 
         }
-        if (currentUser.owner_id === undefined) {
-            await supabase.from('players').update({
-                owner_id: null, 
-                last_collect: new Date().toISOString(), 
-                pending_experience: 0
-            }).eq('vk_id', currentUser.vk_id);
-            currentUser.owner_id = null;
+        if (currentUser.company_group_id === undefined) { updates.company_group_id = null; needUpdate = true; }
+        if (currentUser.task_group_done === undefined) { 
+            updates.task_group_done = false; 
+            updates.task_promo_done = false; 
+            updates.max_pending = 0;
+            needUpdate = true; 
         }
-        if (currentUser.company_group_id === undefined) {
-            await supabase.from('players').update({company_group_id: null}).eq('vk_id', currentUser.vk_id);
-            currentUser.company_group_id = null;
-        }
-        if (currentUser.task_group_done === undefined) {
-            await supabase.from('players').update({
-                task_group_done: false, 
-                task_promo_done: false, 
-                max_pending: 0
-            }).eq('vk_id', currentUser.vk_id);
-            currentUser.task_group_done = false;
-            currentUser.task_promo_done = false;
-            currentUser.max_pending = 0;
-        }
-        if (currentUser.task_notify_done === undefined) {
-            await supabase.from('players').update({ task_notify_done: false }).eq('vk_id', currentUser.vk_id);
-            currentUser.task_notify_done = false;
+        if (currentUser.task_notify_done === undefined) { updates.task_notify_done = false; needUpdate = true; }
+        
+        if (needUpdate) {
+            await supabase.from('players').update(updates).eq('vk_id', currentUser.vk_id);
+            Object.assign(currentUser, updates);
         }
         
-        // Обработка реферала
+        // 5. Обработка реферала
         if (invitedBy && parseInt(invitedBy) !== currentUser.vk_id && !currentUser.owner_id) {
-            console.log('14. Обработка реферала для существующего пользователя:', invitedBy);
             var inv2 = await supabase.from('players').select('vk_id').eq('vk_id', parseInt(invitedBy)).maybeSingle();
             if (inv2.data) {
                 await supabase.from('players').update({
@@ -127,26 +110,24 @@ async function initApp() {
                 currentUser.owner_id = parseInt(invitedBy);
                 currentUser.status = 'Работает';
                 currentUser.role = 'Учёный';
-                console.log('15. Реферал обработан');
             }
         }
         
-        console.log('16. Обновляем статистику...');
-        await updateAllStats();
+        // 6. ОПТИМИЗАЦИЯ: запускаем параллельно
+        await Promise.all([
+            updateAllStats(),
+            loadMyTeam(true)
+        ]);
         
-        console.log('17. Рендерим UI...');
+        // 7. Рендерим UI
         renderAll();
         updateNavButtons('profile');
         
-        console.log('18. ✅ ВСЕ ГОТОВО!');
+        console.log('✅ ВСЕ ГОТОВО!');
         
     } catch (e) {
-        console.error('❌ КРИТИЧЕСКАЯ ОШИБКА:', e);
-        console.error('Сообщение:', e.message);
-        console.error('Стек:', e.stack);
+        console.error('❌ ОШИБКА:', e);
         document.getElementById('player-name').textContent = 'Ошибка: ' + (e.message || 'неизвестная');
-        // Показываем ошибку в консоли для модерации
-        alert('❌ Ошибка при загрузке: ' + e.message + '\n\nОткрой консоль браузера (F12) для деталей.');
     }
 }
 
