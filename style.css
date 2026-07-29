@@ -190,9 +190,13 @@ body {
     cursor: pointer;
     transition: 0.2s;
 }
-.btn-invite-friend:hover {
+.btn-invite-friend:hover:not(:disabled) {
     background: #0d3520;
     border-color: #2ea043;
+}
+.btn-invite-friend:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .btn-settings {
@@ -205,9 +209,13 @@ body {
     cursor: pointer;
     transition: 0.2s;
 }
-.btn-settings:hover {
+.btn-settings:hover:not(:disabled) {
     background: #21262d;
     color: #f0f6fc;
+}
+.btn-settings:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .btn-quit-job {
@@ -240,9 +248,13 @@ body {
     transition: 0.2s;
     box-shadow: 0 2px 12px rgba(35, 134, 54, 0.25);
 }
-.btn-earn:hover {
+.btn-earn:hover:not(:disabled) {
     background: #2ea043;
     box-shadow: 0 2px 20px rgba(35, 134, 54, 0.35);
+}
+.btn-earn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .btn-collect {
@@ -691,6 +703,29 @@ button:disabled {
     background: #238636 !important;
     color: #fff !important;
     border: none !important;
+}
+
+/* ===== СКЕЛЕТОН ===== */
+.skeleton {
+    background: linear-gradient(90deg, #1a1f2e 25%, #2a3040 50%, #1a1f2e 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 8px;
+}
+
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-text {
+    height: 16px;
+    margin: 4px 0;
+    width: 100%;
+    background: linear-gradient(90deg, #1a1f2e 25%, #2a3040 50%, #1a1f2e 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 6px;
 }
 
 /* ===== АДАПТИВ ===== */
