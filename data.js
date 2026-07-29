@@ -4,125 +4,74 @@ var lastCollectTime = 0;
 var COLLECT_COOLDOWN = 60000;
 
 async function updateAllStats() {
-    try {
-        // ОПТИМИЗАЦИЯ: один запрос вместо нескольких
-        var empResult = await supabase
-            .from('players')
-            .select('level, owner_id, vk_id, first_name, last_name')
-            .eq('owner_id', currentUser.vk_id)
-            .order('level', { ascending: false });
-        
-        myTeam = empResult.data || [];
-        myTeamTotal = myTeam.length;
-        
-        var totalIncome = 0;
-        myTeam.forEach(function(e){ totalIncome += (e.level || 1); });
-        if(currentUser.owner_id && currentUser.owner_id !== currentUser.vk_id) {
-            totalIncome = Math.floor(totalIncome / 2);
-        }
-        
-        // Если нет сотрудников — доход 0
-        if (myTeamTotal === 0) {
-            totalIncome = 0;
-        }
-        
-        // Обновляем UI
-        document.getElementById('my-employees-count').textContent = myTeamTotal;
-        document.getElementById('my-income').textContent = '+' + totalIncome;
-        document.getElementById('my-team-total').textContent = myTeamTotal;
-        
-        // Аватар и кнопка увольнения
-        var ava = document.getElementById('header-avatar');
-        var quitBtn = document.getElementById('quit-job-btn');
-        var ownerInfo = document.getElementById('owner-info');
-        
-        if(currentUser.owner_id && currentUser.owner_id !== currentUser.vk_id) {
-            ava.classList.add('hired');
-            quitBtn.style.display = 'block';
-            var myCost = (currentUser.level || 1) * 50;
-            quitBtn.textContent = '🚪 Уволиться (' + myCost + ' опыта)';
-            quitBtn.onclick = async function() {
-                if((currentUser.experience || 0) < myCost) { 
-                    toast('Недостаточно опыта!', 'error'); 
-                    return; 
-                }
-                var newExp = Math.max(0, (currentUser.experience || 0) - myCost);
-                
-                await supabase.from('players').update({
-                    experience: newExp,
-                    owner_id: null,
-                    status: 'Биржа труда',
-                    role: null,
-                    level: 1,
-                    hire_cost: Math.floor((currentUser.hire_cost || 100) * 1.5)
-                }).eq('vk_id', currentUser.vk_id);
-                
-                currentUser.experience = newExp;
-                currentUser.owner_id = null;
-                currentUser.status = 'Биржа труда';
-                currentUser.role = null;
-                currentUser.level = 1;
-                
-                toast('✅ Вы уволились!', 'success');
-                await updateAllStats();
-                renderAll();
-                location.reload();
-            };
-            
-            // Загружаем владельца только если нужно
-            if (!ownerInfo.dataset.loaded) {
-                ownerInfo.dataset.loaded = 'true';
-                var owner = await supabase.from('players').select('first_name,last_name,vk_id').eq('vk_id', currentUser.owner_id).maybeSingle();
-                if(owner.data) {
-                    ownerInfo.innerHTML = '🔒 Нанят: <b onclick="openPlayerModalById(' + owner.data.vk_id + ')" style="cursor:pointer;text-decoration:underline;">' + owner.data.first_name + ' ' + owner.data.last_name + '</b>';
-                }
+    var empResult = await supabase.from('players').select('*').eq('owner_id', currentUser.vk_id).order('level', { ascending: false });
+    myTeam = empResult.data || [];
+    myTeamTotal = myTeam.length;
+    
+    var totalIncome = 0;
+    myTeam.forEach(function(e){ totalIncome += (e.level || 1); });
+    if(currentUser.owner_id && currentUser.owner_id !== currentUser.vk_id) totalIncome = Math.floor(totalIncome / 2);
+    
+    document.getElementById('my-employees-count').textContent = myTeamTotal;
+    document.getElementById('my-income').textContent = '+' + totalIncome;
+    document.getElementById('my-team-total').textContent = myTeamTotal;
+    
+    var ava = document.getElementById('header-avatar');
+    var quitBtn = document.getElementById('quit-job-btn');
+    var ownerInfo = document.getElementById('owner-info');
+    
+    if(currentUser.owner_id && currentUser.owner_id !== currentUser.vk_id) {
+        ava.classList.add('hired');
+        quitBtn.style.display = 'block';
+        var myCost = (currentUser.level || 1) * 50;
+        quitBtn.textContent = '🚪 Уволиться (' + myCost + ' опыта)';
+        quitBtn.onclick = async function() {
+            if((currentUser.experience || 0) < myCost) { 
+                toast('Недостаточно опыта!', 'error'); 
+                return; 
             }
-        } else {
-            ava.classList.remove('hired');
-            quitBtn.style.display = 'none';
-            ownerInfo.textContent = '';
-            ownerInfo.dataset.loaded = '';
-        }
-        
-        // Считаем pending опыт
-        await calculatePendingExperience();
-        
-    } catch(e) {
-        console.error('Ошибка updateAllStats:', e);
+            var newExp = Math.max(0, (currentUser.experience || 0) - myCost);
+            
+            await supabase.from('players').update({
+                experience: newExp,
+                owner_id: null,
+                status: 'Биржа труда',
+                role: null,
+                level: 1,
+                hire_cost: Math.floor((currentUser.hire_cost || 100) * 1.5)
+            }).eq('vk_id', currentUser.vk_id);
+            
+            currentUser.experience = newExp;
+            currentUser.owner_id = null;
+            currentUser.status = 'Биржа труда';
+            currentUser.role = null;
+            currentUser.level = 1;
+            
+            toast('✅ Вы уволились!', 'success');
+            
+            await updateAllStats();
+            renderAll();
+            location.reload();
+        };
+        var owner = await supabase.from('players').select('first_name,last_name,vk_id').eq('vk_id', currentUser.owner_id).maybeSingle();
+        if(owner.data) ownerInfo.innerHTML = '🔒 Нанят: <b onclick="openPlayerModalById(' + owner.data.vk_id + ')" style="cursor:pointer;text-decoration:underline;">' + owner.data.first_name + ' ' + owner.data.last_name + '</b>';
+    } else {
+        ava.classList.remove('hired');
+        quitBtn.style.display = 'none';
+        ownerInfo.textContent = '';
     }
+    await calculatePendingExperience();
 }
 
 async function calculatePendingExperience() {
-    // Если нет сотрудников — обнуляем накопленный опыт
-    if(!myTeam || !myTeam.length) {
-        if (currentUser.pending_experience > 0) {
-            await supabase.from('players').update({ 
-                pending_experience: 0 
-            }).eq('vk_id', currentUser.vk_id);
-            currentUser.pending_experience = 0;
-        }
-        return;
-    }
-    
+    if(!myTeam.length) return;
     var totalPerHour = 0;
     myTeam.forEach(function(e){ totalPerHour += (e.level || 1); });
-    if(currentUser.owner_id && currentUser.owner_id !== currentUser.vk_id) {
-        totalPerHour = Math.floor(totalPerHour / 2);
-    }
-    
-    var lastCollect = currentUser.last_collect ? new Date(currentUser.last_collect) : new Date();
-    var hoursPassed = (Date.now() - lastCollect.getTime()) / 3600000;
+    if(currentUser.owner_id && currentUser.owner_id !== currentUser.vk_id) totalPerHour = Math.floor(totalPerHour / 2);
+    var hoursPassed = (new Date() - new Date(currentUser.last_collect || new Date())) / 3600000;
     var newPending = Math.floor((currentUser.pending_experience || 0) + totalPerHour * hoursPassed);
-    
-    // Обновляем только если изменилось
-    if (newPending !== currentUser.pending_experience) {
-        await supabase.from('players').update({ 
-            pending_experience: newPending, 
-            last_collect: new Date().toISOString() 
-        }).eq('vk_id', currentUser.vk_id);
-        currentUser.pending_experience = newPending;
-        currentUser.last_collect = new Date().toISOString();
-    }
+    await supabase.from('players').update({ pending_experience: newPending, last_collect: new Date().toISOString() }).eq('vk_id', currentUser.vk_id);
+    currentUser.pending_experience = newPending;
 }
 
 // ================= СБОР ОПЫТА С РЕКЛАМОЙ =================
