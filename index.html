@@ -9,25 +9,6 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- ОТЛАДОЧНЫЙ БЛОК (временно, потом удалить) -->
-    <div id="debug-info" style="
-        background: #0d1117; 
-        color: #00ff00; 
-        padding: 8px 12px; 
-        font-size: 11px; 
-        font-family: 'Courier New', monospace;
-        border-radius: 8px;
-        margin-bottom: 10px;
-        max-height: 120px;
-        overflow-y: auto;
-        border: 1px solid #30363d;
-        display: block;
-        white-space: pre-wrap;
-        word-break: break-all;
-    ">
-        ⏳ Инициализация...
-    </div>
-    
     <div id="stars-canvas"></div>
     <div id="toast-container"></div>
     
@@ -49,7 +30,6 @@
                     <div class="stat"><div class="value" id="my-employees-count">0</div><div class="label">👥 Сотрудники</div></div>
                     <div class="stat"><div class="value" id="my-income">0</div><div class="label">📈 Доход/час</div></div>
                 </div>
-                <!-- ✅ ТОЛЬКО ДВЕ КНОПКИ: ПРИГЛАСИТЬ И НАСТРОЙКИ -->
                 <div style="display:flex;gap:10px;margin-top:18px;padding-top:6px;">
                     <button class="btn-invite-friend" id="invite-friend-btn" style="flex:1;padding:14px 10px;font-size:16px;min-height:52px;border-radius:12px;">📨 Пригласить (+500)</button>
                     <button class="btn-settings" id="settings-btn" onclick="openSettings()" style="padding:14px 18px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:12px;font-size:24px;cursor:pointer;min-width:60px;min-height:52px;">⚙️</button>
