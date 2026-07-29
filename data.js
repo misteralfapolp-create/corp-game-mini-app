@@ -21,7 +21,12 @@ async function updateAllStats() {
             totalIncome = Math.floor(totalIncome / 2);
         }
         
-        // Обновляем UI сразу, не дожидаясь других запросов
+        // Если нет сотрудников — доход 0
+        if (myTeamTotal === 0) {
+            totalIncome = 0;
+        }
+        
+        // Обновляем UI
         document.getElementById('my-employees-count').textContent = myTeamTotal;
         document.getElementById('my-income').textContent = '+' + totalIncome;
         document.getElementById('my-team-total').textContent = myTeamTotal;
@@ -64,7 +69,7 @@ async function updateAllStats() {
                 location.reload();
             };
             
-            // ОПТИМИЗАЦИЯ: загружаем владельца только если нужно
+            // Загружаем владельца только если нужно
             if (!ownerInfo.dataset.loaded) {
                 ownerInfo.dataset.loaded = 'true';
                 var owner = await supabase.from('players').select('first_name,last_name,vk_id').eq('vk_id', currentUser.owner_id).maybeSingle();
@@ -79,7 +84,7 @@ async function updateAllStats() {
             ownerInfo.dataset.loaded = '';
         }
         
-        // ОПТИМИЗАЦИЯ: считаем pending опыт без лишнего запроса
+        // Считаем pending опыт
         await calculatePendingExperience();
         
     } catch(e) {
@@ -88,7 +93,16 @@ async function updateAllStats() {
 }
 
 async function calculatePendingExperience() {
-    if(!myTeam.length) return;
+    // Если нет сотрудников — обнуляем накопленный опыт
+    if(!myTeam || !myTeam.length) {
+        if (currentUser.pending_experience > 0) {
+            await supabase.from('players').update({ 
+                pending_experience: 0 
+            }).eq('vk_id', currentUser.vk_id);
+            currentUser.pending_experience = 0;
+        }
+        return;
+    }
     
     var totalPerHour = 0;
     myTeam.forEach(function(e){ totalPerHour += (e.level || 1); });
