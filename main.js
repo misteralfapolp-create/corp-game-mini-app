@@ -4,8 +4,6 @@ async function initApp() {
     try {
         console.log('🚀 APP STARTED');
         
-        document.getElementById('player-name').textContent = 'Загрузка...';
-        
         // 1. Получаем пользователя VK
         currentVkUser = await vkBridge.send('VKWebAppGetUserInfo');
         console.log('✅ Пользователь VK:', currentVkUser.id);
@@ -13,8 +11,24 @@ async function initApp() {
         var invitedBy = getRefFromHash() || new URLSearchParams(window.location.search).get('ref');
         if (invitedBy && parseInt(invitedBy) === currentVkUser.id) invitedBy = null;
         
-        // 2. Загружаем данные пользователя из Supabase
-        var r = await supabase.from('players').select('*').eq('vk_id', currentVkUser.id).maybeSingle();
+        // 2. ОПТИМИЗАЦИЯ: проверяем кэш перед запросом к Supabase
+        var cacheKey = 'user_' + currentVkUser.id;
+        var cachedData = localStorage.getItem(cacheKey);
+        var cacheTime = localStorage.getItem(cacheKey + '_time');
+        var cacheValid = cacheTime && (Date.now() - parseInt(cacheTime) < 30000); // 30 секунд
+        
+        var r;
+        if (cacheValid && cachedData) {
+            console.log('📦 Используем кэш');
+            r = { data: JSON.parse(cachedData), error: null };
+        } else {
+            console.log('🔄 Запрос к Supabase');
+            r = await supabase.from('players').select('*').eq('vk_id', currentVkUser.id).maybeSingle();
+            if (r.data) {
+                localStorage.setItem(cacheKey, JSON.stringify(r.data));
+                localStorage.setItem(cacheKey + '_time', String(Date.now()));
+            }
+        }
         
         if (r.error) {
             console.error('❌ Ошибка БД:', r.error);
@@ -95,6 +109,8 @@ async function initApp() {
         if (needUpdate) {
             await supabase.from('players').update(updates).eq('vk_id', currentUser.vk_id);
             Object.assign(currentUser, updates);
+            // Обновляем кэш
+            localStorage.setItem(cacheKey, JSON.stringify(currentUser));
         }
         
         // 5. Обработка реферала
@@ -110,20 +126,35 @@ async function initApp() {
                 currentUser.owner_id = parseInt(invitedBy);
                 currentUser.status = 'Работает';
                 currentUser.role = 'Учёный';
+                // Обновляем кэш
+                localStorage.setItem(cacheKey, JSON.stringify(currentUser));
             }
         }
         
-        // 6. ОПТИМИЗАЦИЯ: запускаем параллельно
-        await Promise.all([
-            updateAllStats(),
-            loadMyTeam(true)
-        ]);
+        // 6. Активируем кнопки
+        document.getElementById('invite-friend-btn').disabled = false;
+        document.getElementById('settings-btn').disabled = false;
+        document.getElementById('earn-btn').disabled = false;
         
-        // 7. Рендерим UI
+        // 7. Рендерим UI сразу (с кэшем или базовыми данными)
         renderAll();
         updateNavButtons('profile');
         
-        console.log('✅ ВСЕ ГОТОВО!');
+        // 8. Загружаем данные в фоне
+        setTimeout(async function() {
+            try {
+                await Promise.all([
+                    updateAllStats(),
+                    loadMyTeam(true)
+                ]);
+                renderAll();
+                console.log('✅ Данные обновлены в фоне');
+            } catch(e) {
+                console.error('Ошибка фоновой загрузки:', e);
+            }
+        }, 100);
+        
+        console.log('✅ UI готов!');
         
     } catch (e) {
         console.error('❌ ОШИБКА:', e);
