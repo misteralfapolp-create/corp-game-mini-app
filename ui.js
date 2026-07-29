@@ -1,158 +1,342 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Корпоративные Игры</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div id="stars-canvas"></div>
-    <div id="toast-container"></div>
+// ================= UI: УВЕДОМЛЕНИЯ, МОДАЛКИ, НАВИГАЦИЯ =================
+
+function toast(msg, type) {
+    type = type || 'info';
+    var container = document.getElementById('toast-container');
+    var el = document.createElement('div');
+    el.className = 'toast ' + type;
+    el.textContent = msg;
+    container.appendChild(el);
+    setTimeout(function(){ el.remove(); }, 2500);
+}
+
+function openVkProfile() {
+    if(currentVkUser) window.open('https://vk.com/id' + currentVkUser.id, '_blank');
+}
+
+function showInputModal(title, placeholder, defaultValue, callback) {
+    var modal = document.getElementById('input-modal');
+    if(!modal) { callback(null); return; }
+    document.getElementById('input-modal-title').textContent = title;
+    var input = document.getElementById('input-modal-input');
+    input.value = defaultValue || '';
+    input.placeholder = placeholder || '';
+    input.style.display = 'block';
+    modal.style.display = 'flex';
+    document.getElementById('input-modal-ok').style.display = 'block';
+    document.getElementById('input-modal-ok').onclick = function() {
+        modal.style.display = 'none';
+        var oldList = document.getElementById('groups-list');
+        if(oldList) oldList.remove();
+        callback(input.value.trim());
+    };
+    document.getElementById('input-modal-cancel').onclick = function() {
+        modal.style.display = 'none';
+        var oldList = document.getElementById('groups-list');
+        if(oldList) oldList.remove();
+        callback(null);
+    };
+}
+
+function goTo(screen) {
+    document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+    document.getElementById('screen-' + screen).classList.add('active');
+    updateNavButtons(screen);
+    if(screen === 'top') switchTopSubtab(topSubtab);
+    if(screen === 'market') loadMarketScreen();
+    if(screen === 'my-company') loadMyCompanyScreen();
+}
+
+function updateNavButtons(screen) {
+    var bar = document.getElementById('nav-bar');
+    bar.innerHTML = '';
+    if(screen === 'profile') {
+        addNavBtn('top', '🏆 Топ'); addNavBtn('market', '💼 Биржа'); addNavBtn('my-company', '🏢 Компания');
+    } else if(screen === 'top') {
+        addNavBtn('profile', '🏠 Профиль'); addNavBtn('market', '💼 Биржа'); addNavBtn('my-company', '🏢 Компания');
+    } else if(screen === 'market') {
+        addNavBtn('profile', '🏠 Профиль'); addNavBtn('top', '🏆 Топ'); addNavBtn('my-company', '🏢 Компания');
+    } else if(screen === 'my-company') {
+        addNavBtn('profile', '🏠 Профиль'); addNavBtn('top', '🏆 Топ'); addNavBtn('market', '💼 Биржа');
+    }
+}
+
+function addNavBtn(screen, label) {
+    var bar = document.getElementById('nav-bar');
+    var btn = document.createElement('div');
+    btn.className = 'nav-btn';
+    btn.textContent = label;
+    btn.onclick = function(){ goTo(screen); };
+    bar.appendChild(btn);
+}
+
+// Карточка сотрудника
+function renderEmployeeCard(emp, container, showActions, showCompany) {
+    var lvl = emp.level || 1;
+    var jobTitle = getJobTitle(lvl);
+    var income = lvl;
+    var cost = emp.hire_cost || 100;
+    var sellPrice = Math.floor(cost * 0.8);
+    var balance = emp.experience || 0;
+    var upgradeCost = (emp.level || 1) * 50;
     
-    <div id="app">
-        <div class="nav-bar" id="nav-bar"></div>
+    var div = document.createElement('div');
+    div.className = 'player-item';
+    
+    var html = '<img src="' + (emp.photo_200 || 'https://vk.com/images/camera_200.png') + '" onerror="this.src=\'https://vk.com/images/camera_200.png\'" onclick="openPlayerModalById(' + emp.vk_id + ')" style="cursor:pointer;">';
+    html += '<div class="info" onclick="openPlayerModalById(' + emp.vk_id + ')" style="cursor:pointer;">';
+    html += '<div class="name">' + emp.first_name + ' ' + emp.last_name + '</div>';
+    html += '<div class="detail">' + jobTitle + ' (ур.' + lvl + ')</div>';
+    html += '<div class="detail" style="color:#4caf50;">📈 Доход: +' + income + ' оп/час</div>';
+    html += '<div class="detail" style="color:#ffd700;">⭐ Баланс: ' + balance + ' опыта</div>';
+    html += '<div class="detail">💰 Цена: ' + cost + ' опыта</div>';
+    
+    if(showCompany && emp.company) {
+        html += '<div class="detail" style="color:#ff9800;cursor:pointer;" onclick="event.stopPropagation();openCompanyModal(\'' + emp.company + '\')">🏢 ' + emp.company + '</div>';
+    }
+    
+    html += '</div>';
+    
+    if(showActions) {
+        html += '<div class="btn-group">';
+        html += '<button class="btn-upgrade" onclick="event.stopPropagation();upgradeEmployee(' + emp.vk_id + ')">⬆ ' + upgradeCost + '</button>';
+        html += '<button class="btn-fire" onclick="event.stopPropagation();fireEmployee(' + emp.vk_id + ')">🔥 +' + sellPrice + '</button>';
+        html += '</div>';
+    }
+    
+    div.innerHTML = html;
+    container.appendChild(div);
+    
+    return div;
+}
 
-        <!-- Профиль -->
-        <div id="screen-profile" class="screen active">
-            <div class="card profile-card">
-                <div class="header">
-                    <img id="header-avatar" class="header-avatar" src="" alt="Аватар" onclick="openVkProfile()">
-                    <h2 id="player-name">Загрузка...</h2>
-                    <button class="btn-quit-job" id="quit-job-btn" style="display:none;">🚪 Уволиться</button>
-                    <div id="owner-info"></div>
-                    <div class="company-name-display" id="company-display"></div>
-                </div>
-                <div class="stats">
-                    <div class="stat stat-main">
-                        <div class="value" id="exp-value">--</div>
-                        <div class="label">⭐ Опыт</div>
-                    </div>
-                    <div class="stat">
-                        <div class="value" id="my-employees-count">--</div>
-                        <div class="label">👥 Сотрудники</div>
-                    </div>
-                    <div class="stat">
-                        <div class="value" id="my-income">--</div>
-                        <div class="label">📈 Доход/час</div>
-                    </div>
-                </div>
-                <div style="display:flex;gap:10px;margin-top:18px;padding-top:6px;">
-                    <button class="btn-invite-friend" id="invite-friend-btn" style="flex:1;padding:14px 10px;font-size:16px;min-height:52px;border-radius:12px;">📨 Пригласить (+500)</button>
-                    <button class="btn-settings" id="settings-btn" onclick="openSettings()" style="padding:14px 18px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:12px;font-size:24px;cursor:pointer;min-width:60px;min-height:52px;">⚙️</button>
-                </div>
-                <button class="btn-earn" id="earn-btn" onclick="toggleTasks()" style="margin-top:12px;padding:16px;font-size:18px;min-height:56px;">💰 Заработать</button>
-            </div>
+// Модалка игрока
+function renderPlayerModalContent(player) {
+    var lvl = player.level || 1;
+    var jobTitle = getJobTitle(lvl);
+    var income = lvl;
+    var cost = player.hire_cost || 100;
+    var sellPrice = Math.floor(cost * 0.8);
+    var balance = player.experience || 0;
+    
+    document.getElementById('modal-player-header').innerHTML = 
+        '<img src="' + (player.photo_200 || 'https://vk.com/images/camera_200.png') + '" style="width:50px;height:50px;border-radius:50%;vertical-align:middle;margin-right:10px;cursor:pointer;" onclick="window.open(\'https://vk.com/id' + player.vk_id + '\',\'_blank\')">' +
+        '<span style="font-size:18px;font-weight:700;">' + player.first_name + ' ' + player.last_name + '</span>';
+    
+    var infoHtml = '<div style="margin:10px 0;">';
+    infoHtml += '<div><b>' + jobTitle + '</b> (ур.' + lvl + ')</div>';
+    infoHtml += '<div style="color:#4caf50;">📈 Доход: +' + income + ' оп/час</div>';
+    infoHtml += '<div style="color:#ffd700;">⭐ Баланс: ' + balance + ' опыта</div>';
+    infoHtml += '<div>💰 Цена: ' + cost + ' опыта</div>';
+    
+    if(player.company) {
+        infoHtml += '<div style="color:#ff9800;cursor:pointer;" onclick="openCompanyModal(\'' + player.company + '\')">🏢 Компания: ' + player.company + '</div>';
+    }
+    
+    if(player.owner_id && player.owner_id !== player.vk_id) {
+        infoHtml += '<div id="modal-owner-info">🔒 Загрузка...</div>';
+    }
+    
+    infoHtml += '</div>';
+    
+    document.getElementById('modal-player-stats').innerHTML = infoHtml;
+    
+    var hireBtn = document.getElementById('modal-hire-btn');
+    var fireBtn = document.getElementById('modal-fire-btn');
+    hireBtn.style.display = 'none';
+    fireBtn.style.display = 'none';
+    
+    var isMyOwner = currentUser.owner_id && currentUser.owner_id === player.vk_id;
+    var isMyEmployee = player.owner_id === currentUser.vk_id;
+    var isMe = player.vk_id === currentUser.vk_id;
+    
+    if(!isMe && !isMyOwner) {
+        if(!player.owner_id || player.status === 'Биржа труда') {
+            hireBtn.style.display = 'block';
+            hireBtn.textContent = '💼 Нанять за ' + cost + ' опыта';
+            hireBtn.onclick = function() { hirePlayer(player); };
+        }
+    }
+    
+    if(isMyEmployee) {
+        fireBtn.style.display = 'block';
+        fireBtn.textContent = '🔥 Уволить (+' + sellPrice + ' опыта)';
+        fireBtn.onclick = function() { firePlayer(player); };
+    }
+    
+    if(player.owner_id && player.owner_id !== player.vk_id) {
+        supabase.from('players').select('first_name,last_name,vk_id').eq('vk_id', player.owner_id).maybeSingle().then(function(r) {
+            if(r.data) {
+                document.getElementById('modal-owner-info').innerHTML = '🔒 Работает на: <b style="cursor:pointer;text-decoration:underline;color:#ff9800;" onclick="openPlayerModalById(' + r.data.vk_id + ')">' + r.data.first_name + ' ' + r.data.last_name + '</b>';
+            }
+        });
+    }
+    
+    supabase.from('players').select('*').eq('owner_id', player.vk_id).order('level', { ascending: false }).then(function(r) {
+        var list = document.getElementById('modal-player-employees');
+        list.innerHTML = '';
+        if(!r.data || !r.data.length) {
+            list.innerHTML = '<p style="color:#aaa;text-align:center;">Нет сотрудников</p>';
+            return;
+        }
+        list.innerHTML = '<div class="section-title" style="margin-top:10px;">👥 Сотрудники (' + r.data.length + ')</div>';
+        r.data.forEach(function(emp) {
+            var card = renderEmployeeCard(emp, list, false, true);
+            if(emp.owner_id !== currentUser.vk_id && emp.vk_id !== currentUser.vk_id) {
+                var stealCost = Math.floor((emp.hire_cost || 100) * 1.5);
+                var btn = document.createElement('button');
+                btn.className = 'btn-steal';
+                btn.textContent = '💰 ' + stealCost;
+                btn.onclick = function(e) {
+                    e.stopPropagation();
+                    stealEmployee(emp, stealCost);
+                };
+                card.appendChild(btn);
+            }
+        });
+    });
+}
 
-            <div class="card" id="tasks-panel" style="display:none;">
-                <div class="section-title">📋 Задания</div>
-                <div id="tasks-list">Загрузка...</div>
-            </div>
+function renderTasks() {
+    var listEl = document.getElementById('tasks-list');
+    if(!listEl) return;
+    var html = '';
+    
+    // ЗАДАНИЕ: ПОСМОТРЕТЬ РЕКЛАМУ
+    var remaining = getRemainingAds ? getRemainingAds() : 0;
+    var adText = '🎬 Посмотреть рекламу (+' + REWARDED_AD_BONUS + ' опыта)';
+    if(remaining <= 0) {
+        adText += ' ❌ (лимит)';
+    } else {
+        adText += ' (осталось ' + remaining + ' раз)';
+    }
+    
+    html += '<div class="task-item"><div class="task-info"><b>' + adText + '</b><br><span style="font-size:11px;color:#aaa;">Максимум ' + REWARDED_AD_LIMIT + ' раз в день • 1 мин кулдаун</span></div>';
+    if(remaining > 0) {
+        html += '<button class="btn-task" onclick="doRewardedAd()" style="background:linear-gradient(135deg,#ff9800,#f57c00);color:#fff;">▶ Смотреть</button>';
+    } else {
+        html += '<span style="color:#f44336;">❌ Лимит</span>';
+    }
+    html += '</div>';
+    
+    // ЗАДАНИЕ: ПОДПИСКА НА ГРУППУ
+    if(!currentUser || !currentUser.task_group_done) {
+        html += '<div class="task-item"><div class="task-info"><b>📱 Подписаться на группу</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
+        html += '<div style="display:flex;gap:4px;"><button class="btn-task" onclick="doGroupTask()">▶ Выполнить</button><button class="btn-task-check" onclick="checkGroupTask()">🔍 Проверить</button></div>';
+        html += '</div>';
+    }
+    
+    // ЗАДАНИЕ: ПРОМОКОД
+    html += '<div class="task-item"><div class="task-info"><b>🎁 Ввести промокод</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
+    html += '<button class="btn-task" onclick="doPromoTask()">▶ Выполнить</button>';
+    html += '</div>';
+    
+    if(html === '') html = '<p style="color:#4caf50;text-align:center;">✅ Все задания выполнены!</p>';
+    listEl.innerHTML = html;
+}
 
-            <div class="card collect-card" id="collect-panel" style="display:none;">
-                <div class="collect-info"><span class="collect-amount" id="collect-amount">0</span><span class="collect-label">опыта готово</span></div>
-                <button class="btn-collect" id="collect-btn">🔄 Собрать</button>
-            </div>
+function renderAll() {
+    // Обновляем аватар
+    var avatar = document.getElementById('header-avatar');
+    if (avatar) {
+        avatar.src = currentUser.photo_200 || (currentVkUser ? currentVkUser.photo_200 : '') || 'https://vk.com/images/camera_200.png';
+    }
+    
+    // Обновляем имя
+    var nameEl = document.getElementById('player-name');
+    if (nameEl) {
+        nameEl.textContent = currentUser.first_name + ' ' + currentUser.last_name;
+    }
+    
+    // Обновляем опыт
+    var expEl = document.getElementById('exp-value');
+    if (expEl) {
+        expEl.textContent = currentUser.experience || 0;
+    }
+    
+    // Обновляем компанию
+    var compEl = document.getElementById('company-display');
+    if (compEl) {
+        if (currentUser.company) {
+            compEl.innerHTML = '🏢 <span style="cursor:pointer;" onclick="goTo(\'my-company\')">' + currentUser.company + '</span>';
+            if (currentUser.company_group_id) {
+                compEl.innerHTML += ' <a href="https://vk.com/club' + currentUser.company_group_id + '" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>';
+            }
+        } else {
+            compEl.textContent = '';
+        }
+    }
+    
+    // Обновляем панель сбора
+    var collectPanel = document.getElementById('collect-panel');
+    if (collectPanel) {
+        var hasPending = (currentUser.pending_experience || 0) > 0;
+        collectPanel.style.display = hasPending ? 'flex' : 'none';
+        if (hasPending) {
+            var collectAmount = document.getElementById('collect-amount');
+            if (collectAmount) {
+                collectAmount.textContent = currentUser.pending_experience || 0;
+            }
+            var collectBtn = document.getElementById('collect-btn');
+            if (collectBtn) {
+                collectBtn.onclick = collectExperience;
+            }
+        }
+    }
+    
+    // Кнопка приглашения
+    var inviteBtn = document.getElementById('invite-friend-btn');
+    if (inviteBtn) {
+        inviteBtn.onclick = inviteFriend;
+    }
+    
+    // Загружаем сотрудников
+    loadMyTeam(true);
+    
+    // Рендерим задания
+    renderTasks();
+}
 
-            <div class="card">
-                <div class="section-title">👥 Мои сотрудники (<span id="my-team-total">0</span>)</div>
-                <div id="my-team-list"><p style="color:#aaa;text-align:center;">Загрузка...</p></div>
-                <button class="btn-load-more" id="load-more-btn" style="display:none;">📥 Загрузить ещё</button>
-            </div>
-        </div>
+function loadMyTeam(reset) {
+    if (reset) { 
+        myTeamOffset = 0; 
+        myTeamTotal = myTeam.length;
+        document.getElementById('my-team-list').innerHTML = ''; 
+    }
+    
+    var list = document.getElementById('my-team-list');
+    if (!list) return;
+    
+    if (!myTeam.length) {
+        list.innerHTML = '<p style="color:#aaa;text-align:center;">Нет сотрудников</p>';
+        document.getElementById('load-more-btn').style.display = 'none';
+        return;
+    }
+    
+    var page = myTeam.slice(myTeamOffset, myTeamOffset + TEAM_PAGE_SIZE);
+    page.forEach(function(emp) { 
+        renderEmployeeCard(emp, list, true, true); 
+    });
+    myTeamOffset += page.length;
+    document.getElementById('load-more-btn').style.display = (myTeamOffset < myTeamTotal) ? 'block' : 'none';
+}
 
-        <!-- Топ -->
-        <div id="screen-top" class="screen">
-            <div class="card">
-                <div class="subtab-bar">
-                    <button class="subtab active" id="subtab-players">👤 Игроки</button>
-                    <button class="subtab" id="subtab-companies">🏢 Компании</button>
-                </div>
-                <div id="top-content"></div>
-            </div>
-        </div>
+// ============================================================
+// ❗ ВАЖНО: Регистрируем все функции глобально
+// ============================================================
+window.toast = toast;
+window.openVkProfile = openVkProfile;
+window.showInputModal = showInputModal;
+window.goTo = goTo;
+window.updateNavButtons = updateNavButtons;
+window.addNavBtn = addNavBtn;
+window.renderEmployeeCard = renderEmployeeCard;
+window.renderPlayerModalContent = renderPlayerModalContent;
+window.renderTasks = renderTasks;
+window.renderAll = renderAll;
+window.loadMyTeam = loadMyTeam;
 
-        <!-- Биржа -->
-        <div id="screen-market" class="screen">
-            <div class="card">
-                <div class="section-title">💼 Биржа труда</div>
-                <div id="market-content">Загрузка...</div>
-            </div>
-        </div>
-
-        <!-- Моя компания -->
-        <div id="screen-my-company" class="screen">
-            <div class="card">
-                <div class="section-title">🏢 <span id="my-company-name"></span></div>
-                <p id="my-company-stats"></p>
-                <div id="my-company-members"></div>
-                <button class="btn-leave" id="my-company-leave-btn" style="display:none;">🚪 Выйти из компании (бесплатно)</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Модалка ввода -->
-    <div class="modal" id="input-modal">
-        <div class="modal-content">
-            <span class="modal-close" onclick="document.getElementById('input-modal').style.display='none'">✕</span>
-            <h2 id="input-modal-title">Введите значение</h2>
-            <input type="text" id="input-modal-input" placeholder="" style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#fff;font-size:14px;margin:10px 0;">
-            <div style="display:flex;gap:8px;">
-                <button class="btn-collect" id="input-modal-ok" style="flex:1;">ОК</button>
-                <button class="btn-back" id="input-modal-cancel" style="flex:1;">Отмена</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Модалка игрока -->
-    <div class="modal" id="player-modal">
-        <div class="modal-content">
-            <span class="modal-close" onclick="closePlayerModal()">✕</span>
-            <div id="modal-player-header"></div>
-            <div id="modal-player-owner" style="margin:6px 0;"></div>
-            <p id="modal-player-stats"></p>
-            <button class="btn-hire" id="modal-hire-btn" style="display:none;">💼 Нанять</button>
-            <button class="btn-leave" id="modal-fire-btn" style="display:none;">🔥 Уволить</button>
-            <div id="modal-player-employees"></div>
-            <button class="btn-back" onclick="closePlayerModal()">🔙 Закрыть</button>
-        </div>
-    </div>
-
-    <!-- Модалка компании -->
-    <div class="modal" id="company-modal">
-        <div class="modal-content">
-            <span class="modal-close" onclick="closeCompanyModal()">✕</span>
-            <h2 id="modal-company-name"></h2>
-            <p id="modal-company-stats"></p>
-            <div id="modal-company-members"></div>
-            <button class="btn-join" id="modal-join-btn" style="display:none;">✅ Вступить (бесплатно)</button>
-            <button class="btn-leave" id="modal-leave-btn" style="display:none;">🚪 Выйти из компании (бесплатно)</button>
-            <button class="btn-back" onclick="closeCompanyModal()">🔙 Закрыть</button>
-        </div>
-    </div>
-
-    <!-- Настройки -->
-    <div class="modal" id="settings-modal">
-        <div class="modal-content">
-            <span class="modal-close" onclick="closeSettings()">✕</span>
-            <h2>⚙️ Настройки</h2>
-            <p style="margin:10px 0;color:#aaa;">Промокод можно ввести только 1 раз</p>
-            <input type="text" id="promo-input" placeholder="Введите промокод" style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#fff;font-size:14px;margin-bottom:8px;">
-            <button class="btn-collect" id="promo-go-btn" style="width:100%;">🎁 Применить</button>
-            <button class="btn-back" onclick="closeSettings()" style="margin-top:8px;">🔙 Закрыть</button>
-        </div>
-    </div>
-
-    <!-- Подключаем модули ПО ПОРЯДКУ -->
-    <script src="config.js"></script>
-    <script src="ui.js"></script>
-    <script src="data.js"></script>
-    <script src="market.js"></script>
-    <script src="tasks.js"></script>
-    <script src="leaders.js"></script>
-    <script src="modals.js"></script>
-    <script src="main.js"></script>
-</body>
-</html>
+console.log('✅ ui.js загружен, все функции зарегистрированы глобально');
+console.log('   toast:', typeof toast);
+console.log('   renderAll:', typeof renderAll);
+console.log('   goTo:', typeof goTo);
