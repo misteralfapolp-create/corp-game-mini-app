@@ -9,32 +9,13 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- ОТЛАДОЧНЫЙ БЛОК (временно) -->
-    <div id="debug-info" style="
-        background: #0d1117; 
-        color: #00ff00; 
-        padding: 8px 12px; 
-        font-size: 11px; 
-        font-family: 'Courier New', monospace;
-        border-radius: 8px;
-        margin-bottom: 10px;
-        max-height: 200px;
-        overflow-y: auto;
-        border: 1px solid #30363d;
-        display: block;
-        white-space: pre-wrap;
-        word-break: break-all;
-    ">
-⏳ Загрузка скриптов...
-    </div>
-
     <div id="stars-canvas"></div>
     <div id="toast-container"></div>
     
     <div id="app">
         <div class="nav-bar" id="nav-bar"></div>
 
-        <!-- ПРОФИЛЬ -->
+        <!-- Профиль -->
         <div id="screen-profile" class="screen active">
             <div class="card profile-card">
                 <div class="header">
@@ -45,18 +26,9 @@
                     <div class="company-name-display" id="company-display"></div>
                 </div>
                 <div class="stats">
-                    <div class="stat stat-main">
-                        <div class="value" id="exp-value">--</div>
-                        <div class="label">⭐ Опыт</div>
-                    </div>
-                    <div class="stat">
-                        <div class="value" id="my-employees-count">--</div>
-                        <div class="label">👥 Сотрудники</div>
-                    </div>
-                    <div class="stat">
-                        <div class="value" id="my-income">--</div>
-                        <div class="label">📈 Доход/час</div>
-                    </div>
+                    <div class="stat stat-main"><div class="value" id="exp-value">0</div><div class="label">⭐ Опыт</div></div>
+                    <div class="stat"><div class="value" id="my-employees-count">0</div><div class="label">👥 Сотрудники</div></div>
+                    <div class="stat"><div class="value" id="my-income">0</div><div class="label">📈 Доход/час</div></div>
                 </div>
                 <div style="display:flex;gap:10px;margin-top:18px;padding-top:6px;">
                     <button class="btn-invite-friend" id="invite-friend-btn" style="flex:1;padding:14px 10px;font-size:16px;min-height:52px;border-radius:12px;">📨 Пригласить (+500)</button>
@@ -82,7 +54,7 @@
             </div>
         </div>
 
-        <!-- ТОП -->
+        <!-- Топ -->
         <div id="screen-top" class="screen">
             <div class="card">
                 <div class="subtab-bar">
@@ -93,7 +65,7 @@
             </div>
         </div>
 
-        <!-- БИРЖА -->
+        <!-- Биржа -->
         <div id="screen-market" class="screen">
             <div class="card">
                 <div class="section-title">💼 Биржа труда</div>
@@ -101,7 +73,7 @@
             </div>
         </div>
 
-        <!-- МОЯ КОМПАНИЯ -->
+        <!-- Моя компания -->
         <div id="screen-my-company" class="screen">
             <div class="card">
                 <div class="section-title">🏢 <span id="my-company-name"></span></div>
@@ -112,7 +84,7 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА ВВОДА -->
+    <!-- Модалка ввода -->
     <div class="modal" id="input-modal">
         <div class="modal-content">
             <span class="modal-close" onclick="document.getElementById('input-modal').style.display='none'">✕</span>
@@ -125,7 +97,7 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА ИГРОКА -->
+    <!-- Модалка игрока -->
     <div class="modal" id="player-modal">
         <div class="modal-content">
             <span class="modal-close" onclick="closePlayerModal()">✕</span>
@@ -139,7 +111,7 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА КОМПАНИИ -->
+    <!-- Модалка компании -->
     <div class="modal" id="company-modal">
         <div class="modal-content">
             <span class="modal-close" onclick="closeCompanyModal()">✕</span>
@@ -152,7 +124,7 @@
         </div>
     </div>
 
-    <!-- НАСТРОЙКИ -->
+    <!-- Настройки -->
     <div class="modal" id="settings-modal">
         <div class="modal-content">
             <span class="modal-close" onclick="closeSettings()">✕</span>
@@ -164,70 +136,14 @@
         </div>
     </div>
 
-    <!-- ======== ПОДКЛЮЧАЕМ МОДУЛИ С ОТЛАДКОЙ ======== -->
-    <script>
-        var debug = document.getElementById('debug-info');
-        debug.textContent = '🔄 Загрузка скриптов...\n';
-        debug.textContent += '✅ VK Bridge загружен: ' + (typeof vkBridge !== 'undefined' ? 'ДА' : 'НЕТ') + '\n';
-        debug.textContent += '✅ Supabase загружен: ' + (typeof supabase !== 'undefined' ? 'ДА' : 'НЕТ') + '\n';
-        debug.textContent += '---\n';
-    </script>
-
+    <!-- Подключаем модули ПО ПОРЯДКУ -->
     <script src="config.js"></script>
-    <script>
-        var debug = document.getElementById('debug-info');
-        debug.textContent += '✅ config.js загружен\n';
-        debug.textContent += '   SUPABASE_URL: ' + (typeof SUPABASE_URL !== 'undefined' ? 'ДА ✅' : 'НЕТ ❌') + '\n';
-        debug.textContent += '   APP_ID: ' + (typeof APP_ID !== 'undefined' ? 'ДА ✅' : 'НЕТ ❌') + '\n';
-    </script>
-
     <script src="ui.js"></script>
-    <script>
-        var debug = document.getElementById('debug-info');
-        debug.textContent += '✅ ui.js загружен\n';
-        debug.textContent += '   toast: ' + (typeof toast !== 'undefined' ? 'ДА ✅' : 'НЕТ ❌') + '\n';
-        debug.textContent += '   renderAll: ' + (typeof renderAll !== 'undefined' ? 'ДА ✅' : 'НЕТ ❌') + '\n';
-        debug.textContent += '   goTo: ' + (typeof goTo !== 'undefined' ? 'ДА ✅' : 'НЕТ ❌') + '\n';
-    </script>
-
     <script src="data.js"></script>
-    <script>
-        var debug = document.getElementById('debug-info');
-        debug.textContent += '✅ data.js загружен\n';
-        debug.textContent += '   updateAllStats: ' + (typeof updateAllStats !== 'undefined' ? 'ДА ✅' : 'НЕТ ❌') + '\n';
-    </script>
-
     <script src="market.js"></script>
-    <script>
-        var debug = document.getElementById('debug-info');
-        debug.textContent += '✅ market.js загружен\n';
-    </script>
-
     <script src="tasks.js"></script>
-    <script>
-        var debug = document.getElementById('debug-info');
-        debug.textContent += '✅ tasks.js загружен\n';
-    </script>
-
     <script src="leaders.js"></script>
-    <script>
-        var debug = document.getElementById('debug-info');
-        debug.textContent += '✅ leaders.js загружен\n';
-    </script>
-
     <script src="modals.js"></script>
-    <script>
-        var debug = document.getElementById('debug-info');
-        debug.textContent += '✅ modals.js загружен\n';
-    </script>
-
     <script src="main.js"></script>
-    <script>
-        var debug = document.getElementById('debug-info');
-        debug.textContent += '✅ main.js загружен\n';
-        debug.textContent += '---\n';
-        debug.textContent += '🚀 Запуск приложения...\n';
-    </script>
-
 </body>
 </html>
