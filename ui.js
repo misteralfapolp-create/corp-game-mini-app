@@ -236,7 +236,7 @@ function renderTasks() {
 }
 
 function renderAll() {
-    updateNavButtons('profile');
+    // Быстрое обновление без лишних запросов
     document.getElementById('header-avatar').src = currentUser.photo_200 || (currentVkUser ? currentVkUser.photo_200 : '') || 'https://vk.com/images/camera_200.png';
     document.getElementById('player-name').textContent = currentUser.first_name + ' ' + currentUser.last_name;
     document.getElementById('exp-value').textContent = currentUser.experience || 0;
@@ -244,29 +244,50 @@ function renderAll() {
     var compEl = document.getElementById('company-display');
     if(currentUser.company) {
         compEl.innerHTML = '🏢 <span style="cursor:pointer;" onclick="goTo(\'my-company\')">' + currentUser.company + '</span>';
-        if(currentUser.company_group_id) compEl.innerHTML += ' <a href="https://vk.com/club' + currentUser.company_group_id + '" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>';
-    } else { compEl.textContent = ''; }
+        if(currentUser.company_group_id) {
+            compEl.innerHTML += ' <a href="https://vk.com/club' + currentUser.company_group_id + '" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>';
+        }
+    } else { 
+        compEl.textContent = ''; 
+    }
     
-    document.getElementById('collect-panel').style.display = myTeamTotal ? 'flex' : 'none';
-    if(myTeamTotal) {
+    var hasPending = (currentUser.pending_experience || 0) > 0;
+    var collectPanel = document.getElementById('collect-panel');
+    collectPanel.style.display = hasPending ? 'flex' : 'none';
+    if(hasPending) {
         document.getElementById('collect-amount').textContent = currentUser.pending_experience || 0;
         document.getElementById('collect-btn').onclick = collectExperience;
     }
+    
     document.getElementById('invite-friend-btn').onclick = inviteFriend;
+    
+    // Обновляем счётчики (уже обновлены в updateAllStats)
+    document.getElementById('my-employees-count').textContent = myTeamTotal;
+    document.getElementById('my-team-total').textContent = myTeamTotal;
+    
+    // Рендерим задания (быстро, без запросов)
     renderTasks();
-    loadMyTeam(true);
 }
 
 function loadMyTeam(reset) {
-    if(reset) { myTeamOffset = 0; document.getElementById('my-team-list').innerHTML = ''; }
+    if(reset) { 
+        myTeamOffset = 0; 
+        myTeamTotal = myTeam.length;
+        var list = document.getElementById('my-team-list');
+        list.innerHTML = '';
+    }
+    
     var list = document.getElementById('my-team-list');
     if(!myTeam.length) {
         list.innerHTML = '<p style="color:#aaa;text-align:center;">Нет сотрудников</p>';
         document.getElementById('load-more-btn').style.display = 'none';
         return;
     }
+    
     var page = myTeam.slice(myTeamOffset, myTeamOffset + TEAM_PAGE_SIZE);
-    page.forEach(function(emp) { renderEmployeeCard(emp, list, true, true); });
+    page.forEach(function(emp) { 
+        renderEmployeeCard(emp, list, true, true); 
+    });
     myTeamOffset += page.length;
     document.getElementById('load-more-btn').style.display = (myTeamOffset < myTeamTotal) ? 'block' : 'none';
 }
