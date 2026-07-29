@@ -1,5 +1,8 @@
 // ================= UI: УВЕДОМЛЕНИЯ, МОДАЛКИ, НАВИГАЦИЯ =================
 
+var renderAllLock = false;
+var lastTeamHash = '';
+
 function toast(msg, type) {
     type = type || 'info';
     var container = document.getElementById('toast-container');
@@ -72,6 +75,11 @@ function addNavBtn(screen, label) {
 
 // Карточка сотрудника
 function renderEmployeeCard(emp, container, showActions, showCompany) {
+    if (!emp || !emp.vk_id) {
+        console.error('Ошибка: некорректный сотрудник', emp);
+        return;
+    }
+    
     var lvl = emp.level || 1;
     var jobTitle = getJobTitle(lvl);
     var income = lvl;
@@ -236,53 +244,110 @@ function renderTasks() {
 }
 
 function renderAll() {
-    // Быстрое обновление без лишних запросов
-    document.getElementById('header-avatar').src = currentUser.photo_200 || (currentVkUser ? currentVkUser.photo_200 : '') || 'https://vk.com/images/camera_200.png';
-    document.getElementById('player-name').textContent = currentUser.first_name + ' ' + currentUser.last_name;
-    document.getElementById('exp-value').textContent = currentUser.experience || 0;
+    if (renderAllLock) return;
+    renderAllLock = true;
     
-    var compEl = document.getElementById('company-display');
-    if(currentUser.company) {
-        compEl.innerHTML = '🏢 <span style="cursor:pointer;" onclick="goTo(\'my-company\')">' + currentUser.company + '</span>';
-        if(currentUser.company_group_id) {
-            compEl.innerHTML += ' <a href="https://vk.com/club' + currentUser.company_group_id + '" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>';
+    try {
+        // Обновляем аватар
+        var avatar = document.getElementById('header-avatar');
+        if (avatar) {
+            avatar.src = currentUser.photo_200 || (currentVkUser ? currentVkUser.photo_200 : '') || 'https://vk.com/images/camera_200.png';
         }
-    } else { 
-        compEl.textContent = ''; 
+        
+        // Обновляем имя
+        var nameEl = document.getElementById('player-name');
+        if (nameEl) {
+            nameEl.textContent = currentUser.first_name + ' ' + currentUser.last_name;
+        }
+        
+        // Обновляем опыт
+        var expEl = document.getElementById('exp-value');
+        if (expEl) {
+            expEl.textContent = currentUser.experience || 0;
+        }
+        
+        // Обновляем компанию
+        var compEl = document.getElementById('company-display');
+        if (compEl) {
+            if (currentUser.company) {
+                compEl.innerHTML = '🏢 <span style="cursor:pointer;" onclick="goTo(\'my-company\')">' + currentUser.company + '</span>';
+                if (currentUser.company_group_id) {
+                    compEl.innerHTML += ' <a href="https://vk.com/club' + currentUser.company_group_id + '" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>';
+                }
+            } else {
+                compEl.textContent = '';
+            }
+        }
+        
+        // Обновляем панель сбора
+        var collectPanel = document.getElementById('collect-panel');
+        if (collectPanel) {
+            var hasPending = (currentUser.pending_experience || 0) > 0;
+            collectPanel.style.display = hasPending ? 'flex' : 'none';
+            if (hasPending) {
+                var collectAmount = document.getElementById('collect-amount');
+                if (collectAmount) {
+                    collectAmount.textContent = currentUser.pending_experience || 0;
+                }
+                var collectBtn = document.getElementById('collect-btn');
+                if (collectBtn) {
+                    collectBtn.onclick = collectExperience;
+                }
+            }
+        }
+        
+        // Кнопка приглашения
+        var inviteBtn = document.getElementById('invite-friend-btn');
+        if (inviteBtn) {
+            inviteBtn.onclick = inviteFriend;
+        }
+        
+        // Обновляем количество сотрудников
+        document.getElementById('my-employees-count').textContent = myTeamTotal;
+        document.getElementById('my-team-total').textContent = myTeamTotal;
+        
+        // Загружаем сотрудников
+        loadMyTeam(true);
+        
+        // Рендерим задания
+        renderTasks();
+        
+        // Обновляем навигацию
+        updateNavButtons('profile');
+        
+    } catch (e) {
+        console.error('Ошибка в renderAll:', e);
+    } finally {
+        setTimeout(function() {
+            renderAllLock = false;
+        }, 300);
     }
-    
-    var hasPending = (currentUser.pending_experience || 0) > 0;
-    var collectPanel = document.getElementById('collect-panel');
-    collectPanel.style.display = hasPending ? 'flex' : 'none';
-    if(hasPending) {
-        document.getElementById('collect-amount').textContent = currentUser.pending_experience || 0;
-        document.getElementById('collect-btn').onclick = collectExperience;
-    }
-    
-    document.getElementById('invite-friend-btn').onclick = inviteFriend;
-    
-    // Обновляем счётчики (уже обновлены в updateAllStats)
-    document.getElementById('my-employees-count').textContent = myTeamTotal;
-    document.getElementById('my-team-total').textContent = myTeamTotal;
-    
-    // Рендерим задания (быстро, без запросов)
-    renderTasks();
 }
 
 function loadMyTeam(reset) {
-    if(reset) { 
+    if (reset) { 
         myTeamOffset = 0; 
         myTeamTotal = myTeam.length;
-        var list = document.getElementById('my-team-list');
-        list.innerHTML = '';
+        var listEl = document.getElementById('my-team-list');
+        if (listEl) listEl.innerHTML = '';
+        lastTeamHash = '';
     }
     
     var list = document.getElementById('my-team-list');
-    if(!myTeam.length) {
+    if (!list) return;
+    
+    if (!myTeam.length) {
         list.innerHTML = '<p style="color:#aaa;text-align:center;">Нет сотрудников</p>';
         document.getElementById('load-more-btn').style.display = 'none';
         return;
     }
+    
+    // Вычисляем хеш текущего списка, чтобы не перерисовывать без изменений
+    var currentHash = myTeam.map(function(e) { return e.vk_id + ':' + e.level; }).join(',');
+    if (!reset && currentHash === lastTeamHash && myTeamOffset > 0) {
+        return; // Ничего не изменилось
+    }
+    lastTeamHash = currentHash;
     
     var page = myTeam.slice(myTeamOffset, myTeamOffset + TEAM_PAGE_SIZE);
     page.forEach(function(emp) { 
