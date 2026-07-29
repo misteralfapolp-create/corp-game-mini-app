@@ -1,18 +1,8 @@
 // ================= ЗАПУСК ПРИЛОЖЕНИЯ =================
 
-var appInitialized = false;
-
 async function initApp() {
-    if (appInitialized) {
-        console.log('Приложение уже инициализировано');
-        return;
-    }
-    appInitialized = true;
-    
     try {
         console.log('🚀 APP STARTED');
-        console.log('1. Проверка VK Bridge:', typeof vkBridge !== 'undefined' ? 'OK ✅' : 'NOT LOADED ❌');
-        console.log('2. Проверка Supabase:', typeof supabase !== 'undefined' ? 'OK ✅' : 'NOT LOADED ❌');
         
         document.getElementById('player-name').textContent = 'Загрузка...';
         
@@ -53,19 +43,17 @@ async function initApp() {
                 company: null,
                 role: ownerId ? 'Учёный' : null,
                 experience: 0,
-                income_per_hour: 0,
                 invited_by: invitedBy ? parseInt(invitedBy) : null,
                 last_collect: new Date().toISOString(),
                 pending_experience: 0,
                 level: 1,
                 hire_cost: 100,
-                total_company_exp: 0,
                 owner_id: ownerId,
                 company_group_id: null,
-                max_pending: 0,
                 task_group_done: false,
                 task_promo_done: false,
-                company_photo: null
+                task_notify_done: false,
+                max_pending: 0
             }]);
             
             if (insertResult.error) {
@@ -146,6 +134,7 @@ async function initApp() {
         
         console.log('17. Рендерим UI...');
         renderAll();
+        updateNavButtons('profile');
         
         console.log('18. ✅ ВСЕ ГОТОВО!');
         
