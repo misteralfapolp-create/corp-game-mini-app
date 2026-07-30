@@ -52,7 +52,6 @@ async function initApp() {
                 company_group_id: null,
                 task_group_done: false,
                 task_promo_done: false,
-                task_notify_done: false,
                 max_pending: 0
             }]);
             
@@ -105,10 +104,6 @@ async function initApp() {
             currentUser.task_group_done = false;
             currentUser.task_promo_done = false;
             currentUser.max_pending = 0;
-        }
-        if (currentUser.task_notify_done === undefined) {
-            await supabase.from('players').update({ task_notify_done: false }).eq('vk_id', currentUser.vk_id);
-            currentUser.task_notify_done = false;
         }
         
         // Обработка реферала
