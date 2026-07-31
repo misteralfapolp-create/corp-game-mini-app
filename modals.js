@@ -2,98 +2,160 @@
 
 async function createCompany() {
     try {
-        console.log('1. Запрашиваем токен...');
-        var tokenResult = await vkBridge.send('VKWebAppGetAuthToken', {
-            app_id: String(APP_ID),
-            scope: 'groups'
-        });
-        console.log('2. Токен получен:', tokenResult);
+        console.log('=== СОЗДАНИЕ КОМПАНИИ ===');
+        console.log('1. Проверяем текущего пользователя...');
         
-        if(!tokenResult || !tokenResult.access_token) {
-            toast('Не удалось получить доступ к группам', 'error');
+        if (!currentUser) {
+            toast('Пользователь не загружен', 'error');
             return;
         }
         
-        console.log('3. Запрашиваем группы...');
-        var groupsResult = await vkBridge.send('VKWebAppCallAPIMethod', {
-            method: 'groups.get',
-            params: {
-                filter: 'admin',
-                extended: 1,
-                access_token: tokenResult.access_token,
-                v: '5.199'
-            }
-        });
-        console.log('4. Группы получены:', groupsResult);
+        // Проверяем, есть ли уже компания
+        if (currentUser.company) {
+            toast('У вас уже есть компания: ' + currentUser.company, 'info');
+            return;
+        }
         
-        if(groupsResult && groupsResult.response && groupsResult.response.items && groupsResult.response.items.length > 0) {
-            var groups = groupsResult.response.items;
+        console.log('2. Запрашиваем токен доступа к группам...');
+        var tokenResult;
+        try {
+            tokenResult = await vkBridge.send('VKWebAppGetAuthToken', {
+                app_id: String(APP_ID),
+                scope: 'groups'
+            });
+            console.log('3. Токен получен:', tokenResult);
+        } catch(tokenError) {
+            console.error('Ошибка получения токена:', tokenError);
+            toast('Ошибка получения доступа к группам. Попробуйте позже.', 'error');
+            return;
+        }
+        
+        if (!tokenResult || !tokenResult.access_token) {
+            toast('Не удалось получить доступ к группам. Разрешите доступ в окне ВК.', 'error');
+            return;
+        }
+        
+        console.log('4. Запрашиваем список групп, где пользователь администратор...');
+        var groupsResult;
+        try {
+            groupsResult = await vkBridge.send('VKWebAppCallAPIMethod', {
+                method: 'groups.get',
+                params: {
+                    filter: 'admin',
+                    extended: 1,
+                    access_token: tokenResult.access_token,
+                    v: '5.199'
+                }
+            });
+            console.log('5. Результат groups.get:', groupsResult);
+        } catch(apiError) {
+            console.error('Ошибка VK API:', apiError);
+            toast('Ошибка загрузки групп: ' + (apiError.message || 'неизвестная'), 'error');
+            return;
+        }
+        
+        // Проверяем структуру ответа
+        if (!groupsResult || !groupsResult.response) {
+            console.error('Некорректный ответ от VK:', groupsResult);
+            toast('Ошибка: не удалось получить список групп', 'error');
+            return;
+        }
+        
+        var items = groupsResult.response.items || [];
+        console.log('6. Найдено групп:', items.length);
+        
+        if (items.length === 0) {
+            toast('У вас нет групп, где вы администратор', 'info');
+            return;
+        }
+        
+        // Показываем список групп
+        var modal = document.getElementById('input-modal');
+        document.getElementById('input-modal-title').textContent = 'Выберите группу для компании';
+        var input = document.getElementById('input-modal-input');
+        input.style.display = 'none';
+        
+        // Удаляем старый список, если есть
+        var oldList = document.getElementById('groups-list');
+        if (oldList) oldList.remove();
+        
+        var listContainer = document.createElement('div');
+        listContainer.id = 'groups-list';
+        listContainer.style.cssText = 'max-height:300px;overflow-y:auto;margin:10px 0;';
+        
+        items.forEach(function(g) {
+            var item = document.createElement('div');
+            item.style.cssText = 'padding:12px;margin:4px 0;background:rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;font-size:14px;transition:0.2s;display:flex;align-items:center;gap:10px;';
             
-            var modal = document.getElementById('input-modal');
-            document.getElementById('input-modal-title').textContent = 'Выберите группу';
-            var input = document.getElementById('input-modal-input');
-            input.style.display = 'none';
+            // Аватар группы
+            var avatar = g.photo_200 || g.photo_100 || 'https://vk.com/images/community_200.png';
+            item.innerHTML = '<img src="' + avatar + '" style="width:32px;height:32px;border-radius:50%;flex-shrink:0;" onerror="this.style.display=\'none\'">' +
+                '<span>' + g.name + ' (' + g.members_count + ' участ.)</span>';
             
-            var listContainer = document.createElement('div');
-            listContainer.id = 'groups-list';
-            listContainer.style.cssText = 'max-height:300px;overflow-y:auto;margin:10px 0;';
+            item.onmouseover = function() { this.style.background = 'rgba(74,118,168,0.4)'; };
+            item.onmouseout = function() { this.style.background = 'rgba(255,255,255,0.08)'; };
             
-            groups.forEach(function(g) {
-                var item = document.createElement('div');
-                item.style.cssText = 'padding:12px;margin:4px 0;background:rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;font-size:14px;transition:0.2s;';
-                item.textContent = g.name;
-                item.onmouseover = function() { this.style.background = 'rgba(74,118,168,0.4)'; };
-                item.onmouseout = function() { this.style.background = 'rgba(255,255,255,0.08)'; };
-                item.onclick = function() {
-                    modal.style.display = 'none';
-                    var oldList = document.getElementById('groups-list');
-                    if(oldList) oldList.remove();
-                    input.style.display = 'block';
-                    
-                    // Проверяем, не существует ли уже компания с таким названием
-                    supabase.from('players')
-                        .select('company')
-                        .eq('company', g.name)
-                        .limit(1)
-                        .then(function(existing) {
-                            if(existing.data && existing.data.length > 0) {
-                                toast('Компания с таким названием уже существует', 'error');
+            item.onclick = function() {
+                modal.style.display = 'none';
+                var oldList2 = document.getElementById('groups-list');
+                if(oldList2) oldList2.remove();
+                input.style.display = 'block';
+                
+                console.log('7. Выбрана группа:', g.name, 'ID:', g.id);
+                
+                // Проверяем, не существует ли уже компания с таким названием
+                supabase.from('players')
+                    .select('company')
+                    .eq('company', g.name)
+                    .limit(1)
+                    .then(function(existing) {
+                        if (existing.data && existing.data.length > 0) {
+                            toast('Компания с названием "' + g.name + '" уже существует', 'error');
+                            return;
+                        }
+                        
+                        supabase.from('players').update({
+                            company: g.name,
+                            company_group_id: g.id
+                        }).eq('vk_id', currentUser.vk_id).then(function(updateResult) {
+                            if (updateResult.error) {
+                                console.error('Ошибка сохранения:', updateResult.error);
+                                toast('Ошибка создания компании: ' + updateResult.error.message, 'error');
                                 return;
                             }
                             
-                            supabase.from('players').update({
-                                company: g.name,
-                                company_group_id: g.id
-                            }).eq('vk_id', currentUser.vk_id).then(function() {
-                                currentUser.company = g.name;
-                                currentUser.company_group_id = g.id;
-                                toast('✅ Компания «' + g.name + '» создана!', 'success');
-                                location.reload();
-                            });
+                            currentUser.company = g.name;
+                            currentUser.company_group_id = g.id;
+                            toast('✅ Компания «' + g.name + '» создана!', 'success');
+                            
+                            // Обновляем экран
+                            updateAllStats();
+                            renderAll();
+                            loadMyCompanyScreen();
                         });
-                };
-                listContainer.appendChild(item);
-            });
-            
-            var buttonsContainer = input.parentNode;
-            buttonsContainer.insertBefore(listContainer, document.getElementById('input-modal-ok').parentNode);
-            
-            modal.style.display = 'flex';
-            
-            document.getElementById('input-modal-cancel').onclick = function() {
-                modal.style.display = 'none';
-                var oldList = document.getElementById('groups-list');
-                if(oldList) oldList.remove();
-                input.style.display = 'block';
+                    });
             };
-            
-            document.getElementById('input-modal-ok').style.display = 'none';
-            
-        } else {
-            toast('У вас нет групп для управления', 'error');
-        }
+            listContainer.appendChild(item);
+        });
+        
+        var buttonsContainer = input.parentNode;
+        buttonsContainer.insertBefore(listContainer, document.getElementById('input-modal-ok').parentNode);
+        
+        modal.style.display = 'flex';
+        
+        document.getElementById('input-modal-cancel').onclick = function() {
+            modal.style.display = 'none';
+            var oldList2 = document.getElementById('groups-list');
+            if(oldList2) oldList2.remove();
+            input.style.display = 'block';
+        };
+        
+        document.getElementById('input-modal-ok').style.display = 'none';
+        
     } catch(e) {
-        console.error('Ошибка создания компании:', e);
+        console.error('=== КРИТИЧЕСКАЯ ОШИБКА В createCompany ===');
+        console.error('Сообщение:', e.message);
+        console.error('Стек:', e.stack);
         toast('Ошибка: ' + (e.message || 'неизвестная'), 'error');
     }
 }
@@ -169,7 +231,6 @@ async function openCompanyModal(name) {
         } else {
             jb.style.display = 'block';
             jb.onclick = async function() {
-                // Проверка, не состоит ли уже в компании
                 if (currentUser.company) {
                     toast('Вы уже в компании: ' + currentUser.company, 'error');
                     return;
@@ -213,7 +274,6 @@ async function applyPromo() {
     
     var promo = r.data;
     
-    // Проверка на истекший срок
     if(promo.expires_at && new Date(promo.expires_at) < new Date()) {
         toast('Промокод истек!', 'error');
         return;
