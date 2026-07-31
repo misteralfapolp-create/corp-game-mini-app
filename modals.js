@@ -1,3 +1,35 @@
+// ================= ОБРАБОТКА ТОКЕНА ИЗ URL =================
+
+// Функция для извлечения токена из URL
+function getTokenFromUrl() {
+    var hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+        var params = new URLSearchParams(hash.substring(1));
+        var token = params.get('access_token');
+        var userId = params.get('user_id');
+        if (token) {
+            console.log('✅ Токен получен из URL!');
+            return token;
+        }
+    }
+    return null;
+}
+
+// При загрузке страницы проверяем, есть ли токен в URL
+window.addEventListener('load', function() {
+    var token = getTokenFromUrl();
+    if (token) {
+        console.log('Токен найден:', token);
+        // Сохраняем токен в localStorage
+        localStorage.setItem('vk_access_token_' + APP_ID, token);
+        // Убираем hash из URL, чтобы не светить токен
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+        }
+        toast('✅ Доступ к группам разрешён! Теперь создайте компанию.', 'success');
+    }
+});
+
 // ================= СОЗДАНИЕ КОМПАНИИ =================
 
 async function createCompany() {
@@ -5,18 +37,41 @@ async function createCompany() {
         // Проверяем APP_ID
         if (!APP_ID || APP_ID === '') {
             toast('Ошибка: APP_ID не задан в config.js', 'error');
-            console.error('APP_ID не задан');
             return;
         }
-        
-        console.log('=== СОЗДАНИЕ КОМПАНИИ ===');
-        console.log('APP_ID:', APP_ID);
-        console.log('currentUser:', currentUser);
         
         // Проверяем, есть ли уже компания
         if (currentUser.company) {
             toast('У вас уже есть компания: ' + currentUser.company, 'info');
             return;
+        }
+        
+        // Проверяем, есть ли сохранённый токен
+        var savedToken = localStorage.getItem('vk_access_token_' + APP_ID);
+        if (savedToken) {
+            console.log('🔑 Используем сохранённый токен');
+            try {
+                var groupsResult = await vkBridge.send('VKWebAppCallAPIMethod', {
+                    method: 'groups.get',
+                    params: {
+                        filter: 'admin',
+                        extended: 1,
+                        access_token: savedToken,
+                        v: '5.199'
+                    }
+                });
+                
+                if (groupsResult && groupsResult.response) {
+                    var items = groupsResult.response.items || [];
+                    if (items.length > 0) {
+                        showGroupsList(items);
+                        return;
+                    }
+                }
+            } catch(e) {
+                console.log('Токен устарел, запрашиваем новый');
+                localStorage.removeItem('vk_access_token_' + APP_ID);
+            }
         }
         
         // Определяем окружение
@@ -174,6 +229,11 @@ function requestGroupsAccess() {
                 clearInterval(checkInterval);
                 // Проверяем, успешно ли разрешили
                 toast('✅ Если вы разрешили доступ, попробуйте создать компанию снова', 'success');
+                // Проверяем, сохранился ли токен
+                var savedToken = localStorage.getItem('vk_access_token_' + APP_ID);
+                if (savedToken) {
+                    toast('✅ Токен сохранён! Нажмите "Создать компанию"', 'success');
+                }
             }
         } catch(e) {
             // Окно закрыто или ошибка доступа
@@ -463,5 +523,6 @@ window.requestGroupsAccess = requestGroupsAccess;
 window.closeGroupsInfo = closeGroupsInfo;
 window.showBrowserAuthModal = showBrowserAuthModal;
 window.showGroupsList = showGroupsList;
+window.getTokenFromUrl = getTokenFromUrl;
 
 console.log('✅ modals.js загружен');
