@@ -1,35 +1,3 @@
-// ================= ОБРАБОТКА ТОКЕНА ИЗ URL =================
-
-// Функция для извлечения токена из URL
-function getTokenFromUrl() {
-    var hash = window.location.hash;
-    if (hash && hash.includes('access_token')) {
-        var params = new URLSearchParams(hash.substring(1));
-        var token = params.get('access_token');
-        var userId = params.get('user_id');
-        if (token) {
-            console.log('✅ Токен получен из URL!');
-            return token;
-        }
-    }
-    return null;
-}
-
-// При загрузке страницы проверяем, есть ли токен в URL
-window.addEventListener('load', function() {
-    var token = getTokenFromUrl();
-    if (token) {
-        console.log('Токен найден:', token);
-        // Сохраняем токен в localStorage
-        localStorage.setItem('vk_access_token_' + APP_ID, token);
-        // Убираем hash из URL, чтобы не светить токен
-        if (window.history && window.history.replaceState) {
-            window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-        }
-        toast('✅ Доступ к группам разрешён! Теперь создайте компанию.', 'success');
-    }
-});
-
 // ================= СОЗДАНИЕ КОМПАНИИ =================
 
 async function createCompany() {
@@ -46,48 +14,20 @@ async function createCompany() {
             return;
         }
         
-        // Проверяем, есть ли сохранённый токен
-        var savedToken = localStorage.getItem('vk_access_token_' + APP_ID);
-        if (savedToken) {
-            console.log('🔑 Используем сохранённый токен');
-            try {
-                var groupsResult = await vkBridge.send('VKWebAppCallAPIMethod', {
-                    method: 'groups.get',
-                    params: {
-                        filter: 'admin',
-                        extended: 1,
-                        access_token: savedToken,
-                        v: '5.199'
-                    }
-                });
-                
-                if (groupsResult && groupsResult.response) {
-                    var items = groupsResult.response.items || [];
-                    if (items.length > 0) {
-                        showGroupsList(items);
-                        return;
-                    }
-                }
-            } catch(e) {
-                console.log('Токен устарел, запрашиваем новый');
-                localStorage.removeItem('vk_access_token_' + APP_ID);
-            }
-        }
-        
-        // Определяем окружение
+        // Определяем окружение — браузер или мобильное приложение
         var isMobile = window.location.href.includes('vk.com') && 
                        (window.location.href.includes('mobile') || 
                         window.navigator.userAgent.includes('Mobile'));
         
         console.log('Окружение:', isMobile ? 'Мобильное приложение VK' : 'Браузер/Web');
         
-        // Для браузера — показываем инструкцию с кнопкой
+        // ⚠️ Для браузера — показываем простое сообщение
         if (!isMobile) {
-            showBrowserAuthModal();
+            toast('📱 Создание компании доступно только в мобильном приложении VK', 'info');
             return;
         }
         
-        // Для мобильного приложения — стандартный поток
+        // ===== ДЛЯ МОБИЛЬНОГО ПРИЛОЖЕНИЯ =====
         console.log('1. Запрашиваем токен...');
         var tokenResult;
         try {
@@ -150,115 +90,8 @@ async function createCompany() {
     }
 }
 
-// ================= ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =================
+// ================= ПОКАЗАТЬ СПИСОК ГРУПП =================
 
-// Показать модалку для браузера
-function showBrowserAuthModal() {
-    var modal = document.getElementById('input-modal');
-    document.getElementById('input-modal-title').textContent = '⚠️ Доступ к группам';
-    var input = document.getElementById('input-modal-input');
-    input.style.display = 'none';
-    document.getElementById('input-modal-ok').style.display = 'none';
-    
-    // Удаляем старые элементы
-    var oldInfo = document.getElementById('groups-info');
-    if (oldInfo) oldInfo.remove();
-    var oldList = document.getElementById('groups-list');
-    if (oldList) oldList.remove();
-    
-    var infoDiv = document.createElement('div');
-    infoDiv.id = 'groups-info';
-    infoDiv.style.cssText = 'padding:15px;margin:10px 0;background:rgba(255,152,0,0.1);border-radius:10px;text-align:center;';
-    infoDiv.innerHTML = `
-        <p style="color:#ff9800;font-size:15px;font-weight:600;">📱 Для создания компании нужно разрешить доступ к группам.</p>
-        <p style="color:#aaa;font-size:13px;margin-top:8px;">Нажмите кнопку ниже, чтобы открыть окно разрешений ВКонтакте.</p>
-        <button onclick="requestGroupsAccess()" style="margin-top:14px;padding:14px 28px;background:#4a76a8;color:#fff;border:none;border-radius:10px;font-size:16px;cursor:pointer;font-weight:700;box-shadow:0 2px 12px rgba(74,118,168,0.3);">
-            🔓 Разрешить доступ
-        </button>
-        <button onclick="closeGroupsInfo()" style="margin-top:10px;padding:10px 24px;background:rgba(255,255,255,0.08);color:#aaa;border:none;border-radius:8px;font-size:14px;cursor:pointer;">
-            Отмена
-        </button>
-        <p style="color:#666;font-size:11px;margin-top:12px;">После разрешения закройте окно и нажмите "Создать компанию" снова</p>
-    `;
-    
-    var buttonsContainer = input.parentNode;
-    buttonsContainer.insertBefore(infoDiv, document.getElementById('input-modal-ok').parentNode);
-    
-    modal.style.display = 'flex';
-    
-    document.getElementById('input-modal-cancel').onclick = function() {
-        modal.style.display = 'none';
-        var old = document.getElementById('groups-info');
-        if (old) old.remove();
-        input.style.display = 'block';
-        document.getElementById('input-modal-ok').style.display = 'block';
-    };
-}
-
-// Запрос доступа к группам (для браузера)
-function requestGroupsAccess() {
-    // Закрываем модалку
-    var modal = document.getElementById('input-modal');
-    modal.style.display = 'none';
-    
-    // Открываем окно авторизации VK
-    var authUrl = 'https://oauth.vk.com/authorize?' +
-        'client_id=' + APP_ID +
-        '&display=page' +
-        '&redirect_uri=https://oauth.vk.com/blank.html' +
-        '&scope=groups' +
-        '&response_type=token' +
-        '&v=5.199';
-    
-    console.log('Открываем авторизацию:', authUrl);
-    
-    // Открываем в новом окне
-    var win = window.open(authUrl, 'vk_auth', 'width=700,height=600,menubar=no,toolbar=no,location=no,status=no');
-    
-    if (!win || win.closed || typeof win.closed === 'undefined') {
-        toast('⚠️ Разрешите всплывающие окна для ВКонтакте', 'error');
-        return;
-    }
-    
-    toast('📱 Разрешите доступ в открывшемся окне', 'info');
-    
-    // Проверяем, закрылось ли окно
-    var checkInterval = setInterval(function() {
-        try {
-            if (win.closed) {
-                clearInterval(checkInterval);
-                // Проверяем, успешно ли разрешили
-                toast('✅ Если вы разрешили доступ, попробуйте создать компанию снова', 'success');
-                // Проверяем, сохранился ли токен
-                var savedToken = localStorage.getItem('vk_access_token_' + APP_ID);
-                if (savedToken) {
-                    toast('✅ Токен сохранён! Нажмите "Создать компанию"', 'success');
-                }
-            }
-        } catch(e) {
-            // Окно закрыто или ошибка доступа
-            clearInterval(checkInterval);
-        }
-    }, 1500);
-    
-    // Таймаут на случай, если окно зависло
-    setTimeout(function() {
-        clearInterval(checkInterval);
-    }, 60000);
-}
-
-// Закрыть информационное окно
-function closeGroupsInfo() {
-    var modal = document.getElementById('input-modal');
-    modal.style.display = 'none';
-    var old = document.getElementById('groups-info');
-    if (old) old.remove();
-    var input = document.getElementById('input-modal-input');
-    input.style.display = 'block';
-    document.getElementById('input-modal-ok').style.display = 'block';
-}
-
-// Показать список групп
 function showGroupsList(items) {
     var modal = document.getElementById('input-modal');
     document.getElementById('input-modal-title').textContent = 'Выберите группу для компании';
@@ -267,8 +100,6 @@ function showGroupsList(items) {
     
     var oldList = document.getElementById('groups-list');
     if (oldList) oldList.remove();
-    var oldInfo = document.getElementById('groups-info');
-    if (oldInfo) oldInfo.remove();
     
     var listContainer = document.createElement('div');
     listContainer.id = 'groups-list';
@@ -519,10 +350,6 @@ window.openSettings = openSettings;
 window.closeSettings = closeSettings;
 window.applyPromo = applyPromo;
 window.inviteFriend = inviteFriend;
-window.requestGroupsAccess = requestGroupsAccess;
-window.closeGroupsInfo = closeGroupsInfo;
-window.showBrowserAuthModal = showBrowserAuthModal;
 window.showGroupsList = showGroupsList;
-window.getTokenFromUrl = getTokenFromUrl;
 
 console.log('✅ modals.js загружен');
