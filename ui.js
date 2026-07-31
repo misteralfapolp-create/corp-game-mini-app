@@ -202,6 +202,7 @@ function renderTasks() {
     if(!listEl) return;
     var html = '';
     
+    // ЗАДАНИЕ: ПОСМОТРЕТЬ РЕКЛАМУ
     var remaining = getRemainingAds ? getRemainingAds() : 0;
     var adText = '🎬 Посмотреть рекламу (+' + REWARDED_AD_BONUS + ' опыта)';
     if(remaining <= 0) {
@@ -218,12 +219,14 @@ function renderTasks() {
     }
     html += '</div>';
     
+    // ЗАДАНИЕ: ПОДПИСКА НА ГРУППУ
     if(!currentUser || !currentUser.task_group_done) {
         html += '<div class="task-item"><div class="task-info"><b>📱 Подписаться на группу</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
         html += '<div style="display:flex;gap:4px;"><button class="btn-task" onclick="doGroupTask()">▶ Выполнить</button><button class="btn-task-check" onclick="checkGroupTask()">🔍 Проверить</button></div>';
         html += '</div>';
     }
     
+    // ЗАДАНИЕ: ПРОМОКОД
     html += '<div class="task-item"><div class="task-info"><b>🎁 Ввести промокод</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
     html += '<button class="btn-task" onclick="doPromoTask()">▶ Выполнить</button>';
     html += '</div>';
@@ -233,51 +236,126 @@ function renderTasks() {
 }
 
 function renderAll() {
-    document.getElementById('header-avatar').src = currentUser.photo_200 || (currentVkUser ? currentVkUser.photo_200 : '') || 'https://vk.com/images/camera_200.png';
-    document.getElementById('player-name').textContent = currentUser.first_name + ' ' + currentUser.last_name;
-    document.getElementById('exp-value').textContent = currentUser.experience || 0;
-    
-    var compEl = document.getElementById('company-display');
-    if(currentUser.company) {
-        compEl.innerHTML = '🏢 <span style="cursor:pointer;" onclick="goTo(\'my-company\')">' + currentUser.company + '</span>';
-        if(currentUser.company_group_id) compEl.innerHTML += ' <a href="https://vk.com/club' + currentUser.company_group_id + '" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>';
-    } else { compEl.textContent = ''; }
-    
-    document.getElementById('collect-panel').style.display = myTeamTotal ? 'flex' : 'none';
-    if(myTeamTotal) {
-        document.getElementById('collect-amount').textContent = currentUser.pending_experience || 0;
-        document.getElementById('collect-btn').onclick = collectExperience;
+    // Обновляем аватар
+    var avatar = document.getElementById('header-avatar');
+    if (avatar) {
+        avatar.src = currentUser.photo_200 || (currentVkUser ? currentVkUser.photo_200 : '') || 'https://vk.com/images/camera_200.png';
     }
-    document.getElementById('invite-friend-btn').onclick = inviteFriend;
-    renderTasks();
+    
+    // Обновляем имя
+    var nameEl = document.getElementById('player-name');
+    if (nameEl) {
+        nameEl.textContent = currentUser.first_name + ' ' + currentUser.last_name;
+    }
+    
+    // Обновляем опыт
+    var expEl = document.getElementById('exp-value');
+    if (expEl) {
+        expEl.textContent = currentUser.experience || 0;
+    }
+    
+    // Обновляем компанию
+    var compEl = document.getElementById('company-display');
+    if (compEl) {
+        if (currentUser.company) {
+            compEl.innerHTML = '🏢 <span style="cursor:pointer;" onclick="goTo(\'my-company\')">' + currentUser.company + '</span>';
+            if (currentUser.company_group_id) {
+                compEl.innerHTML += ' <a href="https://vk.com/club' + currentUser.company_group_id + '" target="_blank" style="color:#4a76a8;font-size:10px;">📱</a>';
+            }
+        } else {
+            compEl.textContent = '';
+        }
+    }
+    
+    // Обновляем панель сбора
+    var collectPanel = document.getElementById('collect-panel');
+    if (collectPanel) {
+        var hasPending = (currentUser.pending_experience || 0) > 0;
+        collectPanel.style.display = hasPending ? 'flex' : 'none';
+        if (hasPending) {
+            var collectAmount = document.getElementById('collect-amount');
+            if (collectAmount) {
+                collectAmount.textContent = currentUser.pending_experience || 0;
+            }
+            var collectBtn = document.getElementById('collect-btn');
+            if (collectBtn) {
+                collectBtn.onclick = collectExperience;
+            }
+        }
+    }
+    
+    // Кнопка приглашения
+    var inviteBtn = document.getElementById('invite-friend-btn');
+    if (inviteBtn) {
+        inviteBtn.onclick = inviteFriend;
+    }
+    
+    // Загружаем сотрудников
     loadMyTeam(true);
+    
+    // Рендерим задания
+    renderTasks();
 }
 
 function loadMyTeam(reset) {
-    if(reset) { myTeamOffset = 0; document.getElementById('my-team-list').innerHTML = ''; }
+    if (reset) { 
+        myTeamOffset = 0; 
+        myTeamTotal = myTeam.length;
+        document.getElementById('my-team-list').innerHTML = ''; 
+    }
+    
     var list = document.getElementById('my-team-list');
-    if(!myTeam.length) {
+    if (!list) return;
+    
+    if (!myTeam.length) {
         list.innerHTML = '<p style="color:#aaa;text-align:center;">Нет сотрудников</p>';
         document.getElementById('load-more-btn').style.display = 'none';
         return;
     }
+    
     var page = myTeam.slice(myTeamOffset, myTeamOffset + TEAM_PAGE_SIZE);
-    page.forEach(function(emp) { renderEmployeeCard(emp, list, true, true); });
+    page.forEach(function(emp) { 
+        renderEmployeeCard(emp, list, true, true); 
+    });
     myTeamOffset += page.length;
     document.getElementById('load-more-btn').style.display = (myTeamOffset < myTeamTotal) ? 'block' : 'none';
 }
 
+// ================= ПРИГЛАШЕНИЕ =================
+function inviteFriend() {
+    var refLink = 'https://vk.com/app' + APP_ID + '#ref_' + currentUser.vk_id;
+    vkBridge.send('VKWebAppShare', { 
+        link: refLink, 
+        text: '🎮 Присоединяйся к Корпоративным Играм! Стань моим сотрудником!' 
+    })
+    .then(function(){ 
+        toast('✅ Отправлено!', 'success'); 
+    })
+    .catch(function() {
+        navigator.clipboard.writeText(refLink)
+            .then(function(){ 
+                toast('🔗 Ссылка скопирована!', 'info'); 
+            })
+            .catch(function(){ 
+                toast('Не удалось отправить', 'error'); 
+            });
+    });
+}
+
 // ============================================================
-// ❗ ВАЖНО: Регистрируем функции глобально
+// ❗ ВАЖНО: Регистрируем все функции глобально
 // ============================================================
-window.renderAll = renderAll;
-window.loadMyTeam = loadMyTeam;
-window.renderTasks = renderTasks;
 window.toast = toast;
-window.goTo = goTo;
-window.updateNavButtons = updateNavButtons;
-window.renderEmployeeCard = renderEmployeeCard;
-window.renderPlayerModalContent = renderPlayerModalContent;
 window.openVkProfile = openVkProfile;
 window.showInputModal = showInputModal;
+window.goTo = goTo;
+window.updateNavButtons = updateNavButtons;
 window.addNavBtn = addNavBtn;
+window.renderEmployeeCard = renderEmployeeCard;
+window.renderPlayerModalContent = renderPlayerModalContent;
+window.renderTasks = renderTasks;
+window.renderAll = renderAll;
+window.loadMyTeam = loadMyTeam;
+window.inviteFriend = inviteFriend;
+
+console.log('✅ ui.js загружен, все функции зарегистрированы глобально');
