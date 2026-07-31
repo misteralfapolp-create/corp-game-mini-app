@@ -2,6 +2,42 @@
 
 var adWatchCount = 0;
 var adWatchDate = '';
+var adReady = false;  // Флаг готовности рекламы
+
+// ================= ПРОВЕРКА ГОТОВНОСТИ РЕКЛАМЫ =================
+async function checkAdReady() {
+    try {
+        console.log('Проверяем готовность рекламы...');
+        var result = await vkBridge.send('VKWebAppCheckNativeAds', {
+            ad_format: 'reward'
+        });
+        console.log('Результат проверки:', result);
+        
+        if (result && result.result === true) {
+            adReady = true;
+            console.log('✅ Реклама готова к показу');
+        } else {
+            adReady = false;
+            console.log('❌ Реклама не готова');
+        }
+        
+        // Обновляем интерфейс, чтобы показать актуальный статус
+        renderTasks();
+        return adReady;
+    } catch(e) {
+        console.error('Ошибка проверки рекламы:', e);
+        adReady = false;
+        renderTasks();
+        return false;
+    }
+}
+
+// Проверяем готовность рекламы при загрузке и каждые 10 секунд
+setInterval(function() {
+    if (typeof currentUser !== 'undefined' && currentUser) {
+        checkAdReady();
+    }
+}, 10000);
 
 // ================= ТОГГЛ ЗАДАНИЙ =================
 function toggleTasks() {
@@ -10,6 +46,8 @@ function toggleTasks() {
         panel.style.display = 'block';
         renderTasks();
         document.getElementById('earn-btn').textContent = '🔼 Скрыть';
+        // Проверяем рекламу при открытии панели
+        checkAdReady();
     } else {
         panel.style.display = 'none';
         document.getElementById('earn-btn').textContent = '💰 Заработать';
@@ -98,7 +136,7 @@ function getRemainingAds() {
     return Math.max(0, REWARDED_AD_LIMIT - watched);
 }
 
-// ================= ПОКАЗ РЕКЛАМЫ =================
+// ================= ПОКАЗ РЕКЛАМЫ С ПРОВЕРКОЙ =================
 async function doRewardedAd() {
     var remaining = getRemainingAds();
     if(remaining <= 0) {
@@ -117,26 +155,29 @@ async function doRewardedAd() {
         }
     }
     
+    // 🔥 ПРОВЕРЯЕМ ГОТОВНОСТЬ ПЕРЕД ПОКАЗОМ
+    var ready = await checkAdReady();
+    if (!ready) {
+        toast('📡 Реклама ещё не загружена, попробуйте через несколько секунд', 'info');
+        return;
+    }
+    
     try {
         console.log('Показываем рекламу...');
         var result = await vkBridge.send('VKWebAppShowNativeAds', {
-            ad_format: 'rewarded'
+            ad_format: 'reward'
         });
         
-        console.log('Результат рекламы:', result);
+        console.log('Результат показа:', result);
         
         if(result && result.result === true) {
             await giveAdBonus();
         } else {
-            // Если реклама не показалась, но мы в тестовом режиме
-            toast('🎬 Реклама активирована!', 'info');
-            await giveAdBonus();
+            toast('❌ Реклама не загружена', 'error');
         }
     } catch(e) {
         console.error('Ошибка показа рекламы:', e);
-        // При ошибке всё равно начисляем бонус
-        toast('🎬 Бонус за рекламу начислен!', 'info');
-        await giveAdBonus();
+        toast('❌ Ошибка при показе рекламы', 'error');
     }
 }
 
@@ -173,9 +214,14 @@ function renderTasks() {
         adText += ' (осталось ' + remaining + ' раз)';
     }
     
-    html += '<div class="task-item"><div class="task-info"><b>' + adText + '</b><br><span style="font-size:11px;color:#aaa;">Максимум ' + REWARDED_AD_LIMIT + ' раз в день • 1 мин кулдаун</span></div>';
-    if(remaining > 0) {
+    // Показываем статус готовности
+    var statusText = adReady ? '✅ готова' : '⏳ загрузка...';
+    
+    html += '<div class="task-item"><div class="task-info"><b>' + adText + '</b><br><span style="font-size:11px;color:#aaa;">Максимум ' + REWARDED_AD_LIMIT + ' раз в день • 1 мин кулдаун</span><br><span style="font-size:10px;color:#8b949e;">📡 Статус: ' + statusText + '</span></div>';
+    if(remaining > 0 && adReady) {
         html += '<button class="btn-task" onclick="doRewardedAd()" style="background:linear-gradient(135deg,#ff9800,#f57c00);color:#fff;">▶ Смотреть</button>';
+    } else if(remaining > 0 && !adReady) {
+        html += '<button class="btn-task" disabled style="background:#555;color:#888;cursor:not-allowed;">⏳ Загрузка...</button>';
     } else {
         html += '<span style="color:#f44336;">❌ Лимит</span>';
     }
@@ -197,6 +243,14 @@ function renderTasks() {
     listEl.innerHTML = html;
 }
 
+// ================= ЗАПУСК ПРИ ЗАГРУЗКЕ =================
+// Проверяем готовность рекламы через 2 секунды после загрузки
+setTimeout(function() {
+    if (typeof vkBridge !== 'undefined') {
+        checkAdReady();
+    }
+}, 2000);
+
 // Экспортируем функции глобально
 window.doRewardedAd = doRewardedAd;
 window.getRemainingAds = getRemainingAds;
@@ -205,3 +259,4 @@ window.toggleTasks = toggleTasks;
 window.doGroupTask = doGroupTask;
 window.checkGroupTask = checkGroupTask;
 window.doPromoTask = doPromoTask;
+window.checkAdReady = checkAdReady;
