@@ -96,44 +96,9 @@ async function loadMyCompanyScreen() {
         document.getElementById('my-company-name').textContent = 'У вас нет компании';
         document.getElementById('my-company-stats').textContent = '';
         
-        // ============================================================
-        // ПРОВЕРЯЕМ, ОТКУДА ОТКРЫТО ПРИЛОЖЕНИЕ
-        // ============================================================
-        var isMobileApp = false;
-        
-        // 1. Пробуем через VK Bridge (работает в мобильном приложении)
-        try {
-            var info = await vkBridge.send('VKWebAppGetClientVersion').catch(function() { return null; });
-            if (info && info.client_version) {
-                isMobileApp = true;
-                console.log('✅ Определено: мобильное приложение VK (через Bridge)');
-            }
-        } catch(e) {
-            // игнорируем
-        }
-        
-        // 2. Если не определилось — проверяем User-Agent
-        if (!isMobileApp) {
-            var ua = navigator.userAgent;
-            if (/VKMobile/i.test(ua) || /Android.*VK/i.test(ua) || /iPhone.*VK/i.test(ua)) {
-                isMobileApp = true;
-                console.log('✅ Определено: мобильное приложение VK (через User-Agent)');
-            } else {
-                console.log('ℹ️ Определено: веб-версия (ПК или браузер)');
-            }
-        }
-        // ============================================================
-        
         var html = '<p style="color:#aaa;text-align:center;margin:20px 0 10px 0;">Создайте компанию из своей группы ВК!</p>';
         html += '<p style="font-size:12px; color:#8b949e; text-align:center; margin-bottom:15px;">ℹ️ Создать компанию можно, если у вас есть группа ВКонтакте, где вы администратор.</p>';
-        
-        if (isMobileApp) {
-            // В мобильном приложении — показываем кнопку
-            html += '<button class="btn-create" onclick="createCompany()">🚀 Создать компанию</button>';
-        } else {
-            // В веб-версии — показываем сообщение
-            html += '<p style="color:#f44336;text-align:center;font-size:13px;padding:10px;background:rgba(244,67,54,0.1);border-radius:8px;">📱 Создание компании доступно только в мобильном приложении VK</p>';
-        }
+        html += '<button class="btn-create" onclick="createCompany()">🚀 Создать компанию</button>';
         
         document.getElementById('my-company-members').innerHTML = html;
         document.getElementById('my-company-leave-btn').style.display = 'none';
