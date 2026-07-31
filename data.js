@@ -23,7 +23,8 @@ async function updateAllStats() {
     if(currentUser.owner_id && currentUser.owner_id !== currentUser.vk_id) {
         ava.classList.add('hired');
         quitBtn.style.display = 'block';
-        var myCost = (currentUser.level || 1) * 50;
+        // Используем текущую hire_cost для стоимости увольнения
+        var myCost = currentUser.hire_cost || 100;
         quitBtn.textContent = '🚪 Уволиться (' + myCost + ' опыта)';
         quitBtn.onclick = async function() {
             if((currentUser.experience || 0) < myCost) { 
@@ -37,7 +38,7 @@ async function updateAllStats() {
                 owner_id: null,
                 status: 'Биржа труда',
                 role: null,
-                // level НЕ СБРАСЫВАЕТСЯ
+                // Уровень НЕ СБРАСЫВАЕТСЯ, цена увеличивается в 1.5x
                 hire_cost: Math.floor((currentUser.hire_cost || 100) * 1.5)
             }).eq('vk_id', currentUser.vk_id);
             
@@ -45,7 +46,7 @@ async function updateAllStats() {
             currentUser.owner_id = null;
             currentUser.status = 'Биржа труда';
             currentUser.role = null;
-            // level НЕ СБРАСЫВАЕТСЯ
+            currentUser.hire_cost = Math.floor((currentUser.hire_cost || 100) * 1.5);
             
             toast('✅ Вы уволились!', 'success');
             
@@ -188,6 +189,11 @@ async function giveReferralBonus(id) {
 async function hirePlayer(player) {
     var hireCost = player.hire_cost || 100;
     
+    console.log('=== НАЙМ ===');
+    console.log('Сотрудник:', player.first_name, player.vk_id);
+    console.log('Старый владелец:', player.owner_id);
+    console.log('Стоимость:', hireCost);
+    
     if ((currentUser.experience || 0) < hireCost) {
         toast('Недостаточно опыта!', 'error');
         return;
@@ -195,12 +201,15 @@ async function hirePlayer(player) {
     
     var myNewExp = Math.max(0, (currentUser.experience || 0) - hireCost);
     await supabase.from('players').update({ experience: myNewExp }).eq('vk_id', currentUser.vk_id);
+    console.log('У нанимателя списано:', hireCost, 'стало:', myNewExp);
     
+    // Если у сотрудника был старый владелец — компенсируем ему
     if (player.owner_id && player.owner_id !== currentUser.vk_id) {
         var oldOwner = await supabase.from('players').select('experience').eq('vk_id', player.owner_id).maybeSingle();
         if (oldOwner.data) {
             var oldNewExp = (oldOwner.data.experience || 0) + hireCost;
             await supabase.from('players').update({ experience: oldNewExp }).eq('vk_id', player.owner_id);
+            console.log('Старому владельцу начислено:', hireCost, 'стало:', oldNewExp);
         }
     }
     
@@ -213,6 +222,8 @@ async function hirePlayer(player) {
     
     currentUser.experience = myNewExp;
     await supabase.from('players').update({ last_collect: new Date().toISOString() }).eq('vk_id', currentUser.vk_id);
+    
+    console.log('=== КОНЕЦ НАЙМА ===');
     
     toast('✅ Нанят!', 'success');
     closePlayerModal();
@@ -227,14 +238,16 @@ async function fireEmployee(vkId) {
     if (!empResult.data) return;
     var emp = empResult.data;
     
+    // Продаём за 80% от ТЕКУЩЕЙ цены
     var sellPrice = Math.floor((emp.hire_cost || 100) * 0.8);
     
+    // Начисляем опыт владельцу
     await supabase.from('players').update({
         experience: (currentUser.experience || 0) + sellPrice
     }).eq('vk_id', currentUser.vk_id);
     currentUser.experience += sellPrice;
     
-    // Увольняем: цена ×1.5, уровень НЕ СБРАСЫВАЕТСЯ
+    // Увольняем: цена УВЕЛИЧИВАЕТСЯ в 1.5x, уровень НЕ СБРАСЫВАЕТСЯ
     var newHireCost = Math.floor((emp.hire_cost || 100) * 1.5);
     await supabase.from('players').update({
         owner_id: null,
@@ -257,6 +270,7 @@ async function fireEmployee(vkId) {
 
 // ================= УВОЛИТЬ ИЗ МОДАЛКИ =================
 async function firePlayer(player) {
+    // Продаём за 80% от ТЕКУЩЕЙ цены
     var sellPrice = Math.floor((player.hire_cost || 100) * 0.8);
     
     await supabase.from('players').update({
@@ -264,7 +278,7 @@ async function firePlayer(player) {
     }).eq('vk_id', currentUser.vk_id);
     currentUser.experience += sellPrice;
     
-    // Увольняем: цена ×1.5, уровень НЕ СБРАСЫВАЕТСЯ
+    // Увольняем: цена УВЕЛИЧИВАЕТСЯ в 1.5x, уровень НЕ СБРАСЫВАЕТСЯ
     var newHireCost = Math.floor((player.hire_cost || 100) * 1.5);
     await supabase.from('players').update({
         owner_id: null,
@@ -299,7 +313,7 @@ async function stealEmployee(emp, stealCost) {
     }).eq('vk_id', currentUser.vk_id);
     currentUser.experience = Math.max(0, (currentUser.experience || 0) - stealCost);
     
-    // Перекупаем: цена становится = stealCost, уровень НЕ МЕНЯЕТСЯ
+    // Перекупаем: цена СТАНОВИТСЯ = stealCost, уровень НЕ МЕНЯЕТСЯ
     await supabase.from('players').update({
         owner_id: currentUser.vk_id,
         hire_cost: stealCost
@@ -326,6 +340,7 @@ async function upgradeEmployee(vkId) {
     if (!empResult.data) return;
     var emp = empResult.data;
     
+    // Стоимость прокачки = уровень × 50
     var cost = (emp.level || 1) * 50;
     
     if ((currentUser.experience || 0) < cost) {
@@ -339,6 +354,7 @@ async function upgradeEmployee(vkId) {
         return;
     }
     
+    // Списываем опыт у владельца
     await supabase.from('players').update({
         experience: Math.max(0, (currentUser.experience || 0) - cost)
     }).eq('vk_id', currentUser.vk_id);
