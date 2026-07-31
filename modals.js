@@ -2,24 +2,6 @@
 
 async function createCompany() {
     try {
-        // =============================================
-        // НАДЁЖНАЯ ПРОВЕРКА: есть ли VK Bridge?
-        // В мобильном приложении VK Bridge всегда есть
-        // =============================================
-        var isVKApp = typeof vkBridge !== 'undefined' && 
-                      vkBridge !== null &&
-                      window.location.href.includes('vk.com');
-        
-        // Если это не VK (браузер ПК) — показываем уведомление
-        if (!isVKApp) {
-            toast('📱 Создание компании доступно только в мобильном приложении VK', 'info');
-            return;
-        }
-        
-        // =============================================
-        // ОРИГИНАЛЬНЫЙ КОД (БЕЗ ИЗМЕНЕНИЙ)
-        // =============================================
-        
         console.log('1. Запрашиваем токен...');
         var tokenResult = await vkBridge.send('VKWebAppGetAuthToken', {
             app_id: String(APP_ID),
@@ -68,6 +50,7 @@ async function createCompany() {
                     if(oldList) oldList.remove();
                     input.style.display = 'block';
                     
+                    // Проверяем, не существует ли уже компания с таким названием
                     supabase.from('players')
                         .select('company')
                         .eq('company', g.name)
