@@ -2,7 +2,7 @@
 
 async function createCompany() {
     try {
-        // ⚠️ ПРОВЕРКА APP_ID
+        // Проверяем APP_ID
         if (!APP_ID || APP_ID === '') {
             toast('Ошибка: APP_ID не задан в config.js', 'error');
             console.error('APP_ID не задан');
@@ -19,6 +19,20 @@ async function createCompany() {
             return;
         }
         
+        // Определяем окружение
+        var isMobile = window.location.href.includes('vk.com') && 
+                       (window.location.href.includes('mobile') || 
+                        window.navigator.userAgent.includes('Mobile'));
+        
+        console.log('Окружение:', isMobile ? 'Мобильное приложение VK' : 'Браузер/Web');
+        
+        // Для браузера — показываем инструкцию с кнопкой
+        if (!isMobile) {
+            showBrowserAuthModal();
+            return;
+        }
+        
+        // Для мобильного приложения — стандартный поток
         console.log('1. Запрашиваем токен...');
         var tokenResult;
         try {
@@ -73,72 +87,199 @@ async function createCompany() {
         }
         
         // Показываем список групп
-        var modal = document.getElementById('input-modal');
-        document.getElementById('input-modal-title').textContent = 'Выберите группу';
-        var input = document.getElementById('input-modal-input');
-        input.style.display = 'none';
-        
-        var oldList = document.getElementById('groups-list');
-        if (oldList) oldList.remove();
-        
-        var listContainer = document.createElement('div');
-        listContainer.id = 'groups-list';
-        listContainer.style.cssText = 'max-height:300px;overflow-y:auto;margin:10px 0;';
-        
-        items.forEach(function(g) {
-            var item = document.createElement('div');
-            item.style.cssText = 'padding:12px;margin:4px 0;background:rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;font-size:14px;transition:0.2s;';
-            item.textContent = g.name;
-            item.onmouseover = function() { this.style.background = 'rgba(74,118,168,0.4)'; };
-            item.onmouseout = function() { this.style.background = 'rgba(255,255,255,0.08)'; };
-            item.onclick = function() {
-                modal.style.display = 'none';
-                var oldList2 = document.getElementById('groups-list');
-                if(oldList2) oldList2.remove();
-                input.style.display = 'block';
-                
-                supabase.from('players')
-                    .select('company')
-                    .eq('company', g.name)
-                    .limit(1)
-                    .then(function(existing) {
-                        if(existing.data && existing.data.length > 0) {
-                            toast('Компания с таким названием уже существует', 'error');
-                            return;
-                        }
-                        
-                        supabase.from('players').update({
-                            company: g.name,
-                            company_group_id: g.id
-                        }).eq('vk_id', currentUser.vk_id).then(function() {
-                            currentUser.company = g.name;
-                            currentUser.company_group_id = g.id;
-                            toast('✅ Компания «' + g.name + '» создана!', 'success');
-                            location.reload();
-                        });
-                    });
-            };
-            listContainer.appendChild(item);
-        });
-        
-        var buttonsContainer = input.parentNode;
-        buttonsContainer.insertBefore(listContainer, document.getElementById('input-modal-ok').parentNode);
-        
-        modal.style.display = 'flex';
-        
-        document.getElementById('input-modal-cancel').onclick = function() {
-            modal.style.display = 'none';
-            var oldList3 = document.getElementById('groups-list');
-            if(oldList3) oldList3.remove();
-            input.style.display = 'block';
-        };
-        
-        document.getElementById('input-modal-ok').style.display = 'none';
+        showGroupsList(items);
         
     } catch(e) {
         console.error('КРИТИЧЕСКАЯ ОШИБКА:', e);
         toast('Ошибка: ' + (e.message || 'неизвестная'), 'error');
     }
+}
+
+// ================= ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =================
+
+// Показать модалку для браузера
+function showBrowserAuthModal() {
+    var modal = document.getElementById('input-modal');
+    document.getElementById('input-modal-title').textContent = '⚠️ Доступ к группам';
+    var input = document.getElementById('input-modal-input');
+    input.style.display = 'none';
+    document.getElementById('input-modal-ok').style.display = 'none';
+    
+    // Удаляем старые элементы
+    var oldInfo = document.getElementById('groups-info');
+    if (oldInfo) oldInfo.remove();
+    var oldList = document.getElementById('groups-list');
+    if (oldList) oldList.remove();
+    
+    var infoDiv = document.createElement('div');
+    infoDiv.id = 'groups-info';
+    infoDiv.style.cssText = 'padding:15px;margin:10px 0;background:rgba(255,152,0,0.1);border-radius:10px;text-align:center;';
+    infoDiv.innerHTML = `
+        <p style="color:#ff9800;font-size:15px;font-weight:600;">📱 Для создания компании нужно разрешить доступ к группам.</p>
+        <p style="color:#aaa;font-size:13px;margin-top:8px;">Нажмите кнопку ниже, чтобы открыть окно разрешений ВКонтакте.</p>
+        <button onclick="requestGroupsAccess()" style="margin-top:14px;padding:14px 28px;background:#4a76a8;color:#fff;border:none;border-radius:10px;font-size:16px;cursor:pointer;font-weight:700;box-shadow:0 2px 12px rgba(74,118,168,0.3);">
+            🔓 Разрешить доступ
+        </button>
+        <button onclick="closeGroupsInfo()" style="margin-top:10px;padding:10px 24px;background:rgba(255,255,255,0.08);color:#aaa;border:none;border-radius:8px;font-size:14px;cursor:pointer;">
+            Отмена
+        </button>
+        <p style="color:#666;font-size:11px;margin-top:12px;">После разрешения закройте окно и нажмите "Создать компанию" снова</p>
+    `;
+    
+    var buttonsContainer = input.parentNode;
+    buttonsContainer.insertBefore(infoDiv, document.getElementById('input-modal-ok').parentNode);
+    
+    modal.style.display = 'flex';
+    
+    document.getElementById('input-modal-cancel').onclick = function() {
+        modal.style.display = 'none';
+        var old = document.getElementById('groups-info');
+        if (old) old.remove();
+        input.style.display = 'block';
+        document.getElementById('input-modal-ok').style.display = 'block';
+    };
+}
+
+// Запрос доступа к группам (для браузера)
+function requestGroupsAccess() {
+    // Закрываем модалку
+    var modal = document.getElementById('input-modal');
+    modal.style.display = 'none';
+    
+    // Открываем окно авторизации VK
+    var authUrl = 'https://oauth.vk.com/authorize?' +
+        'client_id=' + APP_ID +
+        '&display=page' +
+        '&redirect_uri=https://oauth.vk.com/blank.html' +
+        '&scope=groups' +
+        '&response_type=token' +
+        '&v=5.199';
+    
+    console.log('Открываем авторизацию:', authUrl);
+    
+    // Открываем в новом окне
+    var win = window.open(authUrl, 'vk_auth', 'width=700,height=600,menubar=no,toolbar=no,location=no,status=no');
+    
+    if (!win || win.closed || typeof win.closed === 'undefined') {
+        toast('⚠️ Разрешите всплывающие окна для ВКонтакте', 'error');
+        return;
+    }
+    
+    toast('📱 Разрешите доступ в открывшемся окне', 'info');
+    
+    // Проверяем, закрылось ли окно
+    var checkInterval = setInterval(function() {
+        try {
+            if (win.closed) {
+                clearInterval(checkInterval);
+                // Проверяем, успешно ли разрешили
+                toast('✅ Если вы разрешили доступ, попробуйте создать компанию снова', 'success');
+            }
+        } catch(e) {
+            // Окно закрыто или ошибка доступа
+            clearInterval(checkInterval);
+        }
+    }, 1500);
+    
+    // Таймаут на случай, если окно зависло
+    setTimeout(function() {
+        clearInterval(checkInterval);
+    }, 60000);
+}
+
+// Закрыть информационное окно
+function closeGroupsInfo() {
+    var modal = document.getElementById('input-modal');
+    modal.style.display = 'none';
+    var old = document.getElementById('groups-info');
+    if (old) old.remove();
+    var input = document.getElementById('input-modal-input');
+    input.style.display = 'block';
+    document.getElementById('input-modal-ok').style.display = 'block';
+}
+
+// Показать список групп
+function showGroupsList(items) {
+    var modal = document.getElementById('input-modal');
+    document.getElementById('input-modal-title').textContent = 'Выберите группу для компании';
+    var input = document.getElementById('input-modal-input');
+    input.style.display = 'none';
+    
+    var oldList = document.getElementById('groups-list');
+    if (oldList) oldList.remove();
+    var oldInfo = document.getElementById('groups-info');
+    if (oldInfo) oldInfo.remove();
+    
+    var listContainer = document.createElement('div');
+    listContainer.id = 'groups-list';
+    listContainer.style.cssText = 'max-height:300px;overflow-y:auto;margin:10px 0;';
+    
+    items.forEach(function(g) {
+        var item = document.createElement('div');
+        item.style.cssText = 'padding:12px;margin:4px 0;background:rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;font-size:14px;transition:0.2s;display:flex;align-items:center;gap:10px;';
+        
+        var avatar = g.photo_200 || g.photo_100 || 'https://vk.com/images/community_200.png';
+        item.innerHTML = '<img src="' + avatar + '" style="width:32px;height:32px;border-radius:50%;flex-shrink:0;" onerror="this.style.display=\'none\'">' +
+            '<span>' + g.name + ' (' + (g.members_count || 0) + ' участ.)</span>';
+        
+        item.onmouseover = function() { this.style.background = 'rgba(74,118,168,0.4)'; };
+        item.onmouseout = function() { this.style.background = 'rgba(255,255,255,0.08)'; };
+        item.onclick = function() {
+            modal.style.display = 'none';
+            var oldList2 = document.getElementById('groups-list');
+            if(oldList2) oldList2.remove();
+            input.style.display = 'block';
+            document.getElementById('input-modal-ok').style.display = 'block';
+            
+            console.log('Выбрана группа:', g.name, 'ID:', g.id);
+            
+            supabase.from('players')
+                .select('company')
+                .eq('company', g.name)
+                .limit(1)
+                .then(function(existing) {
+                    if(existing.data && existing.data.length > 0) {
+                        toast('Компания с названием "' + g.name + '" уже существует', 'error');
+                        return;
+                    }
+                    
+                    supabase.from('players').update({
+                        company: g.name,
+                        company_group_id: g.id
+                    }).eq('vk_id', currentUser.vk_id).then(function(updateResult) {
+                        if (updateResult.error) {
+                            console.error('Ошибка сохранения:', updateResult.error);
+                            toast('Ошибка создания компании: ' + updateResult.error.message, 'error');
+                            return;
+                        }
+                        
+                        currentUser.company = g.name;
+                        currentUser.company_group_id = g.id;
+                        toast('✅ Компания «' + g.name + '» создана!', 'success');
+                        
+                        updateAllStats();
+                        renderAll();
+                        loadMyCompanyScreen();
+                    });
+                });
+        };
+        listContainer.appendChild(item);
+    });
+    
+    var buttonsContainer = input.parentNode;
+    buttonsContainer.insertBefore(listContainer, document.getElementById('input-modal-ok').parentNode);
+    
+    modal.style.display = 'flex';
+    
+    document.getElementById('input-modal-cancel').onclick = function() {
+        modal.style.display = 'none';
+        var oldList3 = document.getElementById('groups-list');
+        if(oldList3) oldList3.remove();
+        input.style.display = 'block';
+        document.getElementById('input-modal-ok').style.display = 'block';
+    };
+    
+    document.getElementById('input-modal-ok').style.display = 'none';
 }
 
 // ================= МОДАЛКА ИГРОКА =================
@@ -305,3 +446,22 @@ function inviteFriend() {
             });
     });
 }
+
+// ============================================================
+// ❗ ВАЖНО: Регистрируем функции глобально для HTML
+// ============================================================
+window.createCompany = createCompany;
+window.openPlayerModalById = openPlayerModalById;
+window.closePlayerModal = closePlayerModal;
+window.openCompanyModal = openCompanyModal;
+window.closeCompanyModal = closeCompanyModal;
+window.openSettings = openSettings;
+window.closeSettings = closeSettings;
+window.applyPromo = applyPromo;
+window.inviteFriend = inviteFriend;
+window.requestGroupsAccess = requestGroupsAccess;
+window.closeGroupsInfo = closeGroupsInfo;
+window.showBrowserAuthModal = showBrowserAuthModal;
+window.showGroupsList = showGroupsList;
+
+console.log('✅ modals.js загружен');
