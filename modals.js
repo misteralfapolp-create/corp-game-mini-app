@@ -14,20 +14,24 @@ async function createCompany() {
             return;
         }
         
-        // Определяем окружение — браузер или мобильное приложение
-        var isMobile = window.location.href.includes('vk.com') && 
-                       (window.location.href.includes('mobile') || 
-                        window.navigator.userAgent.includes('Mobile'));
+        // =============================================
+        // ⚠️ ТОЛЬКО ПРОВЕРКА ДЛЯ БРАУЗЕРА
+        // =============================================
+        // Определяем, открыто ли приложение в браузере ПК
+        var isDesktopBrowser = !window.location.href.includes('vk.com') || 
+                               (window.navigator.userAgent.includes('Windows') && 
+                                !window.navigator.userAgent.includes('Mobile'));
         
-        console.log('Окружение:', isMobile ? 'Мобильное приложение VK' : 'Браузер/Web');
-        
-        // ⚠️ Для браузера — показываем простое сообщение
-        if (!isMobile) {
+        // Если ПК-браузер — показываем сообщение и выходим
+        if (isDesktopBrowser) {
             toast('📱 Создание компании доступно только в мобильном приложении VK', 'info');
             return;
         }
         
-        // ===== ДЛЯ МОБИЛЬНОГО ПРИЛОЖЕНИЯ =====
+        // =============================================
+        // ДАЛЬШЕ — КОД ДЛЯ МОБИЛЬНОГО ПРИЛОЖЕНИЯ (БЕЗ ИЗМЕНЕНИЙ)
+        // =============================================
+        
         console.log('1. Запрашиваем токен...');
         var tokenResult;
         try {
