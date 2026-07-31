@@ -2,20 +2,8 @@
 
 async function createCompany() {
     try {
-        // Проверяем APP_ID
-        if (!APP_ID || APP_ID === '') {
-            toast('Ошибка: APP_ID не задан в config.js', 'error');
-            return;
-        }
-        
-        // Проверяем, есть ли уже компания
-        if (currentUser.company) {
-            toast('У вас уже есть компания: ' + currentUser.company, 'info');
-            return;
-        }
-        
         // =============================================
-        // ⚠️ ПРОВЕРКА ДЛЯ БРАУЗЕРА (ПК)
+        // ТОЛЬКО ЭТО ДОБАВЛЕНО ДЛЯ ПК
         // =============================================
         var isDesktopBrowser = !window.location.href.includes('vk.com') || 
                                (window.navigator.userAgent.includes('Windows') && 
@@ -25,9 +13,6 @@ async function createCompany() {
             toast('📱 Создание компании доступно только в мобильном приложении VK', 'info');
             return;
         }
-        
-        // =============================================
-        // КОД ДЛЯ МОБИЛЬНОГО ПРИЛОЖЕНИЯ (ОРИГИНАЛЬНАЯ ВЕРСИЯ)
         // =============================================
         
         console.log('1. Запрашиваем токен...');
@@ -302,5 +287,3 @@ window.openSettings = openSettings;
 window.closeSettings = closeSettings;
 window.applyPromo = applyPromo;
 window.inviteFriend = inviteFriend;
-
-console.log('✅ modals.js загружен');
