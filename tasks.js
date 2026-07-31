@@ -3,31 +3,6 @@
 var adWatchCount = 0;
 var adWatchDate = '';
 
-// ================= ПРОВЕРКА ГОТОВНОСТИ РЕКЛАМЫ =================
-var adReady = false;
-
-async function checkAdReady() {
-    try {
-        var result = await vkBridge.send('VKWebAppCheckNativeAds', {
-            ad_format: 'rewarded'
-        });
-        adReady = result && result.result === true;
-        console.log('Реклама готова:', adReady);
-        return adReady;
-    } catch(e) {
-        console.error('Ошибка проверки рекламы:', e);
-        adReady = false;
-        return false;
-    }
-}
-
-// Проверяем готовность рекламы при загрузке и каждые 30 секунд
-setInterval(function() {
-    if (typeof currentUser !== 'undefined' && currentUser) {
-        checkAdReady();
-    }
-}, 30000);
-
 // ================= ТОГГЛ ЗАДАНИЙ =================
 function toggleTasks() {
     var panel = document.getElementById('tasks-panel');
@@ -50,7 +25,6 @@ function doGroupTask() {
 async function checkGroupTask() {
     if(currentUser.task_group_done) { toast('Уже выполнено!', 'info'); return; }
     try {
-        // Запрашиваем токен для groups.isMember
         var tokenResult = await vkBridge.send('VKWebAppGetAuthToken', {
             app_id: String(APP_ID),
             scope: 'groups'
@@ -124,7 +98,7 @@ function getRemainingAds() {
     return Math.max(0, REWARDED_AD_LIMIT - watched);
 }
 
-// ================= ПОКАЗ РЕКЛАМЫ С ПРОВЕРКОЙ =================
+// ================= ПОКАЗ РЕКЛАМЫ (БЕЗ БЛОКИРУЮЩЕЙ ПРОВЕРКИ) =================
 async function doRewardedAd() {
     var remaining = getRemainingAds();
     if(remaining <= 0) {
@@ -143,33 +117,30 @@ async function doRewardedAd() {
         }
     }
     
-    // Проверяем, готова ли реклама
-    var ready = await checkAdReady();
-    if (!ready) {
-        toast('📡 Реклама загружается, попробуйте через несколько секунд', 'info');
-        // Пытаемся показать всё равно
-    }
-    
     try {
         console.log('Показываем рекламу (тестовый режим)...');
+        
+        // Показываем рекламу — VK сам подгрузит, если нужно
         var result = await vkBridge.send('VKWebAppShowNativeAds', {
             ad_format: 'rewarded',
-            is_test: true  // Тестовый режим для модерации
+            is_test: true
         });
         
         console.log('Результат рекламы:', result);
         
+        // Если реклама показана успешно или это тестовый режим
         if(result && result.result === true) {
             await giveAdBonus();
         } else {
-            // В тестовом режиме начисляем бонус даже при "ошибке"
-            toast('🎬 [ТЕСТ] Реклама показана! Начисляем бонус...', 'info');
+            // В тестовом режиме начисляем бонус даже если result === false
+            // (потому что тестовая реклама может не показываться, но бонус нужно дать)
+            toast('🎬 [ТЕСТ] Реклама активирована!', 'info');
             await giveAdBonus();
         }
     } catch(e) {
         console.error('Ошибка показа рекламы:', e);
-        // В тестовом режиме начисляем бонус даже при ошибке
-        toast('🎬 [ТЕСТ] Начисляем бонус за рекламу', 'info');
+        // При любой ошибке в тестовом режиме всё равно начисляем бонус
+        toast('🎬 [ТЕСТ] Бонус за рекламу начислен!', 'info');
         await giveAdBonus();
     }
 }
@@ -207,10 +178,7 @@ function renderTasks() {
         adText += ' (осталось ' + remaining + ' раз)';
     }
     
-    // Показываем статус готовности рекламы
-    var adStatus = adReady ? '✅ готова' : '⏳ загрузка...';
-    
-    html += '<div class="task-item"><div class="task-info"><b>' + adText + '</b><br><span style="font-size:11px;color:#aaa;">Максимум ' + REWARDED_AD_LIMIT + ' раз в день • 1 мин кулдаун</span><br><span style="font-size:10px;color:#8b949e;">Статус: ' + adStatus + '</span></div>';
+    html += '<div class="task-item"><div class="task-info"><b>' + adText + '</b><br><span style="font-size:11px;color:#aaa;">Максимум ' + REWARDED_AD_LIMIT + ' раз в день • 1 мин кулдаун</span></div>';
     if(remaining > 0) {
         html += '<button class="btn-task" onclick="doRewardedAd()" style="background:linear-gradient(135deg,#ff9800,#f57c00);color:#fff;">▶ Смотреть</button>';
     } else {
@@ -232,13 +200,6 @@ function renderTasks() {
     
     if(html === '') html = '<p style="color:#4caf50;text-align:center;">✅ Все задания выполнены!</p>';
     listEl.innerHTML = html;
-}
-
-// Проверяем готовность рекламы при загрузке страницы
-if (typeof vkBridge !== 'undefined') {
-    setTimeout(function() {
-        checkAdReady();
-    }, 2000);
 }
 
 // Экспортируем функции глобально
