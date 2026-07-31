@@ -57,7 +57,7 @@ async function loadTopPlayersScreen() {
 async function loadTopCompaniesScreen() {
     var c = document.getElementById('top-content');
     c.innerHTML = 'Загрузка...';
-    var r = await supabase.from('players').select('company,experience,company_group_id').neq('company', null);
+    var r = await supabase.from('players').select('company,experience,company_group_id').not('company', 'is', null);
     if(r.error) { c.innerHTML = 'Ошибка'; return; }
     var comps = {};
     r.data.forEach(function(p) {
@@ -95,10 +95,41 @@ async function loadMyCompanyScreen() {
     if(!currentUser.company) {
         document.getElementById('my-company-name').textContent = 'У вас нет компании';
         document.getElementById('my-company-stats').textContent = '';
-        document.getElementById('my-company-members').innerHTML = '<p style="color:#aaa;text-align:center;margin:20px 0;">Создайте компанию из своей группы ВК!</p><button class="btn-create" onclick="createCompany()">🚀 Создать компанию</button>';
+        
+        // Проверяем, открыто ли приложение в мобильном VK
+        var isMobile = false;
+        try {
+            // Проверяем через user-agent
+            var ua = navigator.userAgent;
+            if (/VKMobile/i.test(ua) || /Android.*VK/i.test(ua) || /iPhone.*VK/i.test(ua)) {
+                isMobile = true;
+            }
+            
+            // Дополнительная проверка через VK Bridge
+            if (!isMobile && window.vkBridge) {
+                var info = await vkBridge.send('VKWebAppGetClientVersion').catch(function() { return null; });
+                if (info && info.client_version) {
+                    isMobile = true;
+                }
+            }
+        } catch(e) {
+            isMobile = false;
+        }
+        
+        var html = '<p style="color:#aaa;text-align:center;margin:20px 0 10px 0;">Создайте компанию из своей группы ВК!</p>';
+        html += '<p style="font-size:12px; color:#8b949e; text-align:center; margin-bottom:15px;">ℹ️ Создать компанию можно, если у вас есть группа ВКонтакте, где вы администратор.</p>';
+        
+        if (isMobile) {
+            html += '<button class="btn-create" onclick="createCompany()">🚀 Создать компанию</button>';
+        } else {
+            html += '<p style="color:#f44336;text-align:center;font-size:13px;padding:10px;background:rgba(244,67,54,0.1);border-radius:8px;">📱 Создание компании доступно только в мобильном приложении VK</p>';
+        }
+        
+        document.getElementById('my-company-members').innerHTML = html;
         document.getElementById('my-company-leave-btn').style.display = 'none';
         return;
     }
+    
     document.getElementById('my-company-name').textContent = currentUser.company;
     if(currentUser.company_group_id) {
         document.getElementById('my-company-name').innerHTML += ' <a href="https://vk.com/club' + currentUser.company_group_id + '" target="_blank" style="color:#4a76a8;font-size:12px;">📱 Группа</a>';
@@ -125,9 +156,14 @@ async function loadMyCompanyScreen() {
     }
     document.getElementById('my-company-leave-btn').style.display = 'block';
     document.getElementById('my-company-leave-btn').onclick = async function() {
-        await supabase.from('players').update({ company: null, company_group_id: null }).eq('vk_id', currentUser.vk_id);
+        await supabase.from('players').update({ 
+            company: null, 
+            company_group_id: null,
+            status: 'Биржа труда'
+        }).eq('vk_id', currentUser.vk_id);
         currentUser.company = null;
         currentUser.company_group_id = null;
+        currentUser.status = 'Биржа труда';
         toast('Вышли из компании', 'info');
         goTo('profile');
         location.reload();
