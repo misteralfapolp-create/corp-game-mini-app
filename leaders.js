@@ -96,9 +96,33 @@ async function loadMyCompanyScreen() {
         document.getElementById('my-company-name').textContent = 'У вас нет компании';
         document.getElementById('my-company-stats').textContent = '';
         
+        // Проверяем, открыто ли приложение в мобильном VK
+        var isMobileApp = false;
+        try {
+            var info = await vkBridge.send('VKWebAppGetClientVersion').catch(function() { return null; });
+            if (info && info.client_version) {
+                isMobileApp = true;
+            }
+        } catch(e) {
+            isMobileApp = false;
+        }
+        
+        // Дополнительная проверка через user-agent
+        if (!isMobileApp) {
+            var ua = navigator.userAgent;
+            if (/VKMobile/i.test(ua) || /Android.*VK/i.test(ua) || /iPhone.*VK/i.test(ua)) {
+                isMobileApp = true;
+            }
+        }
+        
         var html = '<p style="color:#aaa;text-align:center;margin:20px 0 10px 0;">Создайте компанию из своей группы ВК!</p>';
         html += '<p style="font-size:12px; color:#8b949e; text-align:center; margin-bottom:15px;">ℹ️ Создать компанию можно, если у вас есть группа ВКонтакте, где вы администратор.</p>';
-        html += '<button class="btn-create" onclick="createCompany()">🚀 Создать компанию</button>';
+        
+        if (isMobileApp) {
+            html += '<button class="btn-create" onclick="createCompany()">🚀 Создать компанию</button>';
+        } else {
+            html += '<p style="color:#f44336;text-align:center;font-size:13px;padding:10px;background:rgba(244,67,54,0.1);border-radius:8px;">📱 Создание компании доступно только в мобильном приложении VK</p>';
+        }
         
         document.getElementById('my-company-members').innerHTML = html;
         document.getElementById('my-company-leave-btn').style.display = 'none';
