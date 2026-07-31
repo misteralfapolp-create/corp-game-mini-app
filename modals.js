@@ -3,16 +3,21 @@
 async function createCompany() {
     try {
         // =============================================
-        // ТОЛЬКО ЭТО ДОБАВЛЕНО ДЛЯ ПК
+        // НАДЁЖНАЯ ПРОВЕРКА: есть ли VK Bridge?
+        // В мобильном приложении VK Bridge всегда есть
         // =============================================
-        var isDesktopBrowser = !window.location.href.includes('vk.com') || 
-                               (window.navigator.userAgent.includes('Windows') && 
-                                !window.navigator.userAgent.includes('Mobile'));
+        var isVKApp = typeof vkBridge !== 'undefined' && 
+                      vkBridge !== null &&
+                      window.location.href.includes('vk.com');
         
-        if (isDesktopBrowser) {
+        // Если это не VK (браузер ПК) — показываем уведомление
+        if (!isVKApp) {
             toast('📱 Создание компании доступно только в мобильном приложении VK', 'info');
             return;
         }
+        
+        // =============================================
+        // ОРИГИНАЛЬНЫЙ КОД (БЕЗ ИЗМЕНЕНИЙ)
         // =============================================
         
         console.log('1. Запрашиваем токен...');
