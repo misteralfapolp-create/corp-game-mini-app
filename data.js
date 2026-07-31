@@ -158,13 +158,39 @@ async function doCollect(amount, isMultiplied) {
     renderAll();
 }
 
+// ================= ПОКАЗ РЕКЛАМЫ ПРИ СБОРЕ (С ПРОВЕРКОЙ) =================
 async function showRewardedAdForCollect(amount) {
+    // Проверяем готовность рекламы перед показом
+    try {
+        console.log('Проверяем готовность рекламы для сбора...');
+        var checkResult = await vkBridge.send('VKWebAppCheckNativeAds', {
+            ad_format: 'reward'
+        });
+        console.log('Результат проверки:', checkResult);
+        
+        if (!checkResult || !checkResult.result) {
+            toast('📡 Реклама ещё не загружена, попробуйте через несколько секунд', 'info');
+            showCollectChoice(amount);
+            return;
+        }
+        
+        console.log('✅ Реклама готова, показываем...');
+        
+    } catch(e) {
+        console.error('Ошибка проверки рекламы:', e);
+        toast('📡 Ошибка проверки рекламы', 'error');
+        showCollectChoice(amount);
+        return;
+    }
+    
     try {
         var result = await vkBridge.send('VKWebAppShowNativeAds', {
-            ad_format: 'rewarded'
+            ad_format: 'reward'
         });
         
-        if(result && result.result) {
+        console.log('Результат показа рекламы:', result);
+        
+        if(result && result.result === true) {
             doCollect(amount, true);
         } else {
             toast('Реклама не загружена', 'error');
