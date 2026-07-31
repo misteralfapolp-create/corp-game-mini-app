@@ -38,7 +38,6 @@ async function updateAllStats() {
                 owner_id: null,
                 status: 'Биржа труда',
                 role: null,
-                // Уровень НЕ СБРАСЫВАЕТСЯ
                 hire_cost: newCost
             }).eq('vk_id', currentUser.vk_id);
             
@@ -162,8 +161,7 @@ async function doCollect(amount, isMultiplied) {
 async function showRewardedAdForCollect(amount) {
     try {
         var result = await vkBridge.send('VKWebAppShowNativeAds', {
-            ad_format: 'rewarded',
-            is_test: true
+            ad_format: 'rewarded'
         });
         
         if(result && result.result) {
@@ -226,7 +224,6 @@ async function fireEmployee(vkId) {
         owner_id: null, 
         status: 'Биржа труда', 
         role: null,
-        // Уровень НЕ СБРАСЫВАЕТСЯ
         hire_cost: newCost
     }).eq('vk_id', vkId);
     
@@ -301,7 +298,6 @@ async function firePlayer(player) {
         owner_id: null, 
         status: 'Биржа труда', 
         role: null,
-        // Уровень НЕ СБРАСЫВАЕТСЯ
         hire_cost: newCost
     }).eq('vk_id', player.vk_id);
     
