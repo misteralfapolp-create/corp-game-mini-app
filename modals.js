@@ -50,15 +50,27 @@ async function createCompany() {
                     if(oldList) oldList.remove();
                     input.style.display = 'block';
                     
-                    supabase.from('players').update({
-                        company: g.name,
-                        company_group_id: g.id
-                    }).eq('vk_id', currentUser.vk_id).then(function() {
-                        currentUser.company = g.name;
-                        currentUser.company_group_id = g.id;
-                        toast('✅ Компания «' + g.name + '» создана!', 'success');
-                        location.reload();
-                    });
+                    // Проверяем, не существует ли уже компания с таким названием
+                    supabase.from('players')
+                        .select('company')
+                        .eq('company', g.name)
+                        .limit(1)
+                        .then(function(existing) {
+                            if(existing.data && existing.data.length > 0) {
+                                toast('Компания с таким названием уже существует', 'error');
+                                return;
+                            }
+                            
+                            supabase.from('players').update({
+                                company: g.name,
+                                company_group_id: g.id
+                            }).eq('vk_id', currentUser.vk_id).then(function() {
+                                currentUser.company = g.name;
+                                currentUser.company_group_id = g.id;
+                                toast('✅ Компания «' + g.name + '» создана!', 'success');
+                                location.reload();
+                            });
+                        });
                 };
                 listContainer.appendChild(item);
             });
@@ -141,21 +153,37 @@ async function openCompanyModal(name) {
             lb.style.display = 'block';
             lb.textContent = '🚪 Выйти из компании (бесплатно)';
             lb.onclick = async function() {
-                await supabase.from('players').update({ company: null, company_group_id: null }).eq('vk_id', currentUser.vk_id);
+                await supabase.from('players').update({ 
+                    company: null, 
+                    company_group_id: null,
+                    status: 'Биржа труда'
+                }).eq('vk_id', currentUser.vk_id);
                 currentUser.company = null;
                 currentUser.company_group_id = null;
+                currentUser.status = 'Биржа труда';
                 toast('Вышли из компании', 'info');
                 closeCompanyModal();
-                location.reload();
+                await updateAllStats();
+                renderAll();
             };
         } else {
             jb.style.display = 'block';
             jb.onclick = async function() {
-                await supabase.from('players').update({ company: name }).eq('vk_id', currentUser.vk_id);
+                // Проверка, не состоит ли уже в компании
+                if (currentUser.company) {
+                    toast('Вы уже в компании: ' + currentUser.company, 'error');
+                    return;
+                }
+                await supabase.from('players').update({ 
+                    company: name,
+                    status: 'Работает'
+                }).eq('vk_id', currentUser.vk_id);
                 currentUser.company = name;
+                currentUser.status = 'Работает';
                 toast('✅ Вступили!', 'success');
                 closeCompanyModal();
-                location.reload();
+                await updateAllStats();
+                renderAll();
             };
         }
     }
@@ -184,16 +212,23 @@ async function applyPromo() {
     if(!r.data) { toast('Промокод не найден!', 'error'); return; }
     
     var promo = r.data;
+    
+    // Проверка на истекший срок
+    if(promo.expires_at && new Date(promo.expires_at) < new Date()) {
+        toast('Промокод истек!', 'error');
+        return;
+    }
+    
     if(promo.used_by && promo.used_by.includes(currentUser.vk_id)) { 
-        toast('Вы уже использовали!', 'error'); 
+        toast('Вы уже использовали этот промокод!', 'error'); 
         return; 
     }
     if(promo.used_by && promo.used_by.length >= promo.max_uses) { 
-        toast('Промокод не действует!', 'error'); 
+        toast('Промокод уже использован максимальное количество раз!', 'error'); 
         return; 
     }
     
-    var newExp = (currentUser.experience || 0) + promo.reward_exp + 1000;
+    var newExp = (currentUser.experience || 0) + promo.reward_exp;
     await supabase.from('players').update({ experience: newExp }).eq('vk_id', currentUser.vk_id);
     currentUser.experience = newExp;
     
@@ -203,7 +238,7 @@ async function applyPromo() {
     await supabase.from('players').update({ task_promo_done: true }).eq('vk_id', currentUser.vk_id);
     currentUser.task_promo_done = true;
     
-    toast('🎁 +' + (promo.reward_exp + 1000) + ' опыта!', 'success');
+    toast('🎁 +' + promo.reward_exp + ' опыта!', 'success');
     closeSettings();
     renderAll();
     renderTasks();
@@ -222,7 +257,7 @@ function inviteFriend() {
     .catch(function() {
         navigator.clipboard.writeText(refLink)
             .then(function(){ 
-                toast('🔗 Скопировано!', 'info'); 
+                toast('🔗 Ссылка скопирована!', 'info'); 
             })
             .catch(function(){ 
                 toast('Не удалось отправить', 'error'); 
