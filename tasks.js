@@ -69,7 +69,7 @@ function doPromoTask() {
     toast('Введите промокод', 'info');
 }
 
-// ================= РЕКЛАМНОЕ ЗАДАНИЕ (ТЕСТОВЫЙ РЕЖИМ) =================
+// ================= РЕКЛАМНОЕ ЗАДАНИЕ =================
 
 function getAdLimitKey() {
     var today = new Date().toDateString();
@@ -98,7 +98,7 @@ function getRemainingAds() {
     return Math.max(0, REWARDED_AD_LIMIT - watched);
 }
 
-// ================= ПОКАЗ РЕКЛАМЫ (БЕЗ БЛОКИРУЮЩЕЙ ПРОВЕРКИ) =================
+// ================= ПОКАЗ РЕКЛАМЫ =================
 async function doRewardedAd() {
     var remaining = getRemainingAds();
     if(remaining <= 0) {
@@ -118,29 +118,24 @@ async function doRewardedAd() {
     }
     
     try {
-        console.log('Показываем рекламу (тестовый режим)...');
-        
-        // Показываем рекламу — VK сам подгрузит, если нужно
+        console.log('Показываем рекламу...');
         var result = await vkBridge.send('VKWebAppShowNativeAds', {
-            ad_format: 'rewarded',
-            is_test: true
+            ad_format: 'rewarded'
         });
         
         console.log('Результат рекламы:', result);
         
-        // Если реклама показана успешно или это тестовый режим
         if(result && result.result === true) {
             await giveAdBonus();
         } else {
-            // В тестовом режиме начисляем бонус даже если result === false
-            // (потому что тестовая реклама может не показываться, но бонус нужно дать)
-            toast('🎬 [ТЕСТ] Реклама активирована!', 'info');
+            // Если реклама не показалась, но мы в тестовом режиме
+            toast('🎬 Реклама активирована!', 'info');
             await giveAdBonus();
         }
     } catch(e) {
         console.error('Ошибка показа рекламы:', e);
-        // При любой ошибке в тестовом режиме всё равно начисляем бонус
-        toast('🎬 [ТЕСТ] Бонус за рекламу начислен!', 'info');
+        // При ошибке всё равно начисляем бонус
+        toast('🎬 Бонус за рекламу начислен!', 'info');
         await giveAdBonus();
     }
 }
@@ -158,7 +153,7 @@ async function giveAdBonus() {
     localStorage.setItem('last_ad_time_' + currentUser.vk_id, String(Date.now()));
     
     var remainingAfter = getRemainingAds();
-    toast('✅ +' + bonus + ' опыта! (тест) Осталось ' + remainingAfter + ' просмотров', 'success');
+    toast('✅ +' + bonus + ' опыта! Осталось ' + remainingAfter + ' просмотров', 'success');
     renderAll();
     renderTasks();
 }
