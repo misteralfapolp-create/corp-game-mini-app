@@ -1,19 +1,25 @@
-// ================= СОЗДАНИЕ КОМПАНИИ (с обработкой ошибок ПК) =================
+// ================= СОЗДАНИЕ КОМПАНИИ (ИСПРАВЛЕНО) =================
 
 async function createCompany() {
     try {
+        // Проверяем, есть ли уже компания
+        if (currentUser && currentUser.company) {
+            toast('У вас уже есть компания: ' + currentUser.company, 'info');
+            return;
+        }
+        
         console.log('1. Запрашиваем токен...');
+        console.log('APP_ID:', APP_ID, 'тип:', typeof APP_ID);
         
         var tokenResult;
         try {
             tokenResult = await vkBridge.send('VKWebAppGetAuthToken', {
-                app_id: String(APP_ID),
+                app_id: parseInt(APP_ID),  // ✅ ЧИСЛО, НЕ СТРОКА!
                 scope: 'groups'
             });
         } catch(tokenError) {
             console.error('Ошибка получения токена:', tokenError);
             
-            // Если пользователь закрыл окно или отказал
             if (tokenError.error_type === 'client_error' || tokenError.error_data?.error_code === 4) {
                 toast('❌ Вы отклонили запрос прав на управление группами', 'error');
                 return;
@@ -51,14 +57,12 @@ async function createCompany() {
         
         console.log('4. Группы получены:', groupsResult);
         
-        // Проверяем, есть ли группы у пользователя
         var items = groupsResult?.response?.items;
         if(!items || items.length === 0) {
             toast('❌ У вас нет групп, где вы администратор', 'error');
             return;
         }
         
-        // Показываем список групп
         var modal = document.getElementById('input-modal');
         document.getElementById('input-modal-title').textContent = '📋 Выберите группу';
         var input = document.getElementById('input-modal-input');
@@ -74,7 +78,11 @@ async function createCompany() {
         items.forEach(function(g) {
             var item = document.createElement('div');
             item.style.cssText = 'padding:12px;margin:4px 0;background:rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;font-size:14px;transition:0.2s;';
-            item.textContent = g.name || 'Группа ' + g.id;
+            
+            // Показываем название группы и количество участников
+            var membersText = g.members_count ? ' (' + g.members_count + ' участ.)' : '';
+            item.textContent = (g.name || 'Группа ' + g.id) + membersText;
+            
             item.onmouseover = function() { this.style.background = 'rgba(74,118,168,0.4)'; };
             item.onmouseout = function() { this.style.background = 'rgba(255,255,255,0.08)'; };
             item.onclick = function() {
@@ -83,25 +91,37 @@ async function createCompany() {
                 if(oldList2) oldList2.remove();
                 input.style.display = 'block';
                 
+                var companyName = g.name || 'Группа ' + g.id;
+                
                 // Проверяем, не существует ли уже компания с таким названием
                 supabase.from('players')
                     .select('company')
-                    .eq('company', g.name || 'Группа ' + g.id)
+                    .eq('company', companyName)
                     .limit(1)
                     .then(function(existing) {
                         if(existing.data && existing.data.length > 0) {
-                            toast('Компания с таким названием уже существует', 'error');
+                            toast('❌ Компания с названием "' + companyName + '" уже существует', 'error');
                             return;
                         }
                         
                         supabase.from('players').update({
-                            company: g.name || 'Группа ' + g.id,
+                            company: companyName,
                             company_group_id: g.id
-                        }).eq('vk_id', currentUser.vk_id).then(function() {
-                            currentUser.company = g.name || 'Группа ' + g.id;
+                        }).eq('vk_id', currentUser.vk_id).then(function(updateResult) {
+                            if (updateResult.error) {
+                                console.error('Ошибка сохранения:', updateResult.error);
+                                toast('❌ Ошибка создания компании: ' + updateResult.error.message, 'error');
+                                return;
+                            }
+                            
+                            currentUser.company = companyName;
                             currentUser.company_group_id = g.id;
-                            toast('✅ Компания «' + (g.name || 'Группа ' + g.id) + '» создана!', 'success');
-                            location.reload();
+                            toast('✅ Компания «' + companyName + '» создана!', 'success');
+                            
+                            // Обновляем экран
+                            updateAllStats();
+                            renderAll();
+                            loadMyCompanyScreen();
                         });
                     });
             };
@@ -111,7 +131,6 @@ async function createCompany() {
         var buttonsContainer = input.parentNode;
         buttonsContainer.insertBefore(listContainer, document.getElementById('input-modal-ok').parentNode);
         
-        // Кнопка отмены
         document.getElementById('input-modal-cancel').textContent = '❌ Отмена';
         document.getElementById('input-modal-cancel').onclick = function() {
             modal.style.display = 'none';
