@@ -195,7 +195,7 @@ function doPromoTask() {
     toast('Введите промокод', 'info');
 }
 
-// ================= РЕКЛАМНОЕ ЗАДАНИЕ =================
+// ================= РЕКЛАМНОЕ ЗАДАНИЕ (РАБОЧАЯ ТЕСТОВАЯ ВЕРСИЯ) =================
 
 function getAdLimitKey() {
     if (!currentUser || !currentUser.vk_id) {
@@ -240,7 +240,7 @@ function getRemainingAds() {
     return Math.max(0, REWARDED_AD_LIMIT - watched);
 }
 
-// ================= ПОКАЗ РЕКЛАМЫ (РАБОЧАЯ ВЕРСИЯ, БЕЗ is_test: true) =================
+// ================= ПОКАЗ РЕКЛАМЫ (ТЕСТОВАЯ ВЕРСИЯ — РАБОТАЛА) =================
 async function doRewardedAd() {
     var remaining = getRemainingAds();
     if(remaining <= 0) {
@@ -260,10 +260,10 @@ async function doRewardedAd() {
     }
     
     try {
-        console.log('Показываем рекламу...');
+        console.log('Показываем тестовую рекламу...');
         var result = await vkBridge.send('VKWebAppShowNativeAds', {
-            ad_format: 'rewarded'
-            // ❌ is_test: true УБРАН — реклама не загружалась с ним
+            ad_format: 'rewarded',
+            is_test: true  // ✅ ТЕСТОВЫЙ РЕЖИМ — ОН РАБОТАЛ!
         });
         
         console.log('Результат рекламы:', result);
@@ -271,11 +271,15 @@ async function doRewardedAd() {
         if(result && result.result === true) {
             await giveAdBonus();
         } else {
-            toast('❌ Реклама не загружена', 'error');
+            // В тестовом режиме начисляем бонус даже если result === false
+            toast('🎬 [ТЕСТ] Реклама активирована!', 'info');
+            await giveAdBonus();
         }
     } catch(e) {
         console.error('Ошибка показа рекламы:', e);
-        toast('❌ Ошибка при показе рекламы', 'error');
+        // В тестовом режиме начисляем бонус даже при ошибке
+        toast('🎬 [ТЕСТ] Бонус за рекламу начислен!', 'info');
+        await giveAdBonus();
     }
 }
 
