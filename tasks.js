@@ -3,6 +3,88 @@
 var adWatchCount = 0;
 var adWatchDate = '';
 
+// ================= ЗАГРУЗКА ДАННЫХ ИЗ SUPABASE =================
+async function loadDailyTasksFromDB() {
+    if (!currentUser || !currentUser.vk_id) return;
+    
+    var today = new Date().toDateString();
+    var r = await supabase.from('players')
+        .select('daily_hire_count, daily_ad_count, daily_upgrade_count, daily_collect_count, daily_tasks_date, ad_watch_count, ad_watch_date, last_ad_time')
+        .eq('vk_id', currentUser.vk_id)
+        .maybeSingle();
+    
+    if (r.error) {
+        console.error('Ошибка загрузки заданий:', r.error);
+        return;
+    }
+    
+    if (r.data) {
+        // Проверяем, сегодня ли дата
+        var savedDate = r.data.daily_tasks_date ? new Date(r.data.daily_tasks_date).toDateString() : null;
+        
+        if (savedDate === today) {
+            // Сегодняшние данные
+            dailyTasks = {
+                hire: { count: r.data.daily_hire_count || 0, target: 5, done: (r.data.daily_hire_count || 0) >= 5 },
+                ad: { count: r.data.daily_ad_count || 0, target: 10, done: (r.data.daily_ad_count || 0) >= 10 },
+                upgrade: { count: r.data.daily_upgrade_count || 0, target: 3, done: (r.data.daily_upgrade_count || 0) >= 3 },
+                collect: { count: r.data.daily_collect_count || 0, target: 5, done: (r.data.daily_collect_count || 0) >= 5 }
+            };
+        } else {
+            // Новый день — сбрасываем задания
+            dailyTasks = {
+                hire: { count: 0, target: 5, done: false },
+                ad: { count: 0, target: 10, done: false },
+                upgrade: { count: 0, target: 3, done: false },
+                collect: { count: 0, target: 5, done: false }
+            };
+            await saveDailyTasksToDB();
+        }
+        
+        // Загружаем счётчик рекламы
+        var adDate = r.data.ad_watch_date ? new Date(r.data.ad_watch_date).toDateString() : null;
+        if (adDate === today) {
+            adWatchCount = r.data.ad_watch_count || 0;
+        } else {
+            adWatchCount = 0;
+            await supabase.from('players').update({
+                ad_watch_count: 0,
+                ad_watch_date: new Date().toISOString().split('T')[0]
+            }).eq('vk_id', currentUser.vk_id);
+        }
+    }
+}
+
+// ================= СОХРАНЕНИЕ ДАННЫХ В SUPABASE =================
+async function saveDailyTasksToDB() {
+    if (!currentUser || !currentUser.vk_id) return;
+    
+    await supabase.from('players').update({
+        daily_hire_count: dailyTasks.hire.count,
+        daily_ad_count: dailyTasks.ad.count,
+        daily_upgrade_count: dailyTasks.upgrade.count,
+        daily_collect_count: dailyTasks.collect.count,
+        daily_tasks_date: new Date().toISOString().split('T')[0]
+    }).eq('vk_id', currentUser.vk_id);
+}
+
+async function saveAdCountToDB() {
+    if (!currentUser || !currentUser.vk_id) return;
+    
+    await supabase.from('players').update({
+        ad_watch_count: adWatchCount,
+        ad_watch_date: new Date().toISOString().split('T')[0]
+    }).eq('vk_id', currentUser.vk_id);
+}
+
+async function saveLastAdTimeToDB() {
+    if (!currentUser || !currentUser.vk_id) return;
+    
+    await supabase.from('players').update({
+        last_ad_time: new Date().toISOString()
+    }).eq('vk_id', currentUser.vk_id);
+}
+
 // ================= ЕЖЕДНЕВНЫЕ ЗАДАНИЯ =================
 var dailyTasks = {
     hire: { count: 0, target: 5, done: false },
@@ -11,54 +93,23 @@ var dailyTasks = {
     collect: { count: 0, target: 5, done: false }
 };
 
-function getDailyTasksKey() {
-    if (!currentUser || !currentUser.vk_id) {
-        return 'daily_tasks_temp';
-    }
-    return 'daily_tasks_' + currentUser.vk_id + '_' + new Date().toDateString();
-}
-
-function loadDailyTasks() {
-    var key = getDailyTasksKey();
-    var data = localStorage.getItem(key);
-    if (data) {
-        try {
-            var parsed = JSON.parse(data);
-            if (parsed.hire && parsed.ad && parsed.upgrade && parsed.collect) {
-                dailyTasks = parsed;
-                return;
-            }
-        } catch(e) {}
-    }
-    dailyTasks = {
-        hire: { count: 0, target: 5, done: false },
-        ad: { count: 0, target: 10, done: false },
-        upgrade: { count: 0, target: 3, done: false },
-        collect: { count: 0, target: 5, done: false }
-    };
-    saveDailyTasks();
-}
-
-function saveDailyTasks() {
-    var key = getDailyTasksKey();
-    localStorage.setItem(key, JSON.stringify(dailyTasks));
-}
-
 function getDailyTaskProgress(taskId) {
     var task = dailyTasks[taskId];
     if (!task) return { progress: 0, target: 0, done: false };
     return { progress: task.count, target: task.target, done: task.done };
 }
 
-function updateDailyTask(taskId, increment) {
+async function updateDailyTask(taskId, increment) {
     var task = dailyTasks[taskId];
     if (!task || task.done) return;
+    
     task.count += increment;
     if (task.count >= task.target) {
         task.done = true;
-        giveDailyTaskReward(taskId);
+        await giveDailyTaskReward(taskId);
     }
-    saveDailyTasks();
+    
+    await saveDailyTasksToDB();
     renderTasks();
 }
 
@@ -79,6 +130,75 @@ async function giveDailyTaskReward(taskId) {
     renderAll();
 }
 
+// ================= РЕКЛАМА =================
+function getRemainingAds() {
+    return Math.max(0, REWARDED_AD_LIMIT - adWatchCount);
+}
+
+async function doRewardedAd() {
+    var remaining = getRemainingAds();
+    if(remaining <= 0) {
+        toast('⚠️ Вы посмотрели максимум рекламы на сегодня (' + REWARDED_AD_LIMIT + ')', 'error');
+        return;
+    }
+    
+    // Проверяем кулдаун в БД
+    var r = await supabase.from('players')
+        .select('last_ad_time')
+        .eq('vk_id', currentUser.vk_id)
+        .maybeSingle();
+    
+    if (r.data && r.data.last_ad_time) {
+        var lastAdTime = new Date(r.data.last_ad_time).getTime();
+        var timeDiff = (Date.now() - lastAdTime) / 1000;
+        if (timeDiff < AD_COOLDOWN_SECONDS) {
+            var wait = Math.ceil(AD_COOLDOWN_SECONDS - timeDiff);
+            toast('⏳ Подождите ' + wait + ' сек. до следующей рекламы', 'info');
+            return;
+        }
+    }
+    
+    try {
+        console.log('Показываем рекламу...');
+        var result = await vkBridge.send('VKWebAppShowNativeAds', {
+            ad_format: 'rewarded'
+        });
+        
+        console.log('Результат рекламы:', result);
+        
+        if(result && result.result === true) {
+            await giveAdBonus();
+        } else {
+            toast('🎬 Реклама активирована!', 'info');
+            await giveAdBonus();
+        }
+    } catch(e) {
+        console.error('Ошибка показа рекламы:', e);
+        toast('🎬 Бонус за рекламу начислен!', 'info');
+        await giveAdBonus();
+    }
+}
+
+async function giveAdBonus() {
+    var bonus = REWARDED_AD_BONUS;
+    await supabase.from('players').update({
+        experience: (currentUser.experience || 0) + bonus
+    }).eq('vk_id', currentUser.vk_id);
+    currentUser.experience += bonus;
+    
+    adWatchCount += 1;
+    await saveAdCountToDB();
+    await saveLastAdTimeToDB();
+    
+    await updateDailyTask('ad', 1);
+    
+    var remainingAfter = getRemainingAds();
+    toast('✅ +' + bonus + ' опыта! Осталось ' + remainingAfter + ' просмотров', 'success');
+    renderAll();
+    renderTasks();
+}
+
+// ================= ТОГГЛ ЗАДАНИЙ =================
 function toggleTasks() {
     var panel = document.getElementById('tasks-panel');
     if(panel.style.display === 'none' || panel.style.display === '') {
@@ -143,102 +263,10 @@ function doPromoTask() {
     toast('Введите промокод', 'info');
 }
 
-// ================= РЕКЛАМА =================
-function getAdLimitKey() {
-    if (!currentUser || !currentUser.vk_id) {
-        return 'ad_watch_temp';
-    }
-    var today = new Date().toDateString();
-    return 'ad_watch_' + currentUser.vk_id + '_' + today;
-}
-
-function getAdWatchCount() {
-    var key = getAdLimitKey();
-    var data = localStorage.getItem(key);
-    if(data) {
-        try {
-            var parsed = JSON.parse(data);
-            return parsed.count || 0;
-        } catch(e) { return 0; }
-    }
-    return 0;
-}
-
-function setAdWatchCount(count) {
-    var key = getAdLimitKey();
-    localStorage.setItem(key, JSON.stringify({ count: count }));
-}
-
-function getRemainingAds() {
-    var watched = getAdWatchCount();
-    return Math.max(0, REWARDED_AD_LIMIT - watched);
-}
-
-async function doRewardedAd() {
-    var remaining = getRemainingAds();
-    if(remaining <= 0) {
-        toast('⚠️ Вы посмотрели максимум рекламы на сегодня (' + REWARDED_AD_LIMIT + ')', 'error');
-        return;
-    }
-    
-    var lastAdTime = localStorage.getItem('last_ad_time_' + (currentUser ? currentUser.vk_id : 'temp'));
-    if(lastAdTime) {
-        var timeDiff = (Date.now() - parseInt(lastAdTime)) / 1000;
-        if(timeDiff < AD_COOLDOWN_SECONDS) {
-            var wait = Math.ceil(AD_COOLDOWN_SECONDS - timeDiff);
-            toast('⏳ Подождите ' + wait + ' сек. до следующей рекламы', 'info');
-            return;
-        }
-    }
-    
-    try {
-        console.log('Показываем рекламу...');
-        var result = await vkBridge.send('VKWebAppShowNativeAds', {
-            ad_format: 'rewarded'
-        });
-        
-        console.log('Результат рекламы:', result);
-        
-        if(result && result.result === true) {
-            await giveAdBonus();
-        } else {
-            toast('🎬 Реклама активирована!', 'info');
-            await giveAdBonus();
-        }
-    } catch(e) {
-        console.error('Ошибка показа рекламы:', e);
-        toast('🎬 Бонус за рекламу начислен!', 'info');
-        await giveAdBonus();
-    }
-}
-
-async function giveAdBonus() {
-    var bonus = REWARDED_AD_BONUS;
-    await supabase.from('players').update({
-        experience: (currentUser.experience || 0) + bonus
-    }).eq('vk_id', currentUser.vk_id);
-    currentUser.experience += bonus;
-    
-    var newCount = getAdWatchCount() + 1;
-    setAdWatchCount(newCount);
-    if (currentUser && currentUser.vk_id) {
-        localStorage.setItem('last_ad_time_' + currentUser.vk_id, String(Date.now()));
-    }
-    
-    updateDailyTask('ad', 1);
-    
-    var remainingAfter = getRemainingAds();
-    toast('✅ +' + bonus + ' опыта! Осталось ' + remainingAfter + ' просмотров', 'success');
-    renderAll();
-    renderTasks();
-}
-
 function renderTasks() {
     var listEl = document.getElementById('tasks-list');
     if(!listEl) return;
     var html = '';
-    
-    loadDailyTasks();
     
     // ===== ЕЖЕДНЕВНЫЕ ЗАДАНИЯ =====
     var dailyTaskList = [
@@ -299,12 +327,15 @@ function renderTasks() {
     listEl.innerHTML = html;
 }
 
-setTimeout(function() {
+// ===== ЗАГРУЗКА ПРИ СТАРТЕ =====
+setTimeout(async function() {
     if (typeof currentUser !== 'undefined' && currentUser && currentUser.vk_id) {
-        loadDailyTasks();
+        await loadDailyTasksFromDB();
+        renderTasks();
     }
 }, 1000);
 
+// ===== ЭКСПОРТ =====
 window.doRewardedAd = doRewardedAd;
 window.getRemainingAds = getRemainingAds;
 window.renderTasks = renderTasks;
@@ -312,7 +343,6 @@ window.toggleTasks = toggleTasks;
 window.doGroupTask = doGroupTask;
 window.checkGroupTask = checkGroupTask;
 window.doPromoTask = doPromoTask;
-window.loadDailyTasks = loadDailyTasks;
-window.saveDailyTasks = saveDailyTasks;
 window.updateDailyTask = updateDailyTask;
 window.getDailyTaskProgress = getDailyTaskProgress;
+window.loadDailyTasksFromDB = loadDailyTasksFromDB;
