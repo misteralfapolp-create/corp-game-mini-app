@@ -98,6 +98,7 @@ async function loadMyCompanyScreen() {
         
         var html = '<p style="color:#aaa;text-align:center;margin:20px 0 10px 0;">Создайте компанию из своей группы ВК!</p>';
         html += '<p style="font-size:12px; color:#8b949e; text-align:center; margin-bottom:15px;">ℹ️ Создать компанию можно, если у вас есть группа ВКонтакте, где вы администратор.</p>';
+        html += '<p style="font-size:13px; color:#8b949e; text-align:center; margin:10px 0; background:rgba(255,255,255,0.05); padding:12px; border-radius:8px;">🏢 Компания — это объединение игроков. Все сотрудники компании приносят бонусный опыт владельцу компании.</p>';
         html += '<button class="btn-create" onclick="createCompany()">🚀 Создать компанию</button>';
         
         document.getElementById('my-company-members').innerHTML = html;
