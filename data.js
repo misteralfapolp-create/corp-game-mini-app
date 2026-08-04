@@ -74,7 +74,6 @@ async function calculatePendingExperience() {
     currentUser.pending_experience = newPending;
 }
 
-// ================= СБОР ОПЫТА С РЕКЛАМОЙ =================
 async function collectExperience() {
     var now = Date.now();
     if(now - lastCollectTime < COLLECT_COOLDOWN) {
@@ -153,7 +152,6 @@ async function doCollect(amount, isMultiplied) {
     currentUser.experience += collected;
     currentUser.pending_experience = 0;
     
-    // Обновляем ежедневное задание "собери доход 5 раз"
     if (typeof updateDailyTask === 'function') {
         updateDailyTask('collect', 1);
     }
@@ -211,9 +209,6 @@ async function giveReferralBonus(id) {
     if(r.data) await supabase.from('players').update({ experience: (r.data.experience || 0) + 500 }).eq('vk_id', id);
 }
 
-// ================= ДЕЙСТВИЯ С СОТРУДНИКАМИ =================
-
-// ================= ПРОКАЧКА =================
 async function upgradeEmployee(vkId) {
     var empResult = await supabase.from('players').select('*').eq('vk_id', vkId).maybeSingle();
     if(!empResult.data) return;
@@ -243,7 +238,6 @@ async function upgradeEmployee(vkId) {
         hire_cost: newCost
     }).eq('vk_id', vkId);
     
-    // Обновляем ежедневное задание "прокачай 3 сотрудников"
     if (typeof updateDailyTask === 'function') {
         updateDailyTask('upgrade', 1);
     }
@@ -255,7 +249,6 @@ async function upgradeEmployee(vkId) {
     renderAll();
 }
 
-// ================= УВОЛЬНЕНИЕ СОТРУДНИКА =================
 async function fireEmployee(vkId) {
     var empResult = await supabase.from('players').select('*').eq('vk_id', vkId).maybeSingle();
     if(!empResult.data) return;
@@ -286,7 +279,6 @@ async function fireEmployee(vkId) {
     renderAll();
 }
 
-// ================= НАНЯТЬ =================
 async function hirePlayer(player) {
     var hireCost = player.hire_cost || 100;
     
@@ -313,10 +305,14 @@ async function hirePlayer(player) {
         }
     }
     
+    // ✅ Новая цена = старая цена × 1.5
+    var newCost = Math.floor((player.hire_cost || 100) * 1.5);
+    
     await supabase.from('players').update({ 
         owner_id: currentUser.vk_id, 
         status: 'Работает', 
-        role: 'Учёный' 
+        role: 'Учёный',
+        hire_cost: newCost
     }).eq('vk_id', player.vk_id);
     
     currentUser.experience = myNewExp;
@@ -324,12 +320,11 @@ async function hirePlayer(player) {
     
     console.log('=== КОНЕЦ НАЙМА ===');
     
-    // Обновляем ежедневное задание "найми 5 сотрудников"
     if (typeof updateDailyTask === 'function') {
         updateDailyTask('hire', 1);
     }
     
-    toast('✅ Нанят за ' + hireCost + ' опыта!', 'success');
+    toast('✅ Нанят за ' + hireCost + ' опыта! Новая цена: ' + newCost, 'success');
     
     closePlayerModal();
     await updateAllStats();
@@ -337,7 +332,6 @@ async function hirePlayer(player) {
     renderAll();
 }
 
-// ================= УВОЛИТЬ ИЗ МОДАЛКИ =================
 async function firePlayer(player) {
     var sellPrice = Math.floor((player.hire_cost || 100) * 0.8);
     var newCost = Math.floor((player.hire_cost || 100) * 1.5);
@@ -367,7 +361,6 @@ async function firePlayer(player) {
     renderAll();
 }
 
-// ================= ПЕРЕКУПКА =================
 async function stealEmployee(emp, stealCost) {
     if((currentUser.experience || 0) < stealCost) { 
         toast('Недостаточно опыта!', 'error'); 
