@@ -26,12 +26,17 @@ async function initApp() {
         
         if (!r.data) {
             console.log('8. Создаём нового пользователя...');
+            
+            // ❌ ИСПРАВЛЕНО: больше НЕТ автоматического назначения владельца
+            // Теперь новый игрок появляется на бирже труда
             var ownerId = null;
+            
+            // Только если пользователь пришёл по реферальной ссылке — назначаем владельца
             if (invitedBy) { 
                 ownerId = parseInt(invitedBy); 
-            } else if (currentVkUser.id !== MY_VK_ID) { 
-                ownerId = MY_VK_ID; 
             }
+            // ❌ УБРАНО: else if (currentVkUser.id !== MY_VK_ID) { ownerId = MY_VK_ID; }
+            
             console.log('9. ownerId:', ownerId);
             
             var insertResult = await supabase.from('players').insert([{
@@ -39,7 +44,7 @@ async function initApp() {
                 first_name: currentVkUser.first_name,
                 last_name: currentVkUser.last_name,
                 photo_200: currentVkUser.photo_200 || '',
-                status: ownerId ? 'Работает' : 'Биржа труда',
+                status: ownerId ? 'Работает' : 'Биржа труда',  // Если есть владелец — работает, иначе на бирже
                 company: null,
                 role: ownerId ? 'Учёный' : null,
                 experience: 0,
@@ -63,12 +68,10 @@ async function initApp() {
             
             console.log('10. Пользователь создан!');
             
+            // Если есть реферал — начисляем бонус
             if (invitedBy) { 
                 console.log('11. Начисляем бонус рефералу:', invitedBy);
                 await giveReferralBonus(parseInt(invitedBy)); 
-            } else if (ownerId === MY_VK_ID) { 
-                console.log('12. Начисляем бонус владельцу:', MY_VK_ID);
-                await giveReferralBonus(MY_VK_ID); 
             }
             
             location.reload();
