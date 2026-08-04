@@ -155,12 +155,17 @@ async function doCollect(amount, isMultiplied) {
     
     var msg = isMultiplied ? '🔥 x1.5! ' : '';
     toast('✅ ' + msg + '+' + collected + ' опыта!', 'success');
+    
+    // ✅ ОБНОВЛЯЕМ ЗАДАНИЕ "СОБЕРИ ДОХОД 5 РАЗ"
+    if (typeof updateDailyTask === 'function') {
+        updateDailyTask('collect', 1);
+    }
+    
     renderAll();
 }
 
 // ================= ПОКАЗ РЕКЛАМЫ ПРИ СБОРЕ (С ПРОВЕРКОЙ) =================
 async function showRewardedAdForCollect(amount) {
-    // Проверяем готовность рекламы перед показом
     try {
         console.log('Проверяем готовность рекламы для сбора...');
         var checkResult = await vkBridge.send('VKWebAppCheckNativeAds', {
@@ -227,6 +232,11 @@ async function upgradeEmployee(vkId) {
     currentUser.last_collect = new Date().toISOString();
     
     toast('✅ Прокачан до ур.' + newLevel + '! ' + getJobTitle(newLevel), 'success');
+    
+    // ✅ ОБНОВЛЯЕМ ЗАДАНИЕ "ПРОКАЧАЙ 3 СОТРУДНИКОВ"
+    if (typeof updateDailyTask === 'function') {
+        updateDailyTask('upgrade', 1);
+    }
     
     await updateAllStats();
     loadMyTeam(true);
@@ -303,6 +313,11 @@ async function hirePlayer(player) {
     console.log('=== КОНЕЦ НАЙМА ===');
     
     toast('✅ Нанят за ' + hireCost + ' опыта!', 'success');
+    
+    // ✅ ОБНОВЛЯЕМ ЗАДАНИЕ "НАЙМИ 5 СОТРУДНИКОВ"
+    if (typeof updateDailyTask === 'function') {
+        updateDailyTask('hire', 1);
+    }
     
     closePlayerModal();
     await updateAllStats();
