@@ -240,7 +240,7 @@ function getRemainingAds() {
     return Math.max(0, REWARDED_AD_LIMIT - watched);
 }
 
-// ================= ПОКАЗ РЕКЛАМЫ (РАБОТАЕТ) =================
+// ================= ПОКАЗ РЕКЛАМЫ (РАБОЧАЯ ВЕРСИЯ, БЕЗ is_test: true) =================
 async function doRewardedAd() {
     var remaining = getRemainingAds();
     if(remaining <= 0) {
@@ -248,7 +248,7 @@ async function doRewardedAd() {
         return;
     }
     
-    // ✅ КУЛДАУН 1 МИНУТА
+    // Кулдаун 1 минута
     var lastAdTime = localStorage.getItem('last_ad_time_' + (currentUser ? currentUser.vk_id : 'temp'));
     if(lastAdTime) {
         var timeDiff = (Date.now() - parseInt(lastAdTime)) / 1000;
@@ -259,28 +259,11 @@ async function doRewardedAd() {
         }
     }
     
-    // ✅ ПРОВЕРКА ГОТОВНОСТИ РЕКЛАМЫ
-    try {
-        var checkResult = await vkBridge.send('VKWebAppCheckNativeAds', {
-            ad_format: 'reward'
-        });
-        console.log('Проверка рекламы:', checkResult);
-        
-        if (!checkResult || !checkResult.result) {
-            toast('📡 Реклама ещё не загружена, попробуйте через несколько секунд', 'info');
-            return;
-        }
-    } catch(e) {
-        console.error('Ошибка проверки рекламы:', e);
-        toast('📡 Ошибка проверки рекламы', 'error');
-        return;
-    }
-    
-    // ✅ ПОКАЗ РЕКЛАМЫ
     try {
         console.log('Показываем рекламу...');
         var result = await vkBridge.send('VKWebAppShowNativeAds', {
             ad_format: 'rewarded'
+            // ❌ is_test: true УБРАН — реклама не загружалась с ним
         });
         
         console.log('Результат рекламы:', result);
