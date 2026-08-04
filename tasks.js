@@ -2,6 +2,7 @@
 
 var adWatchCount = 0;
 var adWatchDate = '';
+var adReady = false;  // Флаг готовности рекламы
 
 // ================= ЕЖЕДНЕВНЫЕ ЗАДАНИЯ =================
 var dailyTasks = {
@@ -137,6 +138,8 @@ function toggleTasks() {
         panel.style.display = 'block';
         renderTasks();
         document.getElementById('earn-btn').textContent = '🔼 Скрыть';
+        // Проверяем рекламу при открытии панели
+        checkAdReady();
     } else {
         panel.style.display = 'none';
         document.getElementById('earn-btn').textContent = '💰 Заработать';
@@ -195,7 +198,7 @@ function doPromoTask() {
     toast('Введите промокод', 'info');
 }
 
-// ================= РЕКЛАМНОЕ ЗАДАНИЕ (РАБОЧАЯ ТЕСТОВАЯ ВЕРСИЯ) =================
+// ================= РЕКЛАМНОЕ ЗАДАНИЕ =================
 
 function getAdLimitKey() {
     if (!currentUser || !currentUser.vk_id) {
@@ -240,7 +243,35 @@ function getRemainingAds() {
     return Math.max(0, REWARDED_AD_LIMIT - watched);
 }
 
-// ================= ПОКАЗ РЕКЛАМЫ (ТЕСТОВАЯ ВЕРСИЯ — РАБОТАЛА) =================
+// ================= ПРОВЕРКА ГОТОВНОСТИ РЕКЛАМЫ (ПО ДОКУМЕНТАЦИИ VK) =================
+async function checkAdReady() {
+    try {
+        console.log('🔍 Проверяем готовность рекламы...');
+        var data = await vkBridge.send('VKWebAppCheckNativeAds', {
+            ad_format: 'reward'
+        });
+        console.log('📡 Результат проверки:', data);
+        
+        if (data && data.result === true) {
+            adReady = true;
+            console.log('✅ Реклама готова к показу');
+        } else {
+            adReady = false;
+            console.log('❌ Рекламные материалы не найдены');
+        }
+        
+        // Обновляем кнопку в интерфейсе
+        renderTasks();
+        return adReady;
+    } catch(error) {
+        console.error('❌ Ошибка проверки рекламы:', error);
+        adReady = false;
+        renderTasks();
+        return false;
+    }
+}
+
+// ================= ПОКАЗ РЕКЛАМЫ (ПО ДОКУМЕНТАЦИИ VK) =================
 async function doRewardedAd() {
     var remaining = getRemainingAds();
     if(remaining <= 0) {
@@ -259,27 +290,30 @@ async function doRewardedAd() {
         }
     }
     
+    // ✅ Проверяем готовность рекламы перед показом
+    var ready = await checkAdReady();
+    if (!ready) {
+        toast('📡 Реклама ещё не загружена, попробуйте через несколько секунд', 'info');
+        return;
+    }
+    
+    // ✅ Показываем рекламу (как в документации VK)
     try {
-        console.log('Показываем тестовую рекламу...');
-        var result = await vkBridge.send('VKWebAppShowNativeAds', {
-            ad_format: 'rewarded',
-            is_test: true  // ✅ ТЕСТОВЫЙ РЕЖИМ — ОН РАБОТАЛ!
+        console.log('🎬 Показываем рекламу...');
+        var data = await vkBridge.send('VKWebAppShowNativeAds', {
+            ad_format: 'reward'
         });
+        console.log('📡 Результат показа:', data);
         
-        console.log('Результат рекламы:', result);
-        
-        if(result && result.result === true) {
+        if (data && data.result === true) {
+            // Успех — начисляем бонус
             await giveAdBonus();
         } else {
-            // В тестовом режиме начисляем бонус даже если result === false
-            toast('🎬 [ТЕСТ] Реклама активирована!', 'info');
-            await giveAdBonus();
+            toast('❌ Ошибка при показе рекламы', 'error');
         }
-    } catch(e) {
-        console.error('Ошибка показа рекламы:', e);
-        // В тестовом режиме начисляем бонус даже при ошибке
-        toast('🎬 [ТЕСТ] Бонус за рекламу начислен!', 'info');
-        await giveAdBonus();
+    } catch(error) {
+        console.error('❌ Ошибка показа рекламы:', error);
+        toast('❌ Ошибка при показе рекламы', 'error');
     }
 }
 
@@ -357,10 +391,15 @@ function renderTasks() {
         adText += ' (осталось ' + remaining + ' раз)';
     }
     
+    // Показываем статус готовности
+    var statusText = adReady ? '✅ готова' : '⏳ загрузка...';
+    
     html += '<div class="section-title" style="margin-top:12px;">🎯 Задания</div>';
-    html += '<div class="task-item"><div class="task-info"><b>' + adText + '</b><br><span style="font-size:11px;color:#aaa;">Максимум ' + REWARDED_AD_LIMIT + ' раз в день • 1 мин кулдаун</span></div>';
-    if(remaining > 0) {
+    html += '<div class="task-item"><div class="task-info"><b>' + adText + '</b><br><span style="font-size:11px;color:#aaa;">Максимум ' + REWARDED_AD_LIMIT + ' раз в день • 1 мин кулдаун</span><br><span style="font-size:10px;color:#8b949e;">📡 Статус: ' + statusText + '</span></div>';
+    if(remaining > 0 && adReady) {
         html += '<button class="btn-task" onclick="doRewardedAd()" style="background:linear-gradient(135deg,#ff9800,#f57c00);color:#fff;">▶ Смотреть</button>';
+    } else if(remaining > 0 && !adReady) {
+        html += '<button class="btn-task" disabled style="background:#555;color:#888;cursor:not-allowed;">⏳ Загрузка...</button>';
     } else {
         html += '<span style="color:#f44336;">❌ Лимит</span>';
     }
@@ -382,7 +421,7 @@ function renderTasks() {
     listEl.innerHTML = html;
 }
 
-// ===== ЗАГРУЗКА ПРИ СТАРТЕ =====
+// ===== ЗАПУСК ПРИ СТАРТЕ =====
 setTimeout(async function() {
     if (typeof currentUser !== 'undefined' && currentUser && currentUser.vk_id) {
         await loadDailyTasksFromDB();
@@ -406,6 +445,8 @@ setTimeout(async function() {
         } catch(e) {
             console.error('Ошибка загрузки счётчика рекламы:', e);
         }
+        // Проверяем готовность рекламы при старте
+        setTimeout(checkAdReady, 2000);
         renderTasks();
     }
 }, 1000);
@@ -420,3 +461,4 @@ window.checkGroupTask = checkGroupTask;
 window.doPromoTask = doPromoTask;
 window.updateDailyTask = updateDailyTask;
 window.loadDailyTasksFromDB = loadDailyTasksFromDB;
+window.checkAdReady = checkAdReady;
