@@ -12,7 +12,9 @@ var dailyTasks = {
 };
 
 function getDailyTasksKey() {
-    if (!currentUser) return 'daily_tasks_temp';
+    if (!currentUser || !currentUser.vk_id) {
+        return 'daily_tasks_temp';
+    }
     return 'daily_tasks_' + currentUser.vk_id + '_' + new Date().toDateString();
 }
 
@@ -141,7 +143,11 @@ function doPromoTask() {
     toast('Введите промокод', 'info');
 }
 
+// ================= РЕКЛАМА =================
 function getAdLimitKey() {
+    if (!currentUser || !currentUser.vk_id) {
+        return 'ad_watch_temp';
+    }
     var today = new Date().toDateString();
     return 'ad_watch_' + currentUser.vk_id + '_' + today;
 }
@@ -175,7 +181,7 @@ async function doRewardedAd() {
         return;
     }
     
-    var lastAdTime = localStorage.getItem('last_ad_time_' + currentUser.vk_id);
+    var lastAdTime = localStorage.getItem('last_ad_time_' + (currentUser ? currentUser.vk_id : 'temp'));
     if(lastAdTime) {
         var timeDiff = (Date.now() - parseInt(lastAdTime)) / 1000;
         if(timeDiff < AD_COOLDOWN_SECONDS) {
@@ -215,7 +221,9 @@ async function giveAdBonus() {
     
     var newCount = getAdWatchCount() + 1;
     setAdWatchCount(newCount);
-    localStorage.setItem('last_ad_time_' + currentUser.vk_id, String(Date.now()));
+    if (currentUser && currentUser.vk_id) {
+        localStorage.setItem('last_ad_time_' + currentUser.vk_id, String(Date.now()));
+    }
     
     updateDailyTask('ad', 1);
     
@@ -292,7 +300,7 @@ function renderTasks() {
 }
 
 setTimeout(function() {
-    if (typeof currentUser !== 'undefined' && currentUser) {
+    if (typeof currentUser !== 'undefined' && currentUser && currentUser.vk_id) {
         loadDailyTasks();
     }
 }, 1000);
