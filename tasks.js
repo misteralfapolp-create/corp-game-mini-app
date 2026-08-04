@@ -22,14 +22,12 @@ function loadDailyTasks() {
     if (data) {
         try {
             var parsed = JSON.parse(data);
-            // Проверяем, что все поля есть
             if (parsed.hire && parsed.ad && parsed.upgrade && parsed.collect) {
                 dailyTasks = parsed;
                 return;
             }
         } catch(e) {}
     }
-    // Сброс заданий на новый день
     dailyTasks = {
         hire: { count: 0, target: 5, done: false },
         ad: { count: 0, target: 10, done: false },
@@ -50,14 +48,12 @@ function getDailyTaskProgress(taskId) {
     return { progress: task.count, target: task.target, done: task.done };
 }
 
-// ================= ОБНОВЛЕНИЕ ПРОГРЕССА ЗАДАНИЙ =================
 function updateDailyTask(taskId, increment) {
     var task = dailyTasks[taskId];
     if (!task || task.done) return;
     task.count += increment;
     if (task.count >= task.target) {
         task.done = true;
-        // Награда за выполнение
         giveDailyTaskReward(taskId);
     }
     saveDailyTasks();
@@ -81,7 +77,6 @@ async function giveDailyTaskReward(taskId) {
     renderAll();
 }
 
-// ================= ТОГГЛ ЗАДАНИЙ =================
 function toggleTasks() {
     var panel = document.getElementById('tasks-panel');
     if(panel.style.display === 'none' || panel.style.display === '') {
@@ -94,7 +89,6 @@ function toggleTasks() {
     }
 }
 
-// ================= ЗАДАНИЕ: ПОДПИСКА НА ГРУППУ =================
 function doGroupTask() {
     window.open(GROUP_URL, '_blank');
     toast('📱 Откройте группу и подпишитесь', 'info');
@@ -147,8 +141,6 @@ function doPromoTask() {
     toast('Введите промокод', 'info');
 }
 
-// ================= РЕКЛАМНОЕ ЗАДАНИЕ =================
-
 function getAdLimitKey() {
     var today = new Date().toDateString();
     return 'ad_watch_' + currentUser.vk_id + '_' + today;
@@ -176,7 +168,6 @@ function getRemainingAds() {
     return Math.max(0, REWARDED_AD_LIMIT - watched);
 }
 
-// ================= ПОКАЗ РЕКЛАМЫ =================
 async function doRewardedAd() {
     var remaining = getRemainingAds();
     if(remaining <= 0) {
@@ -215,7 +206,6 @@ async function doRewardedAd() {
     }
 }
 
-// ================= НАЧИСЛЕНИЕ БОНУСА =================
 async function giveAdBonus() {
     var bonus = REWARDED_AD_BONUS;
     await supabase.from('players').update({
@@ -227,7 +217,6 @@ async function giveAdBonus() {
     setAdWatchCount(newCount);
     localStorage.setItem('last_ad_time_' + currentUser.vk_id, String(Date.now()));
     
-    // Обновляем ежедневное задание
     updateDailyTask('ad', 1);
     
     var remainingAfter = getRemainingAds();
@@ -236,13 +225,11 @@ async function giveAdBonus() {
     renderTasks();
 }
 
-// ================= РЕНДЕР ЗАДАНИЙ =================
 function renderTasks() {
     var listEl = document.getElementById('tasks-list');
     if(!listEl) return;
     var html = '';
     
-    // ===== ЗАГРУЗКА ЕЖЕДНЕВНЫХ ЗАДАНИЙ =====
     loadDailyTasks();
     
     // ===== ЕЖЕДНЕВНЫЕ ЗАДАНИЯ =====
@@ -261,7 +248,7 @@ function renderTasks() {
         
         html += '<div class="task-item" style="flex-direction:column;align-items:stretch;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06);">';
         html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
-        html += '<div class="task-info"><b>' + task.label + '</b></div>';
+        html += '<div class="task-info"><b>' + task.label + '</b><br><span style="font-size:11px;color:#ffd700;">🏆 Награда: 1000 опыта</span></div>';
         html += '<span style="font-size:13px;color:' + (task.done ? '#4caf50' : '#ff9800') + ';font-weight:600;">' + status + '</span>';
         html += '</div>';
         html += '<div style="width:100%;height:6px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;margin-top:4px;">';
@@ -304,14 +291,12 @@ function renderTasks() {
     listEl.innerHTML = html;
 }
 
-// ================= ЗАПУСК ПРИ ЗАГРУЗКЕ =================
 setTimeout(function() {
     if (typeof currentUser !== 'undefined' && currentUser) {
         loadDailyTasks();
     }
 }, 1000);
 
-// Экспортируем функции глобально
 window.doRewardedAd = doRewardedAd;
 window.getRemainingAds = getRemainingAds;
 window.renderTasks = renderTasks;
