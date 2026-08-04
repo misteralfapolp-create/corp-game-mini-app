@@ -42,11 +42,9 @@ function loadDailyTasks() {
 function saveDailyTasks() {
     var key = getDailyTasksKey();
     localStorage.setItem(key, JSON.stringify(dailyTasks));
-    // ✅ ДОБАВЛЕНО: сохраняем в Supabase
     saveDailyTasksToDB();
 }
 
-// ✅ НОВАЯ ФУНКЦИЯ: сохранение в Supabase
 async function saveDailyTasksToDB() {
     if (!currentUser || !currentUser.vk_id) return;
     try {
@@ -62,7 +60,6 @@ async function saveDailyTasksToDB() {
     }
 }
 
-// ✅ НОВАЯ ФУНКЦИЯ: загрузка из Supabase при старте
 async function loadDailyTasksFromDB() {
     if (!currentUser || !currentUser.vk_id) return;
     try {
@@ -77,22 +74,18 @@ async function loadDailyTasksFromDB() {
         var savedDate = r.data.daily_tasks_date ? new Date(r.data.daily_tasks_date).toDateString() : null;
         
         if (savedDate === today) {
-            // Загружаем из БД
             dailyTasks = {
                 hire: { count: r.data.daily_hire_count || 0, target: 5, done: (r.data.daily_hire_count || 0) >= 5 },
                 ad: { count: r.data.daily_ad_count || 0, target: 10, done: (r.data.daily_ad_count || 0) >= 10 },
                 upgrade: { count: r.data.daily_upgrade_count || 0, target: 3, done: (r.data.daily_upgrade_count || 0) >= 3 },
                 collect: { count: r.data.daily_collect_count || 0, target: 5, done: (r.data.daily_collect_count || 0) >= 5 }
             };
-            // Сохраняем в localStorage для синхронизации
             saveDailyTasks();
         }
         
-        // Синхронизируем счётчик рекламы
         var adDate = r.data.ad_watch_date ? new Date(r.data.ad_watch_date).toDateString() : null;
         if (adDate === today) {
             adWatchCount = r.data.ad_watch_count || 0;
-            // Обновляем localStorage
             var key = getAdLimitKey();
             localStorage.setItem(key, JSON.stringify({ count: adWatchCount }));
         }
@@ -203,6 +196,7 @@ function doPromoTask() {
 }
 
 // ================= РЕКЛАМНОЕ ЗАДАНИЕ =================
+
 function getAdLimitKey() {
     if (!currentUser || !currentUser.vk_id) {
         return 'ad_watch_temp';
@@ -226,11 +220,9 @@ function getAdWatchCount() {
 function setAdWatchCount(count) {
     var key = getAdLimitKey();
     localStorage.setItem(key, JSON.stringify({ count: count }));
-    // ✅ ДОБАВЛЕНО: сохраняем в Supabase
     saveAdCountToDB(count);
 }
 
-// ✅ НОВАЯ ФУНКЦИЯ: сохранение счётчика рекламы в Supabase
 async function saveAdCountToDB(count) {
     if (!currentUser || !currentUser.vk_id) return;
     try {
@@ -248,7 +240,7 @@ function getRemainingAds() {
     return Math.max(0, REWARDED_AD_LIMIT - watched);
 }
 
-// ================= ПОКАЗ РЕКЛАМЫ (ВСЁ РАБОТАЕТ КАК РАНЬШЕ) =================
+// ================= ПОКАЗ РЕКЛАМЫ (РАБОТАЕТ) =================
 async function doRewardedAd() {
     var remaining = getRemainingAds();
     if(remaining <= 0) {
@@ -256,7 +248,7 @@ async function doRewardedAd() {
         return;
     }
     
-    // ✅ КУЛДАУН 1 МИНУТА (работает)
+    // ✅ КУЛДАУН 1 МИНУТА
     var lastAdTime = localStorage.getItem('last_ad_time_' + (currentUser ? currentUser.vk_id : 'temp'));
     if(lastAdTime) {
         var timeDiff = (Date.now() - parseInt(lastAdTime)) / 1000;
@@ -267,6 +259,24 @@ async function doRewardedAd() {
         }
     }
     
+    // ✅ ПРОВЕРКА ГОТОВНОСТИ РЕКЛАМЫ
+    try {
+        var checkResult = await vkBridge.send('VKWebAppCheckNativeAds', {
+            ad_format: 'reward'
+        });
+        console.log('Проверка рекламы:', checkResult);
+        
+        if (!checkResult || !checkResult.result) {
+            toast('📡 Реклама ещё не загружена, попробуйте через несколько секунд', 'info');
+            return;
+        }
+    } catch(e) {
+        console.error('Ошибка проверки рекламы:', e);
+        toast('📡 Ошибка проверки рекламы', 'error');
+        return;
+    }
+    
+    // ✅ ПОКАЗ РЕКЛАМЫ
     try {
         console.log('Показываем рекламу...');
         var result = await vkBridge.send('VKWebAppShowNativeAds', {
@@ -278,17 +288,15 @@ async function doRewardedAd() {
         if(result && result.result === true) {
             await giveAdBonus();
         } else {
-            toast('🎬 Реклама активирована!', 'info');
-            await giveAdBonus();
+            toast('❌ Реклама не загружена', 'error');
         }
     } catch(e) {
         console.error('Ошибка показа рекламы:', e);
-        toast('🎬 Бонус за рекламу начислен!', 'info');
-        await giveAdBonus();
+        toast('❌ Ошибка при показе рекламы', 'error');
     }
 }
 
-// ================= НАЧИСЛЕНИЕ БОНУСА (ВСЁ РАБОТАЕТ КАК РАНЬШЕ) =================
+// ================= НАЧИСЛЕНИЕ БОНУСА =================
 async function giveAdBonus() {
     var bonus = REWARDED_AD_BONUS;
     await supabase.from('players').update({
@@ -300,7 +308,6 @@ async function giveAdBonus() {
     setAdWatchCount(newCount);
     if (currentUser && currentUser.vk_id) {
         localStorage.setItem('last_ad_time_' + currentUser.vk_id, String(Date.now()));
-        // ✅ ДОБАВЛЕНО: сохраняем время последнего просмотра в Supabase
         saveLastAdTimeToDB();
     }
     
@@ -312,7 +319,6 @@ async function giveAdBonus() {
     renderTasks();
 }
 
-// ✅ НОВАЯ ФУНКЦИЯ: сохранение времени последнего просмотра в Supabase
 async function saveLastAdTimeToDB() {
     if (!currentUser || !currentUser.vk_id) return;
     try {
@@ -393,7 +399,6 @@ function renderTasks() {
 setTimeout(async function() {
     if (typeof currentUser !== 'undefined' && currentUser && currentUser.vk_id) {
         await loadDailyTasksFromDB();
-        // Загружаем счётчик рекламы из БД
         try {
             var r = await supabase.from('players')
                 .select('ad_watch_count, ad_watch_date, last_ad_time')
