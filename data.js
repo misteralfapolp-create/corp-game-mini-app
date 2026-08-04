@@ -153,13 +153,17 @@ async function doCollect(amount, isMultiplied) {
     currentUser.experience += collected;
     currentUser.pending_experience = 0;
     
+    // Обновляем ежедневное задание "собери доход 5 раз"
+    if (typeof updateDailyTask === 'function') {
+        updateDailyTask('collect', 1);
+    }
+    
     var msg = isMultiplied ? '🔥 x1.5! ' : '';
     toast('✅ ' + msg + '+' + collected + ' опыта!', 'success');
     renderAll();
 }
 
 async function showRewardedAdForCollect(amount) {
-    // Проверяем готовность рекламы перед показом
     try {
         console.log('Проверяем готовность рекламы для сбора...');
         var checkResult = await vkBridge.send('VKWebAppCheckNativeAds', {
@@ -184,7 +188,7 @@ async function showRewardedAdForCollect(amount) {
     
     try {
         var result = await vkBridge.send('VKWebAppShowNativeAds', {
-            ad_format: 'reward'
+            ad_format: 'rewarded'
         });
         
         console.log('Результат показа рекламы:', result);
@@ -227,20 +231,22 @@ async function upgradeEmployee(vkId) {
         return; 
     }
     
-    // Новая цена = новый уровень * 50
     var newCost = newLevel * 50;
     
-    // Списываем опыт у владельца
     await supabase.from('players').update({ 
         experience: Math.max(0, (currentUser.experience || 0) - cost) 
     }).eq('vk_id', currentUser.vk_id);
     currentUser.experience = Math.max(0, (currentUser.experience || 0) - cost);
     
-    // Прокачиваем: уровень +1, цена обновляется
     await supabase.from('players').update({ 
         level: newLevel,
         hire_cost: newCost
     }).eq('vk_id', vkId);
+    
+    // Обновляем ежедневное задание "прокачай 3 сотрудников"
+    if (typeof updateDailyTask === 'function') {
+        updateDailyTask('upgrade', 1);
+    }
     
     toast('✅ Прокачан до ур.' + newLevel + '! ' + getJobTitle(newLevel) + ' | Цена: ' + newCost + ' опыта', 'success');
     
@@ -317,6 +323,11 @@ async function hirePlayer(player) {
     await supabase.from('players').update({ last_collect: new Date().toISOString() }).eq('vk_id', currentUser.vk_id);
     
     console.log('=== КОНЕЦ НАЙМА ===');
+    
+    // Обновляем ежедневное задание "найми 5 сотрудников"
+    if (typeof updateDailyTask === 'function') {
+        updateDailyTask('hire', 1);
+    }
     
     toast('✅ Нанят за ' + hireCost + ' опыта!', 'success');
     
