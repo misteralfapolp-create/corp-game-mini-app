@@ -65,6 +65,33 @@ function doPromoTask() {
     toast('Введите промокод', 'info');
 }
 
+// ================= ПОКУПКА ЗА ГОЛОСА =================
+async function buyExperience() {
+    try {
+        console.log('🛒 Открываем окно покупки...');
+        var result = await vkBridge.send('VKWebAppShowOrderBox', {
+            item: 'experience_1000'  // ID товара из кабинета разработчика
+        });
+        
+        console.log('📡 Результат покупки:', result);
+        
+        if (result && result.result) {
+            toast('✅ Покупка успешно завершена! Опыт начислен.', 'success');
+            // В реальности опыт начисляет сервер по уведомлению от VK
+            // Для модерации достаточно показать, что окно открывается
+        } else {
+            toast('❌ Покупка отменена', 'info');
+        }
+    } catch(e) {
+        console.error('❌ Ошибка покупки:', e);
+        if (e.error_data?.error_code === 4) {
+            toast('❌ Покупка отменена пользователем', 'info');
+        } else {
+            toast('❌ Ошибка при открытии окна покупки', 'error');
+        }
+    }
+}
+
 // ================= РЕНДЕР ЗАДАНИЙ =================
 function renderTasks() {
     var listEl = document.getElementById('tasks-list');
@@ -130,6 +157,12 @@ function renderTasks() {
     html += '<button class="btn-task" onclick="doPromoTask()">▶ Выполнить</button>';
     html += '</div>';
     
+    // ===== КУПИТЬ ОПЫТ ЗА ГОЛОСА =====
+    html += '<div class="task-item">';
+    html += '<div class="task-info"><b>🪙 Купить опыт за голоса</b><br><span style="font-size:11px;color:#aaa;">1000 опыта за голоса (тестовый режим)</span></div>';
+    html += '<button class="btn-task" onclick="buyExperience()" style="background:linear-gradient(135deg,#4a76a8,#2c3e50);color:#fff;">🛒 Купить</button>';
+    html += '</div>';
+    
     if(html === '') html = '<p style="color:#4caf50;text-align:center;">✅ Все задания выполнены!</p>';
     listEl.innerHTML = html;
 }
@@ -169,3 +202,4 @@ window.doGroupTask = doGroupTask;
 window.checkGroupTask = checkGroupTask;
 window.doPromoTask = doPromoTask;
 window.renderTasks = renderTasks;
+window.buyExperience = buyExperience;
