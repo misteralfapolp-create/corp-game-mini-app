@@ -65,41 +65,31 @@ function doPromoTask() {
     toast('Введите промокод', 'info');
 }
 
-// ================= ПОКУПКА ЗА ГОЛОСА (ИСПРАВЛЕНО) =================
-async function buyExperience() {
+// ================= ПОКУПКА ПОДПИСКИ (ТЕСТОВЫЙ РЕЖИМ) =================
+async function buySubscription() {
     try {
-        // Проверяем, что VK Bridge загружен
         if (typeof vkBridge === 'undefined') {
             toast('❌ VK Bridge не загружен', 'error');
             return;
         }
 
-        console.log('🛒 Открываем окно покупки...');
-        console.log('📦 ID товара: experience_1000');
+        console.log('🛒 Открываем окно покупки подписки...');
 
-        var result = await vkBridge.send('VKWebAppShowOrderBox', {
-            item: 'experience_1000'  // ID товара (должен совпадать с каталогом VK)
+        var result = await vkBridge.send('VKWebAppShowSubscriptionBox', {
+            action: 'create',
+            item: 'sale_item_subscription_1'  // Идентификатор подписки
         });
 
-        console.log('📡 Результат покупки:', result);
+        console.log('📡 Результат:', result);
 
         if (result && result.result) {
-            toast('✅ Покупка успешно завершена! Опыт начислен.', 'success');
+            toast('✅ Подписка оформлена!', 'success');
         } else {
-            toast('❌ Покупка отменена', 'info');
+            toast('❌ Подписка отменена', 'info');
         }
     } catch (e) {
-        console.error('❌ Ошибка покупки:', e);
-        
-        // Разбираем ошибку
-        if (e.error_data?.error_code === 4) {
-            toast('❌ Покупка отменена пользователем', 'info');
-        } else if (e.error_data?.error_code === 100) {
-            toast('❌ Товар не найден (ID: experience_1000). Проверьте каталог VK.', 'error');
-            console.error('❌ Товар experience_1000 не найден в каталоге VK!');
-        } else {
-            toast('❌ Ошибка: ' + (e.message || 'неизвестная'), 'error');
-        }
+        console.error('❌ Ошибка подписки:', e);
+        toast('❌ Ошибка: ' + (e.message || 'неизвестная'), 'error');
     }
 }
 
@@ -168,10 +158,10 @@ function renderTasks() {
     html += '<button class="btn-task" onclick="doPromoTask()">▶ Выполнить</button>';
     html += '</div>';
     
-    // ===== КУПИТЬ ОПЫТ ЗА ГОЛОСА =====
+    // ===== КУПИТЬ ПОДПИСКУ (ТЕСТОВЫЙ РЕЖИМ) =====
     html += '<div class="task-item">';
-    html += '<div class="task-info"><b>🪙 Купить опыт за голоса</b><br><span style="font-size:11px;color:#aaa;">1000 опыта за голоса (тестовый режим)</span></div>';
-    html += '<button class="btn-task" onclick="buyExperience()" style="background:linear-gradient(135deg,#4a76a8,#2c3e50);color:#fff;">🛒 Купить</button>';
+    html += '<div class="task-info"><b>📅 Оформить подписку</b><br><span style="font-size:11px;color:#aaa;">Тестовый режим (голоса не списываются)</span></div>';
+    html += '<button class="btn-task" onclick="buySubscription()" style="background:linear-gradient(135deg,#8e44ad,#6c3483);color:#fff;">📅 Купить</button>';
     html += '</div>';
     
     if(html === '') html = '<p style="color:#4caf50;text-align:center;">✅ Все задания выполнены!</p>';
@@ -213,4 +203,4 @@ window.doGroupTask = doGroupTask;
 window.checkGroupTask = checkGroupTask;
 window.doPromoTask = doPromoTask;
 window.renderTasks = renderTasks;
-window.buyExperience = buyExperience;
+window.buySubscription = buySubscription;
