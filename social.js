@@ -65,29 +65,40 @@ function doPromoTask() {
     toast('Введите промокод', 'info');
 }
 
-// ================= ПОКУПКА ЗА ГОЛОСА =================
+// ================= ПОКУПКА ЗА ГОЛОСА (ИСПРАВЛЕНО) =================
 async function buyExperience() {
     try {
+        // Проверяем, что VK Bridge загружен
+        if (typeof vkBridge === 'undefined') {
+            toast('❌ VK Bridge не загружен', 'error');
+            return;
+        }
+
         console.log('🛒 Открываем окно покупки...');
+        console.log('📦 ID товара: experience_1000');
+
         var result = await vkBridge.send('VKWebAppShowOrderBox', {
-            item: 'experience_1000'  // ID товара из кабинета разработчика
+            item: 'experience_1000'  // ID товара (должен совпадать с каталогом VK)
         });
-        
+
         console.log('📡 Результат покупки:', result);
-        
+
         if (result && result.result) {
             toast('✅ Покупка успешно завершена! Опыт начислен.', 'success');
-            // В реальности опыт начисляет сервер по уведомлению от VK
-            // Для модерации достаточно показать, что окно открывается
         } else {
             toast('❌ Покупка отменена', 'info');
         }
-    } catch(e) {
+    } catch (e) {
         console.error('❌ Ошибка покупки:', e);
+        
+        // Разбираем ошибку
         if (e.error_data?.error_code === 4) {
             toast('❌ Покупка отменена пользователем', 'info');
+        } else if (e.error_data?.error_code === 100) {
+            toast('❌ Товар не найден (ID: experience_1000). Проверьте каталог VK.', 'error');
+            console.error('❌ Товар experience_1000 не найден в каталоге VK!');
         } else {
-            toast('❌ Ошибка при открытии окна покупки', 'error');
+            toast('❌ Ошибка: ' + (e.message || 'неизвестная'), 'error');
         }
     }
 }
