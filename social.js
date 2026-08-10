@@ -1,18 +1,5 @@
 // ================= СОЦИАЛЬНЫЕ ЗАДАНИЯ =================
 
-function toggleTasks() {
-    var panel = document.getElementById('tasks-panel');
-    if(panel.style.display === 'none' || panel.style.display === '') {
-        panel.style.display = 'block';
-        renderTasks();
-        document.getElementById('earn-btn').textContent = '🔼 Скрыть';
-        checkAdReady();
-    } else {
-        panel.style.display = 'none';
-        document.getElementById('earn-btn').textContent = '💰 Заработать';
-    }
-}
-
 function doGroupTask() {
     window.open(GROUP_URL, '_blank');
     toast('📱 Откройте группу и подпишитесь', 'info');
@@ -77,7 +64,7 @@ async function buySubscription() {
 
         var result = await vkBridge.send('VKWebAppShowSubscriptionBox', {
             action: 'create',
-            item: 'sale_item_subscription_1'  // Идентификатор подписки
+            item: 'sale_item_subscription_1'
         });
 
         console.log('📡 Результат:', result);
@@ -158,7 +145,7 @@ function renderTasks() {
     html += '<button class="btn-task" onclick="doPromoTask()">▶ Выполнить</button>';
     html += '</div>';
     
-    // ===== КУПИТЬ ПОДПИСКУ (ТЕСТОВЫЙ РЕЖИМ) =====
+    // ===== КУПИТЬ ПОДПИСКУ =====
     html += '<div class="task-item">';
     html += '<div class="task-info"><b>📅 Оформить подписку</b><br><span style="font-size:11px;color:#aaa;">Тестовый режим (голоса не списываются)</span></div>';
     html += '<button class="btn-task" onclick="buySubscription()" style="background:linear-gradient(135deg,#8e44ad,#6c3483);color:#fff;">📅 Купить</button>';
@@ -197,8 +184,7 @@ setTimeout(async function() {
     }
 }, 1000);
 
-// ===== ЭКСПОРТ ГЛОБАЛЬНЫХ ФУНКЦИЙ =====
-window.toggleTasks = toggleTasks;
+// ===== ЭКСПОРТ =====
 window.doGroupTask = doGroupTask;
 window.checkGroupTask = checkGroupTask;
 window.doPromoTask = doPromoTask;
