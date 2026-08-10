@@ -111,28 +111,6 @@ function renderTasks() {
         html += '</div>';
     });
     
-    // ===== ЗАДАНИЕ: ПОСМОТРЕТЬ РЕКЛАМУ =====
-    var remaining = getRemainingAds();
-    var adText = '🎬 Посмотреть рекламу (+' + REWARDED_AD_BONUS + ' опыта)';
-    if(remaining <= 0) {
-        adText += ' ❌ (лимит)';
-    } else {
-        adText += ' (осталось ' + remaining + ' раз)';
-    }
-    
-    var statusText = adReady ? '✅ готова' : '⏳ загрузка...';
-    
-    html += '<div class="section-title" style="margin-top:12px;">🎯 Задания</div>';
-    html += '<div class="task-item"><div class="task-info"><b>' + adText + '</b><br><span style="font-size:11px;color:#aaa;">Максимум ' + REWARDED_AD_LIMIT + ' раз в день • 1 мин кулдаун</span><br><span style="font-size:10px;color:#8b949e;">📡 Статус: ' + statusText + '</span></div>';
-    if(remaining > 0 && adReady) {
-        html += '<button class="btn-task" onclick="doRewardedAd()" style="background:linear-gradient(135deg,#ff9800,#f57c00);color:#fff;">▶ Смотреть</button>';
-    } else if(remaining > 0 && !adReady) {
-        html += '<button class="btn-task" disabled style="background:#555;color:#888;cursor:not-allowed;">⏳ Загрузка...</button>';
-    } else {
-        html += '<span style="color:#f44336;">❌ Лимит</span>';
-    }
-    html += '</div>';
-    
     // ЗАДАНИЕ: ПОДПИСКА НА ГРУППУ
     if(!currentUser || !currentUser.task_group_done) {
         html += '<div class="task-item"><div class="task-info"><b>📱 Подписаться на группу</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
