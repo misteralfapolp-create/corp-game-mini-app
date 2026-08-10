@@ -249,6 +249,34 @@ function renderAll() {
         inviteBtn.onclick = inviteFriend;
     }
     
+    // ===== КНОПКА РЕКЛАМЫ В ПРОФИЛЕ =====
+    var adBtn = document.getElementById('profile-ad-btn');
+    if (adBtn) {
+        adBtn.onclick = function() {
+            if (typeof doRewardedAd === 'function') {
+                doRewardedAd();
+            } else {
+                toast('Функция рекламы не загружена', 'error');
+            }
+        };
+        
+        // Обновляем текст кнопки
+        var remaining = 50;
+        if (typeof getRemainingAds === 'function') {
+            remaining = getRemainingAds();
+        }
+        
+        if (remaining <= 0) {
+            adBtn.textContent = '🎬 Реклама (лимит)';
+            adBtn.style.opacity = '0.5';
+            adBtn.disabled = true;
+        } else {
+            adBtn.textContent = '🎬 Реклама (+500) (осталось ' + remaining + ')';
+            adBtn.style.opacity = '1';
+            adBtn.disabled = false;
+        }
+    }
+    
     // Загружаем сотрудников
     loadMyTeam(true);
 }
