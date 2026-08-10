@@ -13,7 +13,6 @@ body {
     background: #0d1117;
 }
 
-/* ===== ФОН ===== */
 #stars-canvas {
     position: fixed;
     top: 0;
@@ -27,7 +26,6 @@ body {
     display: none;
 }
 
-/* ===== КАРТОЧКИ ===== */
 .card {
     background: #161b22;
     border-radius: 12px;
@@ -37,7 +35,6 @@ body {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
-/* ===== ПРОФИЛЬ ===== */
 .profile-card {
     text-align: center;
     padding: 20px 18px 18px;
@@ -85,7 +82,6 @@ body {
     text-decoration: none;
 }
 
-/* ===== СТАТИСТИКА ===== */
 .stats {
     display: flex;
     justify-content: space-around;
@@ -117,6 +113,66 @@ body {
 .stat-main {
     background: #0d2818;
     border-color: #238636;
+}
+
+/* ===== КНОПКИ В ПРОФИЛЕ (УМЕНЬШЕННЫЕ) ===== */
+.profile-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    padding-top: 4px;
+    flex-wrap: wrap;
+}
+
+.profile-actions .btn-invite-friend,
+.profile-actions .btn-ad {
+    flex: 1;
+    min-width: 80px;
+    padding: 10px 8px;
+    font-size: 13px;
+    min-height: 40px;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.profile-actions .btn-invite-friend {
+    background: rgba(33, 150, 243, 0.15);
+    color: #64b5f6;
+    border: 1.5px dashed #42a5f5;
+}
+
+.profile-actions .btn-invite-friend:hover {
+    background: rgba(33, 150, 243, 0.25);
+}
+
+.profile-actions .btn-ad {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    color: #fff;
+    border: none;
+}
+
+.profile-actions .btn-ad:hover {
+    transform: scale(0.97);
+}
+
+.profile-actions .btn-settings {
+    padding: 10px 14px;
+    min-width: 44px;
+    min-height: 40px;
+    font-size: 18px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #aaa;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.profile-actions .btn-settings:hover {
+    background: rgba(255,255,255,0.15);
+    color: #f0f6fc;
 }
 
 /* ===== НАВИГАЦИЯ ===== */
@@ -151,7 +207,6 @@ body {
     color: #f0f6fc;
 }
 
-/* ===== САБТАБЫ ===== */
 .subtab-bar {
     display: flex;
     gap: 6px;
@@ -178,46 +233,6 @@ body {
     color: #f0f6fc;
 }
 
-/* ===== КНОПКИ ===== */
-.btn-invite-friend {
-    padding: 12px;
-    background: #0d2818;
-    color: #3fb950;
-    border: 1.5px dashed #238636;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 14px;
-    cursor: pointer;
-    transition: 0.2s;
-}
-.btn-invite-friend:hover:not(:disabled) {
-    background: #0d3520;
-    border-color: #2ea043;
-}
-.btn-invite-friend:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.btn-settings {
-    padding: 12px 16px;
-    background: #161b22;
-    color: #8b949e;
-    border: 1px solid #30363d;
-    border-radius: 10px;
-    font-size: 20px;
-    cursor: pointer;
-    transition: 0.2s;
-}
-.btn-settings:hover:not(:disabled) {
-    background: #21262d;
-    color: #f0f6fc;
-}
-.btn-settings:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
 .btn-quit-job {
     width: 100%;
     padding: 8px;
@@ -232,29 +247,6 @@ body {
 }
 .btn-quit-job:hover {
     background: #3d1717;
-}
-
-.btn-earn {
-    width: 100%;
-    padding: 13px;
-    background: #238636;
-    color: #ffffff;
-    border: none;
-    border-radius: 10px;
-    font-weight: 700;
-    font-size: 15px;
-    cursor: pointer;
-    margin-top: 10px;
-    transition: 0.2s;
-    box-shadow: 0 2px 12px rgba(35, 134, 54, 0.25);
-}
-.btn-earn:hover:not(:disabled) {
-    background: #2ea043;
-    box-shadow: 0 2px 20px rgba(35, 134, 54, 0.35);
-}
-.btn-earn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
 }
 
 .btn-collect {
@@ -272,7 +264,6 @@ body {
     background: #2ea043;
 }
 
-/* ===== СБОР ДОХОДА ===== */
 .collect-card {
     display: flex;
     align-items: center;
@@ -291,7 +282,6 @@ body {
     margin-left: 4px;
 }
 
-/* ===== ЗАГОЛОВКИ ===== */
 .section-title {
     font-size: 15px;
     font-weight: 700;
@@ -299,7 +289,6 @@ body {
     color: #f0f6fc;
 }
 
-/* ===== ЭЛЕМЕНТЫ СПИСКА ===== */
 .player-item {
     display: flex;
     align-items: center;
@@ -345,17 +334,6 @@ body {
 .rank-2 { color: #b1bac4; font-size: 20px; }
 .rank-3 { color: #d29922; font-size: 18px; }
 
-.lvl {
-    background: #2d1b4e;
-    color: #bc8cff;
-    border-radius: 10px;
-    padding: 2px 8px;
-    font-size: 10px;
-    margin-left: 4px;
-    font-weight: 600;
-}
-
-/* ===== ГРУППЫ КНОПОК ===== */
 .btn-group {
     display: flex;
     gap: 4px;
@@ -513,7 +491,6 @@ button:disabled {
     pointer-events: none;
 }
 
-/* ===== ЗАДАНИЯ ===== */
 .task-item {
     display: flex;
     align-items: center;
@@ -565,7 +542,6 @@ button:disabled {
     background: #0d3520;
 }
 
-/* ===== ЭКРАНЫ ===== */
 .screen {
     display: none;
 }
@@ -573,7 +549,6 @@ button:disabled {
     display: block;
 }
 
-/* ===== МОДАЛКИ ===== */
 .modal {
     display: none;
     position: fixed;
@@ -619,7 +594,6 @@ button:disabled {
     font-size: 14px;
 }
 
-/* ===== ТОСТЫ ===== */
 #toast-container {
     position: fixed;
     top: 20px;
@@ -667,7 +641,6 @@ button:disabled {
     to { opacity: 0; }
 }
 
-/* ===== СКРОЛЛБАР ===== */
 ::-webkit-scrollbar {
     width: 4px;
 }
@@ -683,7 +656,6 @@ button:disabled {
     background: #484f58;
 }
 
-/* ===== ДОПОЛНИТЕЛЬНО ===== */
 #owner-info {
     font-size: 13px;
     color: #f85149;
@@ -705,30 +677,6 @@ button:disabled {
     border: none !important;
 }
 
-/* ===== СКЕЛЕТОН ===== */
-.skeleton {
-    background: linear-gradient(90deg, #1a1f2e 25%, #2a3040 50%, #1a1f2e 75%);
-    background-size: 200% 100%;
-    animation: skeleton-loading 1.5s infinite;
-    border-radius: 8px;
-}
-
-@keyframes skeleton-loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-}
-
-.skeleton-text {
-    height: 16px;
-    margin: 4px 0;
-    width: 100%;
-    background: linear-gradient(90deg, #1a1f2e 25%, #2a3040 50%, #1a1f2e 75%);
-    background-size: 200% 100%;
-    animation: skeleton-loading 1.5s infinite;
-    border-radius: 6px;
-}
-
-/* ===== АДАПТИВ ===== */
 @media (max-width: 420px) {
     .stat .value {
         font-size: 18px;
@@ -750,6 +698,18 @@ button:disabled {
         height: 60px;
     }
     .header h2 {
+        font-size: 16px;
+    }
+    .profile-actions .btn-invite-friend,
+    .profile-actions .btn-ad {
+        font-size: 11px;
+        padding: 8px 6px;
+        min-height: 34px;
+        min-width: 60px;
+    }
+    .profile-actions .btn-settings {
+        padding: 8px 10px;
+        min-height: 34px;
         font-size: 16px;
     }
 }
