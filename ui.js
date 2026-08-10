@@ -45,20 +45,17 @@ function goTo(screen) {
     if(screen === 'top') switchTopSubtab(topSubtab);
     if(screen === 'market') loadMarketScreen();
     if(screen === 'my-company') loadMyCompanyScreen();
+    if(screen === 'earn') renderTasks();
 }
 
 function updateNavButtons(screen) {
     var bar = document.getElementById('nav-bar');
     bar.innerHTML = '';
-    if(screen === 'profile') {
-        addNavBtn('top', '🏆 Топ'); addNavBtn('market', '💼 Биржа'); addNavBtn('my-company', '🏢 Компания');
-    } else if(screen === 'top') {
-        addNavBtn('profile', '🏠 Профиль'); addNavBtn('market', '💼 Биржа'); addNavBtn('my-company', '🏢 Компания');
-    } else if(screen === 'market') {
-        addNavBtn('profile', '🏠 Профиль'); addNavBtn('top', '🏆 Топ'); addNavBtn('my-company', '🏢 Компания');
-    } else if(screen === 'my-company') {
-        addNavBtn('profile', '🏠 Профиль'); addNavBtn('top', '🏆 Топ'); addNavBtn('market', '💼 Биржа');
-    }
+    addNavBtn('profile', '🏠 Профиль');
+    addNavBtn('top', '🏆 Топ');
+    addNavBtn('market', '💼 Биржа');
+    addNavBtn('my-company', '🏢 Компания');
+    addNavBtn('earn', '💰 Заработать');
 }
 
 function addNavBtn(screen, label) {
@@ -197,44 +194,6 @@ function renderPlayerModalContent(player) {
     });
 }
 
-function renderTasks() {
-    var listEl = document.getElementById('tasks-list');
-    if(!listEl) return;
-    var html = '';
-    
-    // ЗАДАНИЕ: ПОСМОТРЕТЬ РЕКЛАМУ
-    var remaining = getRemainingAds ? getRemainingAds() : 0;
-    var adText = '🎬 Посмотреть рекламу (+' + REWARDED_AD_BONUS + ' опыта)';
-    if(remaining <= 0) {
-        adText += ' ❌ (лимит)';
-    } else {
-        adText += ' (осталось ' + remaining + ' раз)';
-    }
-    
-    html += '<div class="task-item"><div class="task-info"><b>' + adText + '</b><br><span style="font-size:11px;color:#aaa;">Максимум ' + REWARDED_AD_LIMIT + ' раз в день • 1 мин кулдаун</span></div>';
-    if(remaining > 0) {
-        html += '<button class="btn-task" onclick="doRewardedAd()" style="background:linear-gradient(135deg,#ff9800,#f57c00);color:#fff;">▶ Смотреть</button>';
-    } else {
-        html += '<span style="color:#f44336;">❌ Лимит</span>';
-    }
-    html += '</div>';
-    
-    // ЗАДАНИЕ: ПОДПИСКА НА ГРУППУ
-    if(!currentUser || !currentUser.task_group_done) {
-        html += '<div class="task-item"><div class="task-info"><b>📱 Подписаться на группу</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
-        html += '<div style="display:flex;gap:4px;"><button class="btn-task" onclick="doGroupTask()">▶ Выполнить</button><button class="btn-task-check" onclick="checkGroupTask()">🔍 Проверить</button></div>';
-        html += '</div>';
-    }
-    
-    // ЗАДАНИЕ: ПРОМОКОД
-    html += '<div class="task-item"><div class="task-info"><b>🎁 Ввести промокод</b><br><span style="font-size:11px;color:#aaa;">Награда: 1000 опыта</span></div>';
-    html += '<button class="btn-task" onclick="doPromoTask()">▶ Выполнить</button>';
-    html += '</div>';
-    
-    if(html === '') html = '<p style="color:#4caf50;text-align:center;">✅ Все задания выполнены!</p>';
-    listEl.innerHTML = html;
-}
-
 function renderAll() {
     // Обновляем аватар
     var avatar = document.getElementById('header-avatar');
@@ -292,9 +251,6 @@ function renderAll() {
     
     // Загружаем сотрудников
     loadMyTeam(true);
-    
-    // Рендерим задания
-    renderTasks();
 }
 
 function loadMyTeam(reset) {
@@ -353,9 +309,6 @@ window.updateNavButtons = updateNavButtons;
 window.addNavBtn = addNavBtn;
 window.renderEmployeeCard = renderEmployeeCard;
 window.renderPlayerModalContent = renderPlayerModalContent;
-window.renderTasks = renderTasks;
 window.renderAll = renderAll;
 window.loadMyTeam = loadMyTeam;
 window.inviteFriend = inviteFriend;
-
-console.log('✅ ui.js загружен, все функции зарегистрированы глобально');
