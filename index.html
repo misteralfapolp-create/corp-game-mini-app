@@ -34,12 +34,6 @@
                     <button class="btn-invite-friend" id="invite-friend-btn" style="flex:1;padding:14px 10px;font-size:16px;min-height:52px;border-radius:12px;">📨 Пригласить (+500)</button>
                     <button class="btn-settings" id="settings-btn" onclick="openSettings()" style="padding:14px 18px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:12px;font-size:24px;cursor:pointer;min-width:60px;min-height:52px;">⚙️</button>
                 </div>
-                <button class="btn-earn" id="earn-btn" onclick="toggleTasks()" style="margin-top:12px;padding:16px;font-size:18px;min-height:56px;">💰 Заработать</button>
-            </div>
-
-            <div class="card" id="tasks-panel" style="display:none;">
-                <div class="section-title">📋 Задания</div>
-                <div id="tasks-list">Загрузка...</div>
             </div>
 
             <div class="card collect-card" id="collect-panel" style="display:none;">
@@ -80,6 +74,14 @@
                 <p id="my-company-stats"></p>
                 <div id="my-company-members"></div>
                 <button class="btn-leave" id="my-company-leave-btn" style="display:none;">🚪 Выйти из компании (бесплатно)</button>
+            </div>
+        </div>
+
+        <!-- Заработать -->
+        <div id="screen-earn" class="screen">
+            <div class="card">
+                <div class="section-title">📋 Задания</div>
+                <div id="tasks-list">Загрузка...</div>
             </div>
         </div>
     </div>
