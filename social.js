@@ -52,7 +52,7 @@ function doPromoTask() {
     toast('Введите промокод', 'info');
 }
 
-// ================= ПОКУПКА ПОДПИСКИ (ТЕСТОВЫЙ РЕЖИМ) =================
+// ================= ПОКУПКА ПОДПИСКИ/ТОВАРА =================
 async function buySubscription() {
     try {
         if (typeof vkBridge === 'undefined') {
@@ -60,23 +60,43 @@ async function buySubscription() {
             return;
         }
 
-        console.log('🛒 Открываем окно покупки подписки...');
+        console.log('🛒 Открываем окно покупки...');
 
-        var result = await vkBridge.send('VKWebAppShowSubscriptionBox', {
-            action: 'create',
-            item: 'sale_item_subscription_1'
+        var result = await vkBridge.send('VKWebAppShowOrderBox', {
+            item: 'test_item_1'  // ID товара (даже если не создан в кабинете)
         });
 
         console.log('📡 Результат:', result);
 
         if (result && result.result) {
-            toast('✅ Подписка оформлена!', 'success');
+            toast('✅ Покупка успешно завершена!', 'success');
+            // Отправляем запрос на сервер для проверки
+            await verifyPaymentOnBackend(result.order_id);
         } else {
-            toast('❌ Подписка отменена', 'info');
+            toast('❌ Покупка отменена', 'info');
         }
     } catch (e) {
-        console.error('❌ Ошибка подписки:', e);
+        console.error('❌ Ошибка:', e);
         toast('❌ Ошибка: ' + (e.message || 'неизвестная'), 'error');
+    }
+}
+
+// ================= ПРОВЕРКА ПЛАТЕЖА НА БЭКЕНДЕ =================
+async function verifyPaymentOnBackend(orderId) {
+    try {
+        const response = await fetch('https://fcrjkfiodvfhzamayvoe.supabase.co/functions/v1/payment-webhook/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: orderId })
+        });
+        const data = await response.json();
+        if (data.success) {
+            toast('✅ Подписка активирована!', 'success');
+        } else {
+            toast('❌ Ошибка проверки платежа', 'error');
+        }
+    } catch (e) {
+        console.error('Ошибка проверки:', e);
     }
 }
 
